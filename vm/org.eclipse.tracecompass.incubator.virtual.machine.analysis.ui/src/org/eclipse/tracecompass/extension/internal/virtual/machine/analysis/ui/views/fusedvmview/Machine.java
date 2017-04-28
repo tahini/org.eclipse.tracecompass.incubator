@@ -16,7 +16,7 @@ public class Machine {
     private String machineName;
     private Machine host = null;
     private Boolean highlighted;
-    private int alpha;
+    private float heightFactory;
     private Set<Processor> cpus = new HashSet<>();
     private Set<Processor> pcpus = new HashSet<>();
     private Set<Machine> containers = new HashSet<>();
@@ -31,14 +31,14 @@ public class Machine {
     public Machine(String name, @NonNull ITmfStateValue type) {
         machineName = name;
         highlighted = true;
-        alpha = FusedVMViewPresentationProvider.fHighlightAlpha;
+        heightFactory = FusedVMViewPresentationProvider.FULL_HEIGHT;
         typeMachine = type;
     }
 
     public Machine(String name, Integer nbCPUs, @NonNull ITmfStateValue type) {
         machineName = name;
         highlighted = true;
-        alpha = FusedVMViewPresentationProvider.fHighlightAlpha;
+        heightFactory = FusedVMViewPresentationProvider.FULL_HEIGHT;
         typeMachine = type;
         for (Integer i = 0; i < nbCPUs; i++) {
             cpus.add(new Processor(i.toString(), this));
@@ -48,7 +48,7 @@ public class Machine {
     public Machine(String name, @NonNull ITmfStateValue type, List<String> pcpus) {
         machineName = name;
         highlighted = true;
-        alpha = FusedVMViewPresentationProvider.fHighlightAlpha;
+        heightFactory = FusedVMViewPresentationProvider.FULL_HEIGHT;
         typeMachine = type;
         for (String pcpu : pcpus) {
             this.pcpus.add(new Processor(pcpu, this));
@@ -65,8 +65,8 @@ public class Machine {
         return machineName;
     }
 
-    public int getAlpha() {
-        return alpha;
+    public float getHeightFactory() {
+        return heightFactory;
     }
 
     public ITmfStateValue getTypeMachine() {
@@ -118,9 +118,9 @@ public class Machine {
     public void setHighlightedWithAllCpu(Boolean b) {
         highlighted = b;
         if (b) {
-            alpha = FusedVMViewPresentationProvider.fHighlightAlpha;
+            heightFactory = FusedVMViewPresentationProvider.FULL_HEIGHT;
         } else {
-            alpha = FusedVMViewPresentationProvider.fDimAlpha;
+            heightFactory = FusedVMViewPresentationProvider.REDUCED_HEIGHT;
         }
         for (Processor p : cpus) {
             p.setHighlighted(b);
@@ -130,9 +130,9 @@ public class Machine {
     public void setHighlightedWithAllContainers(Boolean b) {
         highlighted = b;
         if (b){
-            alpha = FusedVMViewPresentationProvider.fHighlightAlpha;
+            heightFactory = FusedVMViewPresentationProvider.FULL_HEIGHT;
         } else {
-            alpha = FusedVMViewPresentationProvider.fDimAlpha;
+            heightFactory = FusedVMViewPresentationProvider.REDUCED_HEIGHT;
         }
         for (Machine c : containers) {
             c.setHighlighted(b);

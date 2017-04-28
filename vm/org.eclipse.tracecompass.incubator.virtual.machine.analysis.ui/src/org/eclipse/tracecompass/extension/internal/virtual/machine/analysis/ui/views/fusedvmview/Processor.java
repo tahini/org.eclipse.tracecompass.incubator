@@ -16,12 +16,12 @@ public class Processor {
     private String n;
     private Boolean highlighted;
     private Machine machine;
-    private int alpha;
+    private float heightFactory;
 
     public Processor(String p, Machine m){
         n = p;
         highlighted = true;
-        alpha = FusedVMViewPresentationProvider.fHighlightAlpha;
+        heightFactory = FusedVMViewPresentationProvider.FULL_HEIGHT;
         machine = m;
     }
 
@@ -46,7 +46,7 @@ public class Processor {
         return n;
     }
 
-    public int getAlpha() {
-        return alpha;
+    public float getHeightFactory() {
+        return heightFactory;
     }
 }
