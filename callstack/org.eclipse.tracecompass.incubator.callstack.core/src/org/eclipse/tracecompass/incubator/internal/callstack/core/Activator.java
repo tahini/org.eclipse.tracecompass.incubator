@@ -7,10 +7,9 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.internal.analysis.core;
+package org.eclipse.tracecompass.incubator.internal.callstack.core;
 
 import org.eclipse.tracecompass.common.core.TraceCompassActivator;
-import org.eclipse.tracecompass.incubator.analysis.core.aspects.AnalysisTidAspect;
 
 /**
  * Activator
@@ -18,7 +17,7 @@ import org.eclipse.tracecompass.incubator.analysis.core.aspects.AnalysisTidAspec
 public class Activator extends TraceCompassActivator {
 
     /** The plug-in ID */
-    public static final String PLUGIN_ID = "org.eclipse.tracecompass.incubator.analysis.core"; //$NON-NLS-1$
+    public static final String PLUGIN_ID = "org.eclipse.tracecompass.incubator.callstack.core"; //$NON-NLS-1$
 
     /**
      * The constructor
@@ -38,7 +37,6 @@ public class Activator extends TraceCompassActivator {
 
     @Override
     protected void startActions() {
-        AnalysisTidAspect.getInstance();
     }
 
     @Override
