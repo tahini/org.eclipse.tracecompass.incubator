@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.vcpuview;
+package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.vcpuview;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -15,8 +15,8 @@ import java.util.Comparator;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.tracecompass.common.core.NonNullUtils;
-import org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.vcpuview.VirtualMachineCommon.Type;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.trace.VirtualMachineExperiment;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.vcpuview.VirtualMachineCommon.Type;
 import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeGraphEntry;

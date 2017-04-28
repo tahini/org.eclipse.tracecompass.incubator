@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.fusedvmview;
+package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.fusedvmview;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,13 +34,13 @@ import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseWheelListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.fusedvmview.FusedVMViewEntry.Type;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.data.Attributes;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.module.FusedVMInformationProvider;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.module.FusedVirtualMachineAnalysis;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.module.StateValues;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.trace.VirtualMachineExperiment;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.Activator;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.fusedvmview.FusedVMViewEntry.Type;
 import org.eclipse.tracecompass.internal.analysis.os.linux.ui.views.controlflow.ControlFlowEntry;
 import org.eclipse.tracecompass.internal.analysis.os.linux.ui.views.controlflow.ControlFlowView;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;

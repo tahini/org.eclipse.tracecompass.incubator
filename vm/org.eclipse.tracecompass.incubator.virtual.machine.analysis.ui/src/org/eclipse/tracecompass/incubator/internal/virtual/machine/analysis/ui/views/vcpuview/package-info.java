@@ -8,4 +8,4 @@
  *******************************************************************************/
 
 @org.eclipse.jdt.annotation.NonNullByDefault
-package org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.vcpuview;
+package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.vcpuview;

@@ -9,7 +9,7 @@
  *     Patrick Tassé - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.fusedvmview;
+package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.fusedvmview;
 
 import org.eclipse.osgi.util.NLS;
 

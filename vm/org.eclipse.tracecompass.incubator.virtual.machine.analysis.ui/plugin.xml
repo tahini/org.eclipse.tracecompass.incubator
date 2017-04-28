@@ -4,7 +4,7 @@
    <extension
          point="org.eclipse.ui.views">
       <view
-            class="org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.fusedvmview.FusedVirtualMachineView"
+            class="org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.fusedvmview.FusedVirtualMachineView"
             id="org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.fusedvmview"
             name="%view.fused.name"
             restorable="true">
@@ -12,7 +12,7 @@
       <view
             allowMultiple="false"
             category="org.eclipse.linuxtools.tmf.ui.views.category"
-            class="org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.vcpuview.VirtualMachineView"
+            class="org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.vcpuview.VirtualMachineView"
             id="org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.vm.ui.vmview"
             name="%vcpuview.name"
             restorable="true">

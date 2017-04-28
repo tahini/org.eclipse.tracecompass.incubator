@@ -1,4 +1,4 @@
-package org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.fusedvmview;
+package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.fusedvmview;
 
 import java.util.HashSet;
 import java.util.List;

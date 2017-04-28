@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.fusedvmview;
+package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.fusedvmview;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -21,13 +21,13 @@ import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelTrace;
-import org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.fusedvmview.FusedVMViewEntry.Type;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.data.Attributes;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.module.FusedVMInformationProvider;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.module.FusedVirtualMachineAnalysis;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.module.StateValues;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.trace.VirtualMachineExperiment;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.Activator;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.fusedvmview.FusedVMViewEntry.Type;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.exceptions.AttributeNotFoundException;
 import org.eclipse.tracecompass.statesystem.core.exceptions.StateSystemDisposedException;

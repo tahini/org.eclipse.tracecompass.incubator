@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.extension.internal.virtual.machine.analysis.ui.views.fusedvmview;
+package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.fusedvmview;
 
 import java.util.Iterator;
 
