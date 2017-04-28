@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-   Copyright (C) 2017 Ã‰cole Polytechnique de MontrÃ©al
+   Copyright (C) 2017 École Polytechnique de Montréal
 
    All rights reserved. This program and the accompanying materials
    are made available under the terms of the Eclipse Public License v1.0
@@ -19,19 +19,16 @@
     <version>0.0.1-SNAPSHOT</version>
   </parent>
 
-  <artifactId>org.eclipse.tracecompass.incubator.callstack-parent</artifactId>
+  <artifactId>org.eclipse.tracecompass.incubator.vm-parent</artifactId>
   <packaging>pom</packaging>
 
-  <name>Trace Compass Incubator Callstack Parent</name>
+  <name>Trace Compass Incubator vm Parent</name>
 
   <modules>
-    <module>org.eclipse.tracecompass.incubator.callstack</module>
-    <module>org.eclipse.tracecompass.incubator.callstack.core</module>
-    <module>org.eclipse.tracecompass.incubator.callstack.core.tests</module>
-    <module>org.eclipse.tracecompass.incubator.callstack.ui</module>
-    <module>org.eclipse.tracecompass.incubator.callstack.doc.user</module>
-    <module>org.eclipse.tracecompass.incubator.analysis.core</module>
-    <module>org.eclipse.tracecompass.incubator.analysis.core.tests</module>
+    <module>org.eclipse.tracecompass.incubator.virtual.machine.analysis</module>
+    <module>org.eclipse.tracecompass.incubator.virtual.machine.analysis.core</module>
+    <module>org.eclipse.tracecompass.incubator.virtual.machine.analysis.ui</module>
+    <module>org.eclipse.tracecompass.incubator.virtual.machine.analysis.doc.user</module>
     <!-- insert modules here -->
   </modules>
 
