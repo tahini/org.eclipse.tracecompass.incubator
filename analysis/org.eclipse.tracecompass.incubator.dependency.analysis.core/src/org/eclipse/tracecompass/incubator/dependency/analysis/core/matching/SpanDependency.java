@@ -9,6 +9,7 @@
 
 package org.eclipse.tracecompass.incubator.dependency.analysis.core.matching;
 
+import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.internal.provisional.datastore.core.interval.IHTIntervalReader;
 import org.eclipse.tracecompass.internal.provisional.segmentstore.core.BasicSegment2;
 
@@ -20,6 +21,9 @@ import org.eclipse.tracecompass.internal.provisional.segmentstore.core.BasicSegm
 @SuppressWarnings("restriction")
 public class SpanDependency extends BasicSegment2 {
 
+    private final HostThread fSource;
+    private final HostThread fDestination;
+
     /**
      *
      */
@@ -28,16 +32,28 @@ public class SpanDependency extends BasicSegment2 {
      * The factory to read an object from a buffer
      */
     public static final IHTIntervalReader<SpanDependency> SPAN_DEPENDENCY_READ_FACTORY = buffer -> {
-            return new SpanDependency(buffer.getLong(), buffer.getLong());
+
+            return new SpanDependency(new HostThread(buffer.getString(), buffer.getInt()), new HostThread(buffer.getString(), buffer.getInt()), buffer.getLong(), buffer.getLong());
     };
 
     /**
+     * @param source
+     * @param destination
      * @param start
      * @param end
      */
-    public SpanDependency(long start, long end) {
+    public SpanDependency(HostThread source, HostThread destination, long start, long end) {
         super(start, end);
+        fSource = source;
+        fDestination = destination;
     }
 
+    public HostThread getSource() {
+        return fSource;
+    }
+
+    public HostThread getDestination() {
+        return fDestination;
+    }
 
 }

@@ -13,44 +13,97 @@ import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.Collection;
+import java.util.Collections;
 
-import org.eclipse.tracecompass.analysis.timing.core.segmentstore.AbstractSegmentStoreAnalysisEventBasedModule;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.analysis.os.linux.core.event.aspect.LinuxTidAspect;
+import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
+import org.eclipse.tracecompass.analysis.timing.core.segmentstore.AbstractSegmentStoreAnalysisModule;
 import org.eclipse.tracecompass.segmentstore.core.ISegment;
 import org.eclipse.tracecompass.segmentstore.core.ISegmentStore;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
+import org.eclipse.tracecompass.tmf.core.event.matching.IMatchProcessingUnit;
+import org.eclipse.tracecompass.tmf.core.event.matching.TmfEventDependency;
+import org.eclipse.tracecompass.tmf.core.event.matching.TmfEventMatching;
+import org.eclipse.tracecompass.tmf.core.exceptions.TmfAnalysisException;
+import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
+import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 
-public class SpanDependencyAnalysis extends AbstractSegmentStoreAnalysisEventBasedModule {
+/**
+ * A dependency analysis that matches events together and create links between them
+ *
+ * @author Geneviève Bastien
+ */
+public class SpanDependencyAnalysis extends AbstractSegmentStoreAnalysisModule {
 
-    @Override
-    public AbstractSegmentStoreAnalysisRequest createAnalysisRequest(ISegmentStore<ISegment> syscalls) {
-        return new SyscallLatencyAnalysisRequest(syscalls);
+    private class DependencyMatchProcessingUnit implements IMatchProcessingUnit {
+
+        private final ISegmentStore<ISegment> fSegStore;
+
+        public DependencyMatchProcessingUnit(ISegmentStore<ISegment> segmentStore) {
+            fSegStore = segmentStore;
+        }
+
+        @Override
+        public void matchingEnded() {
+        }
+
+        @Override
+        public int countMatches() {
+            return fSegStore.size();
+        }
+
+        @Override
+        public void addMatch(@Nullable TmfEventDependency match) {
+            if (match == null) {
+                return;
+            }
+            ITmfEvent sourceEvent = match.getSourceEvent();
+            ITmfEvent destinationEvent = match.getDestinationEvent();
+            Object sourceTid = TmfTraceUtils.resolveEventAspectOfClassForEvent(sourceEvent.getTrace(), LinuxTidAspect.class, sourceEvent);
+            Object destTid = TmfTraceUtils.resolveEventAspectOfClassForEvent(destinationEvent.getTrace(), LinuxTidAspect.class, destinationEvent);
+            // If we cannot associate it with a thread, ignore this match
+            if (sourceTid == null || destTid == null) {
+                return;
+            }
+            SpanDependency spanDependency = new SpanDependency(new HostThread(sourceEvent.getTrace().getHostId(), (int) sourceTid), new HostThread(destinationEvent.getTrace().getHostId(), (int) destTid), sourceEvent.getTimestamp().toNanos(), destinationEvent.getTimestamp().toNanos());
+            fSegStore.add(spanDependency);
+        }
+
+        @Override
+        public void init(Collection<ITmfTrace> fTraces) {
+
+        }
+
     }
+
+    /**
+     * ID of this analysis
+     */
+    public static final String ID = "org.eclipse.tracecompass.incubator.dependency.analysis.core.dependency"; //$NON-NLS-1$
 
     @Override
     protected Object[] readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException {
         return checkNotNull((Object[]) ois.readObject());
     }
 
-    private class SyscallLatencyAnalysisRequest extends AbstractSegmentStoreAnalysisRequest {
-
-        public SyscallLatencyAnalysisRequest(ISegmentStore<ISegment> syscalls) {
-            super(syscalls);
+    @Override
+    protected boolean buildAnalysisSegments(ISegmentStore<ISegment> segmentStore, @NonNull IProgressMonitor monitor) throws TmfAnalysisException {
+        ITmfTrace trace = getTrace();
+        if (trace == null) {
+            throw new NullPointerException("The trace should not be null at this location"); //$NON-NLS-1$
         }
+        TmfEventMatching eventMatching = new TmfEventMatching(Collections.singleton(trace), new DependencyMatchProcessingUnit(segmentStore));
+        eventMatching.initMatching();
+        return eventMatching.matchEvents();
+    }
 
-        @Override
-        public void handleData(final ITmfEvent event) {
+    @Override
+    protected void canceling() {
 
-        }
-
-        @Override
-        public void handleCompleted() {
-
-        }
-
-        @Override
-        public void handleCancel() {
-            super.handleCancel();
-        }
     }
 
 }
