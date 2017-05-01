@@ -1,0 +1,122 @@
+<!-- ***************************************************************************
+* Copyright (c) 2016 École Polytechnique de Montréal
+*
+* All rights reserved. This program and the accompanying materials are
+* made available under the terms of the Eclipse Public License v1.0 which
+* accompanies this distribution, and is available at
+* http://www.eclipse.org/legal/epl-v10.html
+*************************************************************************** -->
+<!-- This is the layout of a trace with callstack that sends events to another trace
+*   
+* where 1e2 means at timestamp 1, entry of function named op2
+*   and 10x means at timestamp 10, exit of the function
+*
+* pid1 ___ tid2   1e1 ++++++++++++++++++++++++++++++++++++ 20x
+*      |             3e2++++++++++++++++++++13R+++++++++ 19x
+*      |               4e3+5S++6x               15e3++17x
+*      |__ tid3      3e2 +++++++++10x         15e4+16R++++ 20x
+*                       5e3+8S++9x                   17e5+19x
+* 
+************************************************************************** -->
+<trace>
+<event timestamp="1" name="entry">
+<field name="op" type="string" value="op1" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="2" />
+</event>
+<event timestamp="3" name="entry">
+<field name="op" type="string" value="op2" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="2" />
+</event>
+<event timestamp="3" name="entry">
+<field name="op" type="string" value="op2" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="3" />
+</event>
+<event timestamp="4" name="entry">
+<field name="op" type="string" value="op3" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="2" />
+</event>
+<event timestamp="5" name="inject">
+<field name="span" type="string" value="abc" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="2" />
+</event>
+<event timestamp="5" name="entry">
+<field name="op" type="string" value="op3" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="3" />
+</event>
+<event timestamp="6" name="exit">
+<field name="op" type="string" value="op3" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="2" />
+</event>
+<event timestamp="8" name="inject">
+<field name="span" type="string" value="def" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="3" />
+</event>
+<event timestamp="9" name="exit">
+<field name="op" type="string" value="op3" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="3" />
+</event>
+<event timestamp="10" name="exit">
+<field name="op" type="string" value="op2" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="3" />
+</event>
+<event timestamp="13" name="recv">
+<field name="span" type="string" value="abc" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="2" />
+</event>
+<event timestamp="15" name="entry">
+<field name="op" type="string" value="op3" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="2" />
+</event>
+<event timestamp="15" name="entry">
+<field name="op" type="string" value="op4" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="3" />
+</event>
+<event timestamp="16" name="recv">
+<field name="span" type="string" value="def" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="3" />
+</event>
+<event timestamp="17" name="entry">
+<field name="op" type="string" value="op5" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="3" />
+</event>
+<event timestamp="17" name="exit">
+<field name="op" type="string" value="op3" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="2" />
+</event>
+<event timestamp="19" name="exit">
+<field name="op" type="string" value="op2" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="2" />
+</event>
+<event timestamp="19" name="exit">
+<field name="op" type="string" value="op5" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="3" />
+</event>
+<event timestamp="20" name="exit">
+<field name="op" type="string" value="op1" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="2" />
+</event>
+<event timestamp="20" name="exit">
+<field name="op" type="string" value="op4" />
+<field name="pid" type="string" value="1" />
+<field name="tid" type="string" value="3" />
+</event>
+</trace>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.linuxtools.tmf.core.tracetype">
+      <type
+            category="org.eclipse.linuxtools.tmf.core.tests.category"
+            event_type="org.eclipse.tracecompass.tmf.core.event.TmfEvent"
+            id="org.eclipse.tracecompass.incubator.dependency.analysis.core.tests.tracewithtid"
+            isDirectory="false"
+            name="%trace.test.withtid"
+            trace_type="org.eclipse.tracecompass.incubator.dependency.analysis.core.tests.stubs.TmfXmlTraceStubWithTid">
+      </type>
+   </extension>
+
+</plugin>

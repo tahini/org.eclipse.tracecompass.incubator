@@ -9,8 +9,13 @@
 
 package org.eclipse.tracecompass.incubator.dependency.analysis.core.matching;
 
+import java.util.Objects;
+
+import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.internal.provisional.datastore.core.interval.IHTIntervalReader;
+import org.eclipse.tracecompass.internal.provisional.datastore.core.serialization.ISafeByteBufferWriter;
 import org.eclipse.tracecompass.internal.provisional.segmentstore.core.BasicSegment2;
 
 /**
@@ -54,6 +59,36 @@ public class SpanDependency extends BasicSegment2 {
 
     public HostThread getDestination() {
         return fDestination;
+    }
+
+    @Override
+    public void writeSegment(@NonNull ISafeByteBufferWriter buffer) {
+        buffer.putString(fSource.getHost());
+        buffer.putInt(fSource.getTid());
+        buffer.putString(fDestination.getHost());
+        buffer.putInt(fDestination.getTid());
+        buffer.putLong(getStart());
+        buffer.putLong(getEnd());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getStart(), getEnd(), fSource, fDestination);
+    }
+
+    @Override
+    public boolean equals(@Nullable Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (obj.getClass() != getClass()) {
+            return false;
+        }
+        SpanDependency other = (SpanDependency) obj;
+        return (getStart() == other.getStart()
+                && getEnd() == other.getEnd()
+                && fSource.equals(other.fSource)
+                && fDestination.equals(other.fDestination));
     }
 
 }
