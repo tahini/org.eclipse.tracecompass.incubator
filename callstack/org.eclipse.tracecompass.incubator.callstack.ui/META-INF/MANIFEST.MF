@@ -20,7 +20,9 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.tracecompass.tmf.ui,
  org.eclipse.tracecompass.segmentstore.core,
  org.swtchart,
- org.eclipse.jface
+ org.eclipse.jface,
+ org.eclipse.tracecompass.incubator.dependency.analysis.core,
+ org.eclipse.tracecompass.analysis.os.linux.core
 Export-Package: org.eclipse.tracecompass.incubator.internal.callstack.ui;x-internal:=true,
  org.eclipse.tracecompass.incubator.internal.callstack.ui.callgraph;x-internal:=true,
  org.eclipse.tracecompass.incubator.internal.callstack.ui.flamegraph;x-internal:=true,
@@ -29,4 +31,5 @@ Export-Package: org.eclipse.tracecompass.incubator.internal.callstack.ui;x-inter
  org.eclipse.tracecompass.incubator.internal.callstack.ui.views.stacktable;x-internal:=true
 Import-Package: com.google.common.annotations,
  com.google.common.cache,
- com.google.common.collect
+ com.google.common.collect,
+ org.apache.commons.lang3

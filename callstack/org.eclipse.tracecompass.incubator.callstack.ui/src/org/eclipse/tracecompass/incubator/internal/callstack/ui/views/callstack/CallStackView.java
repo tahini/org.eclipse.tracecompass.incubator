@@ -22,9 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
@@ -52,8 +51,13 @@ import org.eclipse.tracecompass.incubator.callstack.core.callstack.CallStackSeri
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackLeafElement;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackProvider;
+import org.eclipse.tracecompass.incubator.dependency.analysis.core.matching.SpanDependency;
+import org.eclipse.tracecompass.incubator.dependency.analysis.core.matching.SpanDependencyAnalysis;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.instrumented.ICalledFunction;
 import org.eclipse.tracecompass.incubator.internal.callstack.ui.Activator;
+import org.eclipse.tracecompass.segmentstore.core.ISegment;
+import org.eclipse.tracecompass.segmentstore.core.ISegmentStore;
+import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSelectionRangeUpdatedSignal;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSignalHandler;
 import org.eclipse.tracecompass.tmf.core.signal.TmfTraceClosedSignal;
@@ -66,6 +70,7 @@ import org.eclipse.tracecompass.tmf.core.timestamp.TmfTimeRange;
 import org.eclipse.tracecompass.tmf.core.timestamp.TmfTimestamp;
 import org.eclipse.tracecompass.tmf.core.timestamp.TmfTimestampDelta;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
+import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.ui.editors.ITmfTraceEditor;
 import org.eclipse.tracecompass.tmf.ui.symbols.ISymbolProviderPreferencePage;
@@ -75,9 +80,11 @@ import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.ITimeGraphTimeListener;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.TimeGraphContentProvider;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.TimeGraphTimeEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.TimeGraphViewer;
+import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ILinkEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeGraphEntry;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.TimeGraphEntry;
+import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.TimeLinkEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.TimeGraphControl;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchActionConstants;
@@ -163,8 +170,12 @@ public class CallStackView extends AbstractTimeGraphView {
     // ------------------------------------------------------------------------
 
     private static class TraceEntry extends TimeGraphEntry {
-        public TraceEntry(String name, long startTime, long endTime) {
+
+        private final String fHostId;
+
+        public TraceEntry(String name, String hostId, long startTime, long endTime) {
             super(name, startTime, endTime);
+            fHostId = hostId;
         }
 
         @Override
@@ -270,7 +281,8 @@ public class CallStackView extends AbstractTimeGraphView {
 
     @Override
     protected @NonNull Iterable<ITmfTrace> getTracesToBuild(@Nullable ITmfTrace trace) {
-        return Collections.singleton(trace);
+        // For callstacks, it makes little sense to build for experiment, each trace will have its own
+        return TmfTraceManager.getTraceSet(trace);
     }
 
     private static class CallStackTreeLabelProvider extends TreeLabelProvider {
@@ -532,8 +544,8 @@ public class CallStackView extends AbstractTimeGraphView {
         }
 
         /* Continue with the call stack view specific operations */
-        Collection<ICallStackProvider> modules = getCallStackModules(trace);
-        if (modules.isEmpty()) {
+        ICallStackProvider csProvider = getCallStackModule(trace);
+        if (csProvider == null) {
             addUnavailableEntry(trace, parentTrace);
             return;
         }
@@ -544,53 +556,121 @@ public class CallStackView extends AbstractTimeGraphView {
         setEndTime(getEndTime() == SWT.DEFAULT ? end + 1 : Math.max(getEndTime(), end + 1));
 
         Map<ITmfTrace, TraceEntry> traceEntryMap = new HashMap<>();
-        for (ICallStackProvider csProvider : modules) {
-            Collection<CallStackSeries> callStacks = csProvider.getCallStackSeries();
-            if (callStacks.isEmpty()) {
-                continue;
-            }
-
-            TraceEntry traceEntry = traceEntryMap.get(trace);
-            if (traceEntry == null) {
-                traceEntry = new TraceEntry(trace.getName(), start, end + 1);
-                traceEntryMap.put(trace, traceEntry);
-                traceEntry.sortChildren(fThreadComparator);
-                addToEntryList(parentTrace, Collections.singletonList(traceEntry));
-            } else {
-                traceEntry.updateEndTime(end);
-            }
-
-            for (CallStackSeries callstack : callStacks) {
-                // If there is more than one callstack objects in the analys
-                TimeGraphEntry callStackRootEntry = traceEntry;
-                if (callStacks.size() > 1) {
-                    callStackRootEntry = new TimeGraphEntry(callstack.getName(), start, end + 1);
-                    traceEntry.addChild(callStackRootEntry);
-                }
-                for (ICallStackElement element : callstack.getRootElements()) {
-                    processCallStackElement(symbolProvider, element, callStackRootEntry);
-                }
-            }
-            final long entryStart = getStartTime();
-            final long entryEnd = getEndTime();
-            Consumer<TimeGraphEntry> consumer = new Consumer<TimeGraphEntry>() {
-                @Override
-                public void accept(TimeGraphEntry entry) {
-                    if (monitor.isCanceled()) {
-                        return;
-                    }
-                    if (entry instanceof CallStackEntry) {
-                        buildStatusEvents((CallStackEntry) entry, monitor, entryStart, entryEnd);
-                        return;
-                    }
-                    entry.getChildren().forEach(this);
-                }
-            };
-
-            traceEntry.getChildren().forEach(consumer);
-            refresh();
+        Collection<CallStackSeries> callStacks = csProvider.getCallStackSeries();
+        if (callStacks.isEmpty()) {
+            return;
         }
 
+        TraceEntry traceEntry = traceEntryMap.get(trace);
+        if (traceEntry == null) {
+            traceEntry = new TraceEntry(trace.getName(), trace.getHostId(), start, end + 1);
+            traceEntryMap.put(trace, traceEntry);
+            traceEntry.sortChildren(fThreadComparator);
+            addToEntryList(parentTrace, Collections.singletonList(traceEntry));
+        } else {
+            traceEntry.updateEndTime(end);
+        }
+
+        for (CallStackSeries callstack : callStacks) {
+            // If there is more than one callstack objects in the analys
+            TimeGraphEntry callStackRootEntry = traceEntry;
+            if (callStacks.size() > 1) {
+                callStackRootEntry = new TimeGraphEntry(callstack.getName(), start, end + 1);
+                traceEntry.addChild(callStackRootEntry);
+            }
+            for (ICallStackElement element : callstack.getRootElements()) {
+                processCallStackElement(symbolProvider, element, callStackRootEntry);
+            }
+        }
+        final long entryStart = getStartTime();
+        final long entryEnd = getEndTime();
+        Consumer<TimeGraphEntry> consumer = new Consumer<TimeGraphEntry>() {
+            @Override
+            public void accept(TimeGraphEntry entry) {
+                if (monitor.isCanceled()) {
+                    return;
+                }
+                if (entry instanceof CallStackEntry) {
+                    buildStatusEvents((CallStackEntry) entry, monitor, entryStart, entryEnd);
+                    return;
+                }
+                entry.getChildren().forEach(this);
+            }
+        };
+
+        traceEntry.getChildren().forEach(consumer);
+        refresh();
+
+    }
+
+    @Override
+    protected @Nullable List<@NonNull ILinkEvent> getLinkList(long startTime, long endTime, long resolution, @NonNull IProgressMonitor monitor) {
+        ITmfTrace trace = getTrace();
+        if (trace == null) {
+            return Collections.emptyList();
+        }
+        List<@NonNull ILinkEvent> list = new ArrayList<>();
+        IAnalysisModule analysisModule = trace.getAnalysisModule(SpanDependencyAnalysis.ID);
+        if (!(analysisModule instanceof SpanDependencyAnalysis)) {
+            return Collections.emptyList();
+        }
+        analysisModule.schedule();
+        SpanDependencyAnalysis analysis = (SpanDependencyAnalysis) analysisModule;
+
+        List<TimeGraphEntry> entryList = this.getEntryList(trace);
+        ISegmentStore<@NonNull ISegment> segmentStore = analysis.getSegmentStore();
+        if (segmentStore == null) {
+            return Collections.emptyList();
+        }
+        for (ISegment segment : segmentStore.getIntersectingElements(startTime, endTime)) {
+            if (!(segment instanceof SpanDependency)) {
+                continue;
+            }
+            SpanDependency dep = (SpanDependency) segment;
+            ITimeGraphEntry prevEntry = findEntry(entryList, dep.getSource().getHost(), dep.getSource().getTid(), dep.getStart());
+            ITimeGraphEntry nextEntry = findEntry(entryList, dep.getDestination().getHost(), dep.getDestination().getTid(), dep.getEnd());
+            list.add(new TimeLinkEvent(prevEntry, nextEntry, dep.getStart(), dep.getLength(), 0));
+        }
+
+        return list;
+    }
+
+    private static ITimeGraphEntry findEntry(List<TimeGraphEntry> entryList, @NonNull String host, @NonNull Integer tid, long ts) {
+        TraceEntry traceEntry = entryList.stream().filter(e -> e instanceof TraceEntry)
+                .map(e -> (TraceEntry) e)
+                .filter(te -> te.fHostId.equals(host))
+                .findFirst().orElse(null);
+        if (traceEntry == null) {
+            return null;
+        }
+        List<CallStackEntry> tidEntries = findInChildren(traceEntry, tid, ts);
+        if (tidEntries.isEmpty()) {
+            return null;
+        }
+        tidEntries.sort(new Comparator<CallStackEntry>() {
+
+            @Override
+            public int compare(CallStackEntry o1, CallStackEntry o2) {
+                return -1 * Integer.compare(o1.getStackLevel(), o2.getStackLevel());
+            }
+
+        });
+        return tidEntries.get(0);
+    }
+
+    private static List<CallStackEntry> findInChildren(ITimeGraphEntry entry, @NonNull Integer tid, long ts) {
+        List<CallStackEntry> list = new ArrayList<>();
+        entry.getChildren().stream().forEach(tgEntry -> {
+            if (tgEntry instanceof CallStackEntry) {
+                CallStackEntry csEntry = (CallStackEntry) tgEntry;
+                ICalledFunction fct = csEntry.updateAt(ts);
+                if (fct != null && fct.getThreadId() == tid) {
+                    list.add(csEntry);
+                }
+            }
+            tgEntry.getChildren().forEach(e -> list.addAll(findInChildren(e, tid, ts)));
+        });
+        return list;
     }
 
     private void processCallStackElement(ISymbolProvider provider, ICallStackElement element, TimeGraphEntry parentEntry) {
@@ -611,7 +691,7 @@ public class CallStackView extends AbstractTimeGraphView {
 
     private void addUnavailableEntry(ITmfTrace trace, ITmfTrace parentTrace) {
         String name = Messages.CallStackView_StackInfoNotAvailable + ' ' + '(' + trace.getName() + ')';
-        TraceEntry unavailableEntry = new TraceEntry(name, 0, 0);
+        TraceEntry unavailableEntry = new TraceEntry(name, StringUtils.EMPTY, 0, 0);
         addToEntryList(parentTrace, Collections.singletonList(unavailableEntry));
         if (parentTrace == getTrace()) {
             refresh();
@@ -672,6 +752,8 @@ public class CallStackView extends AbstractTimeGraphView {
             getTimeGraphViewer().refresh();
         }
     }
+
+
 
     private void contributeToActionBars() {
         // Create pin action
@@ -811,16 +893,19 @@ public class CallStackView extends AbstractTimeGraphView {
         return fPrevEventAction;
     }
 
-    private static Collection<ICallStackProvider> getCallStackModules(@NonNull ITmfTrace trace) {
-        /*
-         * Since we cannot know the exact analysis ID (in separate plugins), we
-         * will search using the analysis type.
-         */
-        Iterable<ICallStackProvider> modules =
-                TmfTraceUtils.getAnalysisModulesOfClass(trace, ICallStackProvider.class);
-        StreamSupport.stream(modules.spliterator(), false).forEach(m -> m.schedule());
-        StreamSupport.stream(modules.spliterator(), false).forEach(m -> m.waitForCompletion());
-        return StreamSupport.stream(modules.spliterator(), false).collect(Collectors.toList());
+    private @Nullable ICallStackProvider getCallStackModule(@NonNull ITmfTrace trace) {
+        String secondaryId = this.getViewSite().getSecondaryId();
+        if (secondaryId == null) {
+            return null;
+        }
+        ICallStackProvider module =
+                TmfTraceUtils.getAnalysisModuleOfClass(trace, ICallStackProvider.class, secondaryId);
+        if (module == null) {
+            return null;
+        }
+        module.schedule();
+        module.waitForCompletion();
+        return module;
 
     }
 
