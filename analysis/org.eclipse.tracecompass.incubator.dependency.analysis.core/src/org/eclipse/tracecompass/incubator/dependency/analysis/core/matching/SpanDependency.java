@@ -53,6 +53,24 @@ public class SpanDependency extends BasicSegment2 {
         fDestination = destination;
     }
 
+
+
+    @Override
+    public long getStart() {
+        // TODO Auto-generated method stub
+        return super.getStart();
+    }
+
+
+
+    @Override
+    public long getEnd() {
+        // TODO Auto-generated method stub
+        return super.getEnd();
+    }
+
+
+
     public HostThread getSource() {
         return fSource;
     }

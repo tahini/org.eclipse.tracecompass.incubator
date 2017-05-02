@@ -40,6 +40,7 @@ import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.StateItem;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.TimeGraphPresentationProvider;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeEvent;
+import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeEventStyleStrings;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeGraphEntry;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.NullTimeEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.TimeEvent;
@@ -47,6 +48,8 @@ import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.ITmfTimeGraphDr
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.Utils;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.Utils.Resolution;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.Utils.TimeFormat;
+
+import com.google.common.collect.ImmutableMap;
 
 /**
  * @author Cedric Biancheri
@@ -956,11 +959,11 @@ public class FusedVMViewPresentationProvider extends TimeGraphPresentationProvid
     }
 
     @Override
-    public float getHeightFactor(ITimeEvent event) {
+    public Map<String, Object> getSpecificEventStyle(ITimeEvent event) {
         float heightFactor = FULL_HEIGHT;
         Float b = fTimeEventHighlight.get(event);
         if (b != null) {
-            return b;
+            return ImmutableMap.of(ITimeEventStyleStrings.heightFactor(), b);
         }
         Type typeEntry = ((FusedVMViewEntry) event.getEntry()).getType();
         if (typeEntry == Type.IRQ || typeEntry == Type.SOFT_IRQ) {
@@ -972,7 +975,7 @@ public class FusedVMViewPresentationProvider extends TimeGraphPresentationProvid
             }
         }
         fTimeEventHighlight.put(event, heightFactor);
-        return heightFactor;
+        return ImmutableMap.of(ITimeEventStyleStrings.heightFactor(), heightFactor);
     }
 
     public void modifySelectedThreadAlpha(int delta) {
