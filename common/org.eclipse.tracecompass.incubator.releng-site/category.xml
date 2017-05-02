@@ -4,20 +4,24 @@
       Nightly builds of Trace Compass project.
    </description>
    <feature url="features/org.eclipse.tracecompass.incubator.callstack_0.0.1.qualifier.jar" id="org.eclipse.tracecompass.incubator.callstack" version="0.0.1.qualifier">
-      <category name="Generic CallStack Analyses"/>
+      <category name="callstack-analysis-incubator"/>
    </feature>
    <feature url="features/org.eclipse.tracecompass.incubator.lttng.callstack.context_0.0.1.qualifier.jar" id="org.eclipse.tracecompass.incubator.lttng.callstack.context" version="0.0.1.qualifier">
-      <category name="Generic CallStack Analyses"/>
+      <category name="callstack-analysis-incubator"/>
    </feature>
    <feature url="features/org.eclipse.tracecompass.incubator.perf.profiling_0.0.1.qualifier.jar" id="org.eclipse.tracecompass.incubator.perf.profiling" version="0.0.1.qualifier">
-      <category name="Generic CallStack Analyses"/>
+      <category name="callstack-analysis-incubator"/>
    </feature>
    <feature url="features/org.eclipse.tracecompass.incubator.dependency.analysis_0.0.1.qualifier.jar" id="org.eclipse.tracecompass.incubator.dependency.analysis" version="0.0.1.qualifier">
-      <category name="Generic CallStack Analyses"/>
+      <category name="callstack-analysis-incubator"/>
    </feature>
    <feature url="features/org.eclipse.tracecompass.incubator.virtual.machine.analysis_0.0.1.qualifier.jar" id="org.eclipse.tracecompass.incubator.virtual.machine.analysis" version="0.0.1.qualifier">
       <category name="virtual-machine"/>
    </feature>
-   <category-def name="Generic CallStack Analyses" label="Generic Callstack Analyses"/>
+   <category-def name="callstack-analysis-incubator" label="Application Profiling">
+      <description>
+         Analyses and trace types used to do application profiling from sampled or instrumented traces.
+      </description>
+   </category-def>
    <category-def name="virtual-machine" label="Virtual Machine"/>
 </site>

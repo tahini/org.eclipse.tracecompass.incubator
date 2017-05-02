@@ -18,26 +18,33 @@
    <license url="%licenseURL">
       %license
    </license>
-    
+
    <plugin
          id="org.eclipse.tracecompass.incubator.callstack.core"
          download-size="0"
          install-size="0"
          version="0.0.0"
-         unpack="false"/> 
- 
+         unpack="false"/>
+
    <plugin
          id="org.eclipse.tracecompass.incubator.callstack.ui"
          download-size="0"
          install-size="0"
          version="0.0.0"
-         unpack="false"/> 
- 
+         unpack="false"/>
+
    <plugin
          id="org.eclipse.tracecompass.incubator.callstack.doc.user"
          download-size="0"
          install-size="0"
          version="0.0.0"
-         unpack="false"/> 
+         unpack="false"/>
+
+   <plugin
+         id="org.eclipse.tracecompass.incubator.analysis.core"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
 
 </feature>
