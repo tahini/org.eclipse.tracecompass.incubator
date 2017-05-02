@@ -18,10 +18,14 @@
    <feature url="features/org.eclipse.tracecompass.incubator.virtual.machine.analysis_0.0.1.qualifier.jar" id="org.eclipse.tracecompass.incubator.virtual.machine.analysis" version="0.0.1.qualifier">
       <category name="virtual-machine"/>
    </feature>
+   <feature url="features/org.eclipse.tracecompass.incubator.web.analysis_0.0.1.qualifier.jar" id="org.eclipse.tracecompass.incubator.web.analysis" version="0.0.1.qualifier">
+      <category name="web-analysis-incubator"/>
+   </feature>
    <category-def name="callstack-analysis-incubator" label="Application Profiling">
       <description>
          Analyses and trace types used to do application profiling from sampled or instrumented traces.
       </description>
    </category-def>
    <category-def name="virtual-machine" label="Virtual Machine"/>
+   <category-def name="web-analysis-incubator" label="Web"/>
 </site>

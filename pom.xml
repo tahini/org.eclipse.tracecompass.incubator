@@ -277,6 +277,7 @@
     <module>callstack</module>
     <module>analysis</module>
     <module>vm</module>
+    <module>web</module>
   </modules>
 
   <build>
