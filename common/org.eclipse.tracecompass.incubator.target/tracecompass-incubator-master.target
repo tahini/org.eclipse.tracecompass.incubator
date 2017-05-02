@@ -82,7 +82,8 @@
 <unit id="org.eclipse.tracecompass.testing.feature.group" version="0.0.0"/>
 <unit id="org.eclipse.tracecompass.tmf.pcap.feature.group" version="0.0.0"/>
 <unit id="org.eclipse.tracecompass.tmf.remote.feature.group" version="0.0.0"/>
-<repository location="http://download.eclipse.org/tracecompass/master/repository"/>
+<repository location="file:/home/gbastien/Dorsal/divers/updateSite"/>
+<!-- repository location="http://download.eclipse.org/tracecompass/master/repository"/ -->
 </location>
 </locations>
 <targetJRE path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
