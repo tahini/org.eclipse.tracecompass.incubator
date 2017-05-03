@@ -18,19 +18,29 @@
    <license url="%licenseURL">
       %license
    </license>
-    
+
+   <requires>
+      <import plugin="org.eclipse.core.runtime"/>
+      <import plugin="org.eclipse.core.resources"/>
+      <import plugin="org.eclipse.tracecompass.common.core"/>
+      <import plugin="org.eclipse.tracecompass.tmf.analysis.xml.core"/>
+      <import plugin="org.eclipse.tracecompass.tmf.core"/>
+      <import plugin="org.eclipse.help"/>
+      <import feature="org.eclipse.tracecompass.incubator.callstack"/>
+   </requires>
+
    <plugin
          id="org.eclipse.tracecompass.incubator.web.analysis.core"
          download-size="0"
          install-size="0"
          version="0.0.0"
-         unpack="false"/> 
- 
+         unpack="false"/>
+
    <plugin
          id="org.eclipse.tracecompass.incubator.web.analysis.doc.user"
          download-size="0"
          install-size="0"
          version="0.0.0"
-         unpack="false"/> 
+         unpack="false"/>
 
 </feature>

@@ -19,6 +19,16 @@
       %license
    </license>
 
+   <requires>
+      <import plugin="org.eclipse.core.runtime"/>
+      <import plugin="org.eclipse.core.resources"/>
+      <import plugin="org.eclipse.tracecompass.common.core"/>
+      <import plugin="org.eclipse.tracecompass.tmf.core"/>
+      <import plugin="org.eclipse.tracecompass.tmf.ctf.core"/>
+      <import plugin="com.google.guava"/>
+      <import feature="org.eclipse.tracecompass.incubator.callstack"/>
+   </requires>
+
    <plugin
          id="org.eclipse.tracecompass.incubator.perf.profiling.core"
          download-size="0"

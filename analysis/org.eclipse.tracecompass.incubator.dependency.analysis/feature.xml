@@ -18,26 +18,26 @@
    <license url="%licenseURL">
       %license
    </license>
-    
+
    <plugin
          id="org.eclipse.tracecompass.incubator.dependency.analysis.core"
          download-size="0"
          install-size="0"
          version="0.0.0"
-         unpack="false"/> 
- 
+         unpack="false"/>
+
    <plugin
          id="org.eclipse.tracecompass.incubator.dependency.analysis.ui"
          download-size="0"
          install-size="0"
          version="0.0.0"
-         unpack="false"/> 
- 
+         unpack="false"/>
+
    <plugin
          id="org.eclipse.tracecompass.incubator.dependency.analysis.doc.user"
          download-size="0"
          install-size="0"
          version="0.0.0"
-         unpack="false"/> 
+         unpack="false"/>
 
 </feature>
