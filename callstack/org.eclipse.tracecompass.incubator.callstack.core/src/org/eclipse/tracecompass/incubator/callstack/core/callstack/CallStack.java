@@ -98,7 +98,9 @@ public class CallStack {
         }
         try {
             Integer quark = fQuarks.get(depth - 1);
-            long start = Math.max(fStateSystem.getStartTime(), startTime);
+            // Since functions in state system end at the time - 1, we need to
+            // query that time too to include the function that ends at 'start'
+            long start = Math.max(fStateSystem.getStartTime(), startTime - 1);
             long end = Math.min(fStateSystem.getCurrentEndTime(), endTime);
             if (start > end) {
                 return Collections.EMPTY_LIST;
