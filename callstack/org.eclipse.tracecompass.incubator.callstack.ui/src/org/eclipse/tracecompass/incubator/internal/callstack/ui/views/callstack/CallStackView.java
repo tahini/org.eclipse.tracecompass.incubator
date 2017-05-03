@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -616,7 +617,6 @@ public class CallStackView extends AbstractTimeGraphView {
         }
         analysisModule.schedule();
         SpanDependencyAnalysis analysis = (SpanDependencyAnalysis) analysisModule;
-
         List<TimeGraphEntry> entryList = this.getEntryList(trace);
         ISegmentStore<@NonNull ISegment> segmentStore = analysis.getSegmentStore();
         if (segmentStore == null) {
@@ -629,33 +629,38 @@ public class CallStackView extends AbstractTimeGraphView {
             SpanDependency dep = (SpanDependency) segment;
             ITimeGraphEntry prevEntry = findEntry(entryList, dep.getSource().getHost(), dep.getSource().getTid(), dep.getStart());
             ITimeGraphEntry nextEntry = findEntry(entryList, dep.getDestination().getHost(), dep.getDestination().getTid(), dep.getEnd());
-            list.add(new TimeLinkEvent(prevEntry, nextEntry, dep.getStart(), dep.getLength(), 0));
+            if (prevEntry != null && nextEntry != null) {
+                list.add(new TimeLinkEvent(prevEntry, nextEntry, dep.getStart(), dep.getLength(), 0));
+            }
         }
 
         return list;
     }
 
     private static ITimeGraphEntry findEntry(List<TimeGraphEntry> entryList, @NonNull String host, @NonNull Integer tid, long ts) {
-        TraceEntry traceEntry = entryList.stream().filter(e -> e instanceof TraceEntry)
+        List<TraceEntry> traceEntries = entryList.stream().filter(e -> e instanceof TraceEntry)
                 .map(e -> (TraceEntry) e)
                 .filter(te -> te.fHostId.equals(host))
-                .findFirst().orElse(null);
-        if (traceEntry == null) {
+                .collect(Collectors.toList());
+        if (traceEntries.isEmpty()) {
             return null;
         }
-        List<CallStackEntry> tidEntries = findInChildren(traceEntry, tid, ts);
-        if (tidEntries.isEmpty()) {
-            return null;
-        }
-        tidEntries.sort(new Comparator<CallStackEntry>() {
-
-            @Override
-            public int compare(CallStackEntry o1, CallStackEntry o2) {
-                return -1 * Integer.compare(o1.getStackLevel(), o2.getStackLevel());
+        for (TraceEntry traceEntry : traceEntries) {
+            List<CallStackEntry> tidEntries = findInChildren(traceEntry, tid, ts);
+            if (tidEntries.isEmpty()) {
+                continue;
             }
+            tidEntries.sort(new Comparator<CallStackEntry>() {
 
-        });
-        return tidEntries.get(0);
+                @Override
+                public int compare(CallStackEntry o1, CallStackEntry o2) {
+                    return -1 * Integer.compare(o1.getStackLevel(), o2.getStackLevel());
+                }
+
+            });
+            return tidEntries.get(0);
+        }
+        return null;
     }
 
     private static List<CallStackEntry> findInChildren(ITimeGraphEntry entry, @NonNull Integer tid, long ts) {
@@ -668,7 +673,7 @@ public class CallStackView extends AbstractTimeGraphView {
                     list.add(csEntry);
                 }
             }
-            tgEntry.getChildren().forEach(e -> list.addAll(findInChildren(e, tid, ts)));
+            list.addAll(findInChildren(tgEntry, tid, ts));
         });
         return list;
     }
