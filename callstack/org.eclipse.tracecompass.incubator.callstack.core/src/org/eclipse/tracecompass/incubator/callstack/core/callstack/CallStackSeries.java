@@ -109,6 +109,31 @@ public class CallStackSeries {
     }
 
     /**
+     * This class uses the value of an attribute as a thread ID.
+     */
+    private static final class AttributeNameThreadProvider implements IThreadIdProvider {
+
+        private final int fTid;
+
+        public AttributeNameThreadProvider(ITmfStateSystem ss, int quark) {
+            int tid = IHostModel.UNKNOWN_TID;
+            try {
+                String attributeName = ss.getAttributeName(quark);
+                tid = Integer.valueOf(attributeName);
+            } catch (IndexOutOfBoundsException | NumberFormatException e) {
+                tid = IHostModel.UNKNOWN_TID;
+            }
+            fTid = tid;
+        }
+
+        @Override
+        public int getTheadId(long time) {
+            return fTid;
+        }
+
+    }
+
+    /**
      * This class will retrieve the thread ID
      */
     private static final class CpuThreadProvider implements IThreadIdProvider {
@@ -204,6 +229,48 @@ public class CallStackSeries {
             }
             CallStackElement stackElement = elements.get(fLevel);
             return new AttributeValueThreadProvider(stackElement.getStateSystem(), stackElement.getQuark());
+        }
+
+    }
+
+    /**
+     * This class will resolve the thread ID provider by the value of a
+     * attribute at a given depth
+     */
+    public static final class AttributeNameThreadResolver implements IThreadIdResolver {
+
+        private int fLevel;
+
+        /**
+         * Constructor
+         *
+         * @param level
+         *            The depth of the element whose value will be used to
+         *            retrieve the thread ID
+         */
+        public AttributeNameThreadResolver(int level) {
+            fLevel = level;
+        }
+
+        @Override
+        public @Nullable IThreadIdProvider resolve(String hostId, ICallStackLeafElement element) {
+            if (!(element instanceof CallStackLeafElement)) {
+                throw new IllegalArgumentException();
+            }
+            CallStackLeafElement leaf = (CallStackLeafElement) element;
+
+            List<CallStackElement> elements = new ArrayList<>();
+            CallStackElement el = leaf;
+            while (el != null) {
+                elements.add(el);
+                el = el.getParentElement();
+            }
+            Collections.reverse(elements);
+            if (elements.size() < fLevel) {
+                return null;
+            }
+            CallStackElement stackElement = elements.get(fLevel);
+            return new AttributeNameThreadProvider(stackElement.getStateSystem(), stackElement.getQuark());
         }
 
     }

@@ -94,6 +94,11 @@
 				<xs:documentation>The path relative to the last element of the callstack where to find the CPU that will be used to get the Thread ID.</xs:documentation>
 			</xs:annotation>
 		</xs:attribute>
+		<xs:attribute name="level" type="xs:integer" use="optional">
+			<xs:annotation>
+				<xs:documentation>The level whose value contains the thread ID.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
 	</xs:complexType>
 
 </xs:schema>

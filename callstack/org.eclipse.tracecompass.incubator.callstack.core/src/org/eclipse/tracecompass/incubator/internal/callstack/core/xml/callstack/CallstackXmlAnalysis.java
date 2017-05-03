@@ -106,6 +106,11 @@ public class CallstackXmlAnalysis extends TmfAbstractAnalysisModule implements I
                     String attribute = threadElement.getAttribute(CallstackXmlStrings.CALLSTACK_THREADCPU);
                     if (!attribute.isEmpty()) {
                         resolver = new CallStackSeries.CpuResolver(attribute.split("/")); //$NON-NLS-1$
+                    } else {
+                        attribute = threadElement.getAttribute(CallstackXmlStrings.CALLSTACK_THREADLEVEL);
+                        if (!attribute.isEmpty()) {
+                            resolver = new CallStackSeries.AttributeNameThreadResolver(Integer.valueOf(attribute));
+                        }
                     }
                 }
 
