@@ -6,12 +6,13 @@
     <callstackGroup name="PHP threads">
     		<level path="Threads/*" /> 
     		<level path="callstack"/>
+    		<thread level="0"/>
     </callstackGroup>
 
     <pattern version="1" id="ca.polymtl.fullcallstack">
         <head>
             <traceType id="org.eclipse.linuxtools.lttng2.ust.tracetype" />
-            <traceType id="org.eclipse.linuxtools.tmf.core.experiment.generic" />
+            <traceType id="org.eclipse.tracecompass.incubator.web.analysis.core.webexperiment" />
             <label value="Multilevel PHP callstack" />
         </head>   
         
@@ -210,12 +211,7 @@
 				<stateChange>
 					<stateAttribute type="constant" value="#CurrentScenario" />
 					<stateAttribute type="constant" value="dbconnectionid" />
-					<stateValue type="eventField" value="connection_id" forcedType="int"/>
-				</stateChange>
-				<stateChange>
-					<stateAttribute type="constant" value="#CurrentScenario" />
-					<stateAttribute type="constant" value="phpThreadId" />
-					<stateValue type="eventField" value="context._vtid" forcedType="int"/>
+					<stateValue type="eventField" value="thread_id" forcedType="int"/>
 				</stateChange>
 			</action>
 			
@@ -284,10 +280,10 @@
 			<action id="push_query">
 				<!-- Push the current event to the thread's callstack -->
 				<stateChange>
-	                    		<stateAttribute type="location" value="CurrentThread" />
-	                    		<stateAttribute type="constant" value="callstack" />
-					<stateValue type="eventField" value="query" stack="push"/>     
-	            		</stateChange>
+	            	<stateAttribute type="location" value="CurrentThread" />
+	            	<stateAttribute type="constant" value="callstack" />
+					<stateValue type="eventName" stack="push"/>     
+	            </stateChange>
 			</action>
 			<action id="pop_query">
 				<!-- Push the current event to the thread's callstack -->
@@ -300,16 +296,14 @@
 
 			<fsm id="mysqlConnections" initial="Wait_start">
 				<state id="Wait_start">
-					<transition event="ust_php:php_mysql_connect" target="in_thread" action="entering_mysql"/>
+					<transition event="ust_mysql:connection_start" target="in_thread" action="entering_mysql:push_query"/>
 				</state>
 				<state id="in_thread" >
-					<!--<transition event="ust_mysql:query_start" cond="same_mysql_thread" target="in_thread" action="push_mysql_query"/>
-					<transition event="ust_mysql:query_done" cond="same_mysql_thread" target="in_thread" action="pop_mysql_query"/> -->
-					<!--<transition event="ust_mysql:query_start" cond="same_mysql_thread" target="in_thread" action="push_event_name"/>
-					<transition event="ust_mysql:query_done" cond="same_mysql_thread" target="in_thread" action="pop_event_name"/> -->
+				    <transition event="ust_mysql:command_start" cond="same_mysql_thread" target="in_thread" action="push_query"/>
+					<transition event="ust_mysql:command_done" cond="same_mysql_thread" target="in_thread" action="pop_query"/>
 					<transition event="ust_mysql:query_start" cond="same_mysql_thread" target="in_thread" action="push_query"/>
 					<transition event="ust_mysql:query_done" cond="same_mysql_thread" target="in_thread" action="pop_query"/>
-				<transition event="ust_php:php_mysql_close" cond="same_connection" target="end_thread" action="" />
+				    <transition event="ust_mysql:connection_done" cond="same_mysql_thread" target="end_thread" action="pop_all" />
 				</state> 
 				<final id="end_thread"/>
 			</fsm>

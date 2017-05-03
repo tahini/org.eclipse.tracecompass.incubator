@@ -10,5 +10,13 @@
             file="xml_files/phpfullstack.xml">
       </xmlfile>
    </extension>
+   <extension
+         point="org.eclipse.linuxtools.tmf.core.tracetype">
+      <experiment
+            experiment_type="org.eclipse.tracecompass.incubator.web.analysis.experiment.WebExperiment"
+            id="org.eclipse.tracecompass.incubator.web.analysis.core.webexperiment"
+            name="%tracetype.experiment.web">
+      </experiment>
+   </extension>
 
 </plugin>

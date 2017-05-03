@@ -13,4 +13,6 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.tracecompass.common.core,
  org.eclipse.tracecompass.tmf.analysis.xml.core,
  org.eclipse.tracecompass.tmf.core
-Export-Package: org.eclipse.tracecompass.incubator.internal.web.analysis.core;x-internal:=true
+Export-Package: org.eclipse.tracecompass.incubator.internal.web.analysis.core;x-internal:=true,
+ org.eclipse.tracecompass.incubator.web.analysis.core.event.matching,
+ org.eclipse.tracecompass.incubator.web.analysis.experiment

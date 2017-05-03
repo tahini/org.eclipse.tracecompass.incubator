@@ -49,8 +49,34 @@ public class LampEventMatching implements ITmfMatchEventDefinition {
 
     }
 
+    private static class PhpMysqlConnectionEnd implements IEventMatchingKey {
+
+        private final long fConnectionId;
+
+        public PhpMysqlConnectionEnd(long connectionId) {
+            fConnectionId = connectionId;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(fConnectionId);
+        }
+
+        @Override
+        public boolean equals(@Nullable Object obj) {
+            if (!(obj instanceof PhpMysqlConnectionEnd)) {
+                return false;
+            }
+            return ((PhpMysqlConnectionEnd) obj).fConnectionId == fConnectionId;
+        }
+
+    }
+
     private static final String PHP_MYSQL_CONNECT = "ust_php:php_mysql_connect";
     private static final String MYSQL_RECV = "ust_mysql:command_start";
+
+    private static final String PHP_MYSQL_CONNECTION_CLOSE = "ust_php:php_mysql_close";
+    private static final String MYSQL_CONNECTION_DONE = "ust_mysql:connection_done";
 
     @Override
     public IEventMatchingKey getEventKey(@Nullable ITmfEvent event) {
@@ -73,6 +99,20 @@ public class LampEventMatching implements ITmfMatchEventDefinition {
             }
             return new PhpMysqlConnection(fieldValue);
         }
+        if (name.equals(PHP_MYSQL_CONNECTION_CLOSE)) {
+            Long fieldValue = content.getFieldValue(Long.class, "connection_id");
+            if (fieldValue == null) {
+                throw new NullPointerException();
+            }
+            return new PhpMysqlConnectionEnd(fieldValue);
+        }
+        if (name.equals(MYSQL_CONNECTION_DONE)) {
+            Long fieldValue = content.getFieldValue(Long.class, "thread_id");
+            if (fieldValue == null) {
+                throw new NullPointerException();
+            }
+            return new PhpMysqlConnectionEnd(fieldValue);
+        }
         throw new NullPointerException();
     }
 
@@ -87,10 +127,10 @@ public class LampEventMatching implements ITmfMatchEventDefinition {
             return null;
         }
         String eventName = event.getName();
-        if (eventName.equals(PHP_MYSQL_CONNECT)) {
+        if (eventName.equals(PHP_MYSQL_CONNECT) || eventName.equals(PHP_MYSQL_CONNECTION_CLOSE)) {
             return Direction.CAUSE;
         }
-        if (eventName.equals(MYSQL_RECV)) {
+        if (eventName.equals(MYSQL_RECV) || eventName.equals(MYSQL_CONNECTION_DONE)) {
             return Direction.EFFECT;
         }
         return null;

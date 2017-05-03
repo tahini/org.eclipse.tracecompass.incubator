@@ -6,6 +6,7 @@
     <callstackGroup name="PHP threads">
     		<level path="Threads/*" /> 
     		<level path="callstack"/>
+    		<thread level="0"/>
     </callstackGroup>
 
     <pattern version="1" id="ca.polymtl.lampdependency">
