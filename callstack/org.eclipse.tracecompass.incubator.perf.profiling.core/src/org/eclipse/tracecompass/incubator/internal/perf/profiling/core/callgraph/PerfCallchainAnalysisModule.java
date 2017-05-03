@@ -9,8 +9,11 @@
 
 package org.eclipse.tracecompass.incubator.internal.perf.profiling.core.callgraph;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -37,6 +40,7 @@ import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 
 public class PerfCallchainAnalysisModule extends TmfAbstractAnalysisModule implements ICallGraphProvider, IEventCallStackProvider {
 
@@ -192,9 +196,20 @@ public class PerfCallchainAnalysisModule extends TmfAbstractAnalysisModule imple
     public Map<String, Collection<Object>> getCallStack(@NonNull ITmfEvent event) {
         ITmfEventField field = event.getContent().getField("perf_callchain");
         if (field == null) {
-            return new HashMap<>();
+            return Collections.emptyMap();
         }
-        return new HashMap<>();
+        Object value = field.getValue();
+        if (!(value instanceof long[])) {
+            return Collections.emptyMap();
+        }
+        long[] callstack = (long[]) value;
+        List<Object> longList = new ArrayList<>();
+        for (long callsite : callstack) {
+            longList.add(callsite);
+        }
+        Collections.reverse(longList);
+        return ImmutableMap.of("Callchain", longList);
+
     }
 
 }
