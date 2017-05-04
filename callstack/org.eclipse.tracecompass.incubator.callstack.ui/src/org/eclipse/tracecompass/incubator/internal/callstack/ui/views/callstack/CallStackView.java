@@ -619,7 +619,7 @@ public class CallStackView extends AbstractTimeGraphView {
         SpanDependencyAnalysis analysis = (SpanDependencyAnalysis) analysisModule;
         List<TimeGraphEntry> entryList = this.getEntryList(trace);
         ISegmentStore<@NonNull ISegment> segmentStore = analysis.getSegmentStore();
-        if (segmentStore == null) {
+        if (segmentStore == null || entryList == null) {
             return Collections.emptyList();
         }
         for (ISegment segment : segmentStore.getIntersectingElements(startTime, endTime)) {
