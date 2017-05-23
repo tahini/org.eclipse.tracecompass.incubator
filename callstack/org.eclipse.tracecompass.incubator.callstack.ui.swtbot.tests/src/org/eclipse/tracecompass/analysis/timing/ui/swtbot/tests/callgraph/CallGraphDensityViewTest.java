@@ -14,7 +14,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -63,14 +62,15 @@ public class CallGraphDensityViewTest extends AggregationTreeTest {
     private static final String CALLGRAPHDENSITY_ID = CallGraphDensityView.ID;
 
     private final @NonNull ISegmentStoreDensityViewerDataListener fSyncListener = new ISegmentStoreDensityViewerDataListener() {
+
         @Override
-        public void dataChanged(List<ISegment> newData) {
+        public void viewDataChanged(@NonNull Iterable<? extends @NonNull ISegment> newData) {
             fLatch.countDown();
         }
 
         @Override
-        public void dataSelectionChanged(@Nullable List<@NonNull ISegment> newSelectionData) {
-            // do nothing
+        public void selectedDataChanged(@Nullable Iterable<? extends @NonNull ISegment> newSelectionData) {
+         // do nothing
         }
 
     };

@@ -14,17 +14,16 @@ import java.util.Objects;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
-import org.eclipse.tracecompass.internal.provisional.datastore.core.interval.IHTIntervalReader;
-import org.eclipse.tracecompass.internal.provisional.datastore.core.serialization.ISafeByteBufferWriter;
-import org.eclipse.tracecompass.internal.provisional.segmentstore.core.BasicSegment2;
+import org.eclipse.tracecompass.datastore.core.interval.IHTIntervalReader;
+import org.eclipse.tracecompass.datastore.core.serialization.ISafeByteBufferWriter;
+import org.eclipse.tracecompass.segmentstore.core.BasicSegment;
 
 /**
  *
  *
  * @author Geneviève Bastien
  */
-@SuppressWarnings("restriction")
-public class SpanDependency extends BasicSegment2 {
+public class SpanDependency extends BasicSegment {
 
     private final HostThread fSource;
     private final HostThread fDestination;
