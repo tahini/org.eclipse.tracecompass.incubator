@@ -85,6 +85,7 @@ public class SpanDependencyAnalysis extends AbstractSegmentStoreAnalysisModule {
      */
     public static final String ID = "org.eclipse.tracecompass.incubator.dependency.analysis.core.dependency"; //$NON-NLS-1$
 
+    @Deprecated
     @Override
     protected Object[] readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException {
         return checkNotNull((Object[]) ois.readObject());

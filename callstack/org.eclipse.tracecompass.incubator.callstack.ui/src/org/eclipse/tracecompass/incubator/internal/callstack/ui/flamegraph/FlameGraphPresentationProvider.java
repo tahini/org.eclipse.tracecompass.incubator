@@ -10,6 +10,7 @@ package org.eclipse.tracecompass.incubator.internal.callstack.ui.flamegraph;
 
 import java.text.Format;
 import java.text.NumberFormat;
+import java.util.Collection;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -140,14 +141,19 @@ public class FlameGraphPresentationProvider extends TimeGraphPresentationProvide
      *
      * @param fGEvent
      *            An event
-     * @param symbolProvider
+     * @param providers
      *            A symbol provider
      */
-    private static String getFuntionSymbol(FlamegraphEvent event, ISymbolProvider symbolProvider) {
+    private static String getFunctionSymbol(FlamegraphEvent event, Collection<ISymbolProvider> providers) {
         String funcSymbol = ""; //$NON-NLS-1$
         if (event.getSymbol() instanceof Long || event.getSymbol() instanceof Integer) {
             long longAddress = ((Long) event.getSymbol()).longValue();
-            funcSymbol = symbolProvider.getSymbolText(longAddress);
+            for (ISymbolProvider provider : providers) {
+                funcSymbol = provider.getSymbolText(longAddress);
+                if (funcSymbol != null) {
+                    break;
+                }
+            }
             if (funcSymbol == null) {
                 return "0x" + Long.toHexString(longAddress); //$NON-NLS-1$
             }
@@ -190,8 +196,7 @@ public class FlameGraphPresentationProvider extends TimeGraphPresentationProvide
         ITmfTrace activeTrace = TmfTraceManager.getInstance().getActiveTrace();
         if (activeTrace != null) {
             FlamegraphEvent fgEvent = (FlamegraphEvent) event;
-            ISymbolProvider symbolProvider = SymbolProviderManager.getInstance().getSymbolProvider(activeTrace);
-            funcSymbol = getFuntionSymbol(fgEvent, symbolProvider);
+            funcSymbol = getFunctionSymbol(fgEvent, SymbolProviderManager.getInstance().getSymbolProviders(activeTrace));
         }
         gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_WHITE));
         Utils.drawText(gc, funcSymbol, bounds.x, bounds.y, bounds.width, bounds.height, true, true);
