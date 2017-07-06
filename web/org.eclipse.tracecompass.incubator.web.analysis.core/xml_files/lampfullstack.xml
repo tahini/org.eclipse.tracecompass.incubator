@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tmfxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../org.eclipse.tracecompass.tmf.analysis.xml.core/src/org/eclipse/tracecompass/tmf/analysis/xml/core/module/xmlDefinition.xsd">
+	
+<callstack id="ca.polymtl.lampdependency.callstack">
+    			
+    <callstackGroup name="PHP threads">
+    		<level path="Threads/*" /> 
+    		<level path="callstack"/>
+    		<thread level="0"/>
+    </callstackGroup>
+
+    <pattern version="1" id="ca.polymtl.lampdependency">
+        <head>
+            <traceType id="org.eclipse.linuxtools.lttng2.ust.tracetype" />
+            <traceType id="org.eclipse.linuxtools.tmf.core.experiment.generic" />
+            <label value="LAMP Dependency Graph" />
+        </head>   
+        
+        <location id="CurrentThread">
+        	<stateAttribute type="constant" value="Threads" />
+		<stateAttribute type="query">
+			<stateAttribute type="constant" value="#CurrentScenario" />
+			<stateAttribute type="constant" value="threadID" />
+		</stateAttribute>
+    	</location>
+    	
+    	
+    	<!-- callstack process="Views/*" thread="Threads/*" callstack="callstack" / -->
+	        
+		<patternHandler>
+		
+			<!-- CONDITIONS -->
+		
+			<test id="same_thread">
+				<if>
+					<condition>
+						<stateValue type="eventField" value="context._vtid" forcedType="int"/>
+						<stateValue type="query">
+							<stateAttribute type="constant" value="#CurrentScenario" />
+							<stateAttribute type="constant" value="threadID" />
+						</stateValue>
+					</condition>
+				</if>
+			</test>
+			<test id="same_mysql_threadid">
+				<if>
+					<condition>
+						<stateValue type="eventField" value="thread_id" forcedType="int"/>
+						<stateValue type="query">
+							<stateAttribute type="constant" value="#CurrentScenario" />
+							<stateAttribute type="constant" value="dbconnectionid" />
+						</stateValue>
+					</condition>
+				</if>
+			</test>
+	
+			<!-- ACTIONS -->
+	
+			<!-- Actions and test for time graph view threads -->
+			<action id="entering_request">
+				<!-- Initialize current scenario data: component, type of thread, queries and drawing event counts -->
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="threadID" />
+					<stateValue type="eventField" value="context._vtid" forcedType="int"/>
+				</stateChange>
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="apacheUri" />
+					<stateValue type="eventField" value="uri" />
+				</stateChange>
+			</action>
+
+			<action id="entering_mysql_request">
+				<!-- Initialize current scenario data: component, type of thread, queries and drawing event counts -->
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="mysqlThreadID" />
+					<stateValue type="eventField" value="context._vtid" forcedType="int"/>
+				</stateChange>
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="mysqlConnectionid" />
+					<stateValue type="eventField" value="thread_id" />
+				</stateChange>
+			</action>
+
+			<action id="entering_php">
+				<!-- Initialize current scenario data: component, type of thread, queries and drawing event counts -->
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="phpUri" />
+					<stateValue type="eventField" value="uri" />
+				</stateChange>
+			</action>
+	
+			
+
+			<action id="push_uri">
+				<!-- Push the current event to the thread's callstack -->
+				<stateChange>
+	                    		<stateAttribute type="location" value="CurrentThread" />
+	                    		<stateAttribute type="constant" value="callstack" />
+					<stateValue type="eventField" value="uri" stack="push"/>     
+	            		</stateChange>
+			</action>
+	
+			<action id="pop_uri">
+				<!-- Pop the current event from the callstack -->
+	                    	<stateChange>
+	                    		<stateAttribute type="location" value="CurrentThread" />
+	                    		<stateAttribute type="constant" value="callstack" />
+					<stateValue type="eventName" stack="pop"/>     
+	            		</stateChange>
+			</action>
+	
+				
+			<action id="push_event_type">
+				<!-- Push the current event to the thread's callstack -->
+				<stateChange>
+	                    		<stateAttribute type="location" value="CurrentThread" />
+	                    		<stateAttribute type="constant" value="callstack" />
+					<stateValue type="eventField" value="funcname" stack="push"/>     
+	            		</stateChange>
+			</action>
+	
+			<action id="pop_event_type">
+				<!-- Pop the current event from the callstack -->
+	                    	<stateChange>
+	                    		<stateAttribute type="location" value="CurrentThread" />
+	                    		<stateAttribute type="constant" value="callstack" />
+					<stateValue type="eventField" value="funcname" stack="pop"/>     
+	            		</stateChange>
+			</action>
+
+			<action id="push_event_name">
+				<!-- Push the current event to the thread's callstack -->
+				<stateChange>
+	                    		<stateAttribute type="location" value="CurrentThread" />
+	                    		<stateAttribute type="constant" value="callstack" />
+					<stateValue type="eventName" stack="push"/>     
+	            		</stateChange>
+			</action>
+
+			<action id="push_query">
+				<!-- Push the current event to the thread's callstack -->
+				<stateChange>
+	                    		<stateAttribute type="location" value="CurrentThread" />
+	                    		<stateAttribute type="constant" value="callstack" />
+					<stateValue type="eventField" value="query" stack="push"/>     
+	            		</stateChange>
+			</action>
+			<action id="pop_query">
+				<!-- Push the current event to the thread's callstack -->
+				<stateChange>
+	                    		<stateAttribute type="location" value="CurrentThread" />
+	                    		<stateAttribute type="constant" value="callstack" />
+					<stateValue type="eventField" stack="pop"/>     
+	            		</stateChange>
+			</action>
+			<action id="push_execute">
+				<!-- Push the current event to the thread's callstack -->
+				<stateChange>
+	                    		<stateAttribute type="location" value="CurrentThread" />
+	                    		<stateAttribute type="constant" value="callstack" />
+					<stateValue type="string" value="execute line" stack="push"/>     
+	            		</stateChange>
+			</action>
+
+			<action id="pop_event_name">
+				<!-- Pop the current event from the callstack -->
+	                    	<stateChange>
+	                    		<stateAttribute type="location" value="CurrentThread" />
+	                    		<stateAttribute type="constant" value="callstack" />
+					<stateValue type="eventName" stack="pop"/>     
+	            		</stateChange>
+			</action>
+			<action id="php_mysql_connection">
+				<!-- Initialize current scenario data: component, type of thread, queries and drawing event counts -->
+				<stateChange>
+					<stateAttribute type="constant" value="#CurrentScenario" />
+					<stateAttribute type="constant" value="dbconnectionid" />
+					<stateValue type="eventField" value="connection_id" forcedType="int"/>
+				</stateChange>
+			</action>
+			<action id="pop_all">
+				<!-- Pop the current event from the callstack -->
+	                    	<stateChange>
+	                    		<stateAttribute type="location" value="CurrentThread" />
+	                    		<stateAttribute type="constant" value="callstack" />
+					<stateValue type="eventName" stack="popAll"/>     
+	            		</stateChange>
+			</action>
+			<!-- FSMs -->
+	
+			<fsm id="lampdependencyfsm" initial="Wait_start">
+				<state id="Wait_start">
+					<!-- The state will stay here until we have a thread start event -->
+					<transition event="ust_apache:request_entry" target="in_thread" action="entering_request:push_uri"/>
+				</state>
+				<state id="in_thread" >
+					<transition event="ust_php:request_entry" cond="same_thread" target="in_thread" action="push_uri:entering_php" />
+					<transition event="ust_php:request_exit" cond="same_thread" target="in_thread" action="pop_uri"/>
+			
+					
+
+					<transition event="ust_php:php_mysql_connect" cond="same_thread" target="in_thread" action="php_mysql_connection"/>
+					<!--<transition event="ust_mysql:query_start" cond="same_mysql_threadid" target="in_thread" action="push_event_name"/>
+					<transition event="ust_mysql:query_done" cond="same_mysql_threadid" target="in_thread" action="pop_event_name"/>-->
+					<transition event="ust_mysql:query_start" cond="same_mysql_threadid" target="in_thread" action="push_query"/>
+					<transition event="ust_mysql:query_done" cond="same_mysql_threadid" target="in_thread" action="pop_query"/>
+
+					<transition event="ust_apache:request_exit" cond="same_thread" target="end_thread" action="pop_all"/>	
+					<transition event="ust_apache:close_connection" cond="same_thread" target="end_thread" action="pop_all"/>			
+				</state>
+				<final id="end_thread"/>
+			</fsm>
+	
+		</patternHandler>
+	</pattern>
+</callstack>
+        <timeGraphView id="ca.polymtl.lampdependency.callstack">
+		<head>
+	    	<analysis id="ca.polymtl.lampdependency" />
+			<label value="LAMP dependency graph" />
+		</head>
+	
+	    <entry path="Threads/*">
+	    	<display type="self" />    	
+			<entry path="callstack/*"  displayText="true">
+				<display type="self" /> <!-- Will display the function calls as children of the thread -->
+			</entry>	
+		</entry>
+	</timeGraphView>
+
+</tmfxml>

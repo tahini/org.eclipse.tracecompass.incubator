@@ -33,6 +33,9 @@
     <module>org.eclipse.tracecompass.incubator.callstack.doc.user</module>
     <module>org.eclipse.tracecompass.incubator.analysis.core</module>
     <module>org.eclipse.tracecompass.incubator.analysis.core.tests</module>
+    <module>org.eclipse.tracecompass.incubator.lttng.callstack.context</module>
+    <module>org.eclipse.tracecompass.incubator.lttng.callstack.context.core</module>
+    <module>org.eclipse.tracecompass.incubator.lttng.callstack.context.core.tests</module>
     <module>org.eclipse.tracecompass.incubator.perf.profiling</module>
     <module>org.eclipse.tracecompass.incubator.perf.profiling.core</module>
     <module>org.eclipse.tracecompass.incubator.perf.profiling.core.tests</module>
