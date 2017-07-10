@@ -27,6 +27,7 @@ import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.lxc.LxcModel;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.qemukvm.QemuKvmStrings;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.qemukvm.QemuKvmVmModel;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.vmware.VMWareModel;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.module.StateValues;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
@@ -66,6 +67,7 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
     private final Map<String, VMKernelEventHandler> fEventNames;
     private final Map<ITmfTrace, LayoutHandler> fLayouts = new HashMap<>();
     private QemuKvmVmModel fKvmModel;
+    private VMWareModel fVmWareModel;
     private LxcModel fContainerModel;
     private int fCurrentThreadNode; // quark to current thread node
     private boolean fAllRolesFound = false;
@@ -129,6 +131,7 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
         }
         fEventNames = ImmutableMap.copyOf(builder);
         fKvmModel = new QemuKvmVmModel(experiment);
+        fVmWareModel = new VMWareModel(experiment);
         fContainerModel = new LxcModel();
     }
 
@@ -211,6 +214,7 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
          * Have the hypervisor models handle the event first.
          */
         fKvmModel.handleEvent(event, layoutHandler.fLayout);
+        fVmWareModel.handleEvent(event, layoutHandler.fLayout);
 
         /*
          * Continue even if host is unknown if the event is required for
@@ -398,7 +402,10 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
         VirtualCPU vcpu = VirtualCPU.getVirtualCPU(host, cpu.longValue());
         Long physCpu = fKvmModel.getPhysicalCpuFromVcpu(host, vcpu);
         if (physCpu == null) {
-            return null;
+            physCpu = fVmWareModel.getPhysicalCpuFromVcpu(host, vcpu);
+            if (physCpu == null) {
+                return null;
+            }
         }
         /* Replace the vcpu value by the physical one. */
         return physCpu.intValue();
@@ -406,7 +413,11 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
 
     @Nullable
     VirtualMachine getCurrentMachineAndAdd(ITmfEvent event) {
-        return fKvmModel.getCurrentMachine(event);
+        VirtualMachine currentMachine = fKvmModel.getCurrentMachine(event);
+        if (currentMachine == null) {
+            currentMachine = fVmWareModel.getCurrentMachine(event);
+        }
+        return currentMachine;
     }
 
     @Nullable
