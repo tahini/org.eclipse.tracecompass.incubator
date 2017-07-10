@@ -1,4 +1,4 @@
-package org.eclipse.tracecompass.incubator.callstack.core.tests.flamegraph;
+package org.eclipse.tracecompass.incubator.callstack.core.tests.callgraph.instrumented;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -10,8 +10,8 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.GroupNode;
 import org.eclipse.tracecompass.incubator.callstack.core.tests.stubs.CallGraphAnalysisStub;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.GroupNode;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.instrumented.AggregatedCalledFunction;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.instrumented.AggregatedCalledFunctionStatistics;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.instrumented.CallGraphAnalysis;

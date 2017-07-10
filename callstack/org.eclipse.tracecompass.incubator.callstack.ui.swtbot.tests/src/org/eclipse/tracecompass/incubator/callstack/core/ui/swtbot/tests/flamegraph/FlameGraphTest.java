@@ -31,7 +31,7 @@ import org.eclipse.swtbot.eclipse.finder.widgets.SWTBotView;
 import org.eclipse.swtbot.swt.finder.finders.UIThreadRunnable;
 import org.eclipse.swtbot.swt.finder.results.Result;
 import org.eclipse.swtbot.swt.finder.utils.SWTBotPreferences;
-import org.eclipse.tracecompass.incubator.callstack.core.tests.flamegraph.AggregationTreeTest;
+import org.eclipse.tracecompass.incubator.callstack.core.tests.callgraph.instrumented.AggregationTreeTest;
 import org.eclipse.tracecompass.incubator.internal.callstack.ui.flamegraph.FlameGraphPresentationProvider;
 import org.eclipse.tracecompass.incubator.internal.callstack.ui.flamegraph.FlameGraphView;
 import org.eclipse.tracecompass.tmf.ui.swtbot.tests.shared.SWTBotUtils;

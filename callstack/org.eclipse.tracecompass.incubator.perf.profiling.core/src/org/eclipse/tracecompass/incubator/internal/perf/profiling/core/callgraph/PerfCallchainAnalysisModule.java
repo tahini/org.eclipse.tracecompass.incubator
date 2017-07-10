@@ -19,14 +19,14 @@ import java.util.Map;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.CallGraphGroupBy;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.GroupNode;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.ICallGraphProvider;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.profiling.ProfilingGroup;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.profiling.ProfilingGroupDescriptor;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.profiling.SampledCallGraphFactory;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackGroupDescriptor;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.IEventCallStackProvider;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.CallGraphGroupBy;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.GroupNode;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.ICallGraphProvider;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.profiling.ProfilingGroup;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.profiling.ProfilingGroupDescriptor;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.profiling.SampledCallGraphFactory;
 import org.eclipse.tracecompass.incubator.internal.perf.profiling.core.Activator;
 import org.eclipse.tracecompass.tmf.core.analysis.TmfAbstractAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
@@ -42,17 +42,32 @@ import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+/**
+ * An analysis module for the sampled callchains from a perf trace. It
+ * aggregates the data from the sampling events per pid/tid.
+ *
+ * @author Geneviève Bastien
+ */
 public class PerfCallchainAnalysisModule extends TmfAbstractAnalysisModule implements ICallGraphProvider, IEventCallStackProvider {
 
-    private ITmfEventRequest fRequest;
+    private static final String EVENT_SAMPLING = "cycles"; //$NON-NLS-1$
+    private static final String FIELD_PERF_CALLCHAIN = "perf_callchain"; //$NON-NLS-1$
+    private static final String FIELD_PERF_PID = "perf_pid"; //$NON-NLS-1$
+    private static final String FIELD_PERF_TID = "perf_tid"; //$NON-NLS-1$
+
+    private @Nullable ITmfEventRequest fRequest;
     private final Map<Long, GroupNode> fProcessGroups = new HashMap<>();
     private final Map<Long, ProfilingGroup> fThreadGroups = new HashMap<>();
     private final ICallStackGroupDescriptor fProcessDescriptor;
     private final ICallStackGroupDescriptor fThreadDescriptor;
     private @Nullable ICallStackGroupDescriptor fGroupBy;
 
-//    private final ProfilingGroup fGroupNode = new ProfilingGroup("Data", CallGraphAllGroupDescriptor.getInstance());
+    // private final ProfilingGroup fGroupNode = new ProfilingGroup("Data",
+    // CallGraphAllGroupDescriptor.getInstance());
 
+    /**
+     * Constructor
+     */
     public PerfCallchainAnalysisModule() {
         fThreadDescriptor = new ProfilingGroupDescriptor("Threads", null);
         fProcessDescriptor = new ProfilingGroupDescriptor("Process", fThreadDescriptor);
@@ -62,7 +77,7 @@ public class PerfCallchainAnalysisModule extends TmfAbstractAnalysisModule imple
     protected boolean executeAnalysis(@NonNull IProgressMonitor monitor) throws TmfAnalysisException {
         ITmfTrace trace = getTrace();
         if (trace == null) {
-            throw new IllegalStateException("Trace has not been set, yet the analysis is being run!");
+            throw new NullPointerException("Trace has not been set, yet the analysis is being run!"); //$NON-NLS-1$
         }
         /* Cancel any previous request */
         ITmfEventRequest request = fRequest;
@@ -91,11 +106,15 @@ public class PerfCallchainAnalysisModule extends TmfAbstractAnalysisModule imple
     }
 
     private class PerfCallchainEventRequest extends TmfEventRequest {
+
+
         private final ITmfTrace fTrace;
 
         /**
          * Constructor
-         * @param trace The trace
+         *
+         * @param trace
+         *            The trace
          */
         public PerfCallchainEventRequest(ITmfTrace trace) {
             super(TmfEvent.class,
@@ -113,8 +132,8 @@ public class PerfCallchainAnalysisModule extends TmfAbstractAnalysisModule imple
                 processEvent(event);
             } else if (fTrace instanceof TmfExperiment) {
                 /*
-                 * If the request is for an experiment, check if the event is
-                 * from one of the child trace
+                 * If the request is for an experiment, check if the event is from one of the
+                 * child trace
                  */
                 for (ITmfTrace childTrace : ((TmfExperiment) fTrace).getTraces()) {
                     if (childTrace == event.getTrace()) {
@@ -125,17 +144,18 @@ public class PerfCallchainAnalysisModule extends TmfAbstractAnalysisModule imple
         }
 
         private void processEvent(ITmfEvent event) {
-            if (!event.getName().equals("cycles")) {
+            if (!event.getName().equals(EVENT_SAMPLING)) {
                 return;
             }
-            // Get the callchain is available
-            ITmfEventField field = event.getContent().getField("perf_callchain");
+            // Get the callchain if available
+            ITmfEventField field = event.getContent().getField(FIELD_PERF_CALLCHAIN);
             if (field == null) {
                 return;
             }
             long[] value = (long[]) field.getValue();
             int size = value.length;
             long tmp;
+            // Reverse the stack so that element at position 0 is the bottom
             for (int i = 0, mid = size >> 1, j = size - 1; i < mid; i++, j--) {
                 tmp = value[i];
                 value[i] = value[j];
@@ -149,13 +169,13 @@ public class PerfCallchainAnalysisModule extends TmfAbstractAnalysisModule imple
          * @param event
          */
         private ProfilingGroup getLeafGroup(ITmfEvent event) {
-            Long fieldValue = event.getContent().getFieldValue(Long.class, "perf_tid");
+            Long fieldValue = event.getContent().getFieldValue(Long.class, FIELD_PERF_TID);
             Long tid = fieldValue == null ? -1 : fieldValue;
             ProfilingGroup threadGroup = fThreadGroups.get(tid);
             if (threadGroup != null) {
                 return threadGroup;
             }
-            fieldValue = event.getContent().getFieldValue(Long.class, "perf_pid");
+            fieldValue = event.getContent().getFieldValue(Long.class, FIELD_PERF_PID);
             Long pid = fieldValue == null ? -1 : fieldValue;
             GroupNode processGroup = fProcessGroups.get(pid);
             if (processGroup == null) {
@@ -194,7 +214,7 @@ public class PerfCallchainAnalysisModule extends TmfAbstractAnalysisModule imple
 
     @Override
     public Map<String, Collection<Object>> getCallStack(@NonNull ITmfEvent event) {
-        ITmfEventField field = event.getContent().getField("perf_callchain");
+        ITmfEventField field = event.getContent().getField(FIELD_PERF_CALLCHAIN);
         if (field == null) {
             return Collections.emptyMap();
         }

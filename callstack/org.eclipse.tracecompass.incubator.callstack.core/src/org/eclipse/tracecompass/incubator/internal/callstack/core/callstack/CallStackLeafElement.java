@@ -9,25 +9,33 @@
 
 package org.eclipse.tracecompass.incubator.internal.callstack.core.callstack;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.CallStack;
-import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackElement;
-import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackLeafElement;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.CallStackSeries.IThreadIdProvider;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.CallStackSeries.IThreadIdResolver;
+import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackElement;
+import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackLeafElement;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 
 /**
- *  A callstack leaf element corresponding to an attribute in the state system
+ * A callstack leaf element corresponding to an attribute in the state system.
+ * The leaf element is created with a quark that represents the last call stack
+ * group descriptor, but under this element in the state system, there should be
+ * another element {@link #CALL_STACK}, under which the actual stack is.
+ *
+ * The main leaf element may also serve to store other data than the callstack,
+ * like the thread ID for some use cases, etc.
  *
  * @author Geneviève Bastien
  */
 public class CallStackLeafElement extends CallStackElement implements ICallStackLeafElement {
+
+    /** CallStack stack-attribute */
+    public static final String CALL_STACK = "CallStack"; //$NON-NLS-1$
 
     private final @Nullable IThreadIdProvider fThreadIdProvider;
 
@@ -74,13 +82,12 @@ public class CallStackLeafElement extends CallStackElement implements ICallStack
 
     @Override
     public @NonNull CallStack getCallStack() {
-        List<Integer> subAttributes = getStateSystem().getSubAttributes(getQuark(), false);
+        int stackQuark = getStateSystem().optQuarkRelative(getQuark(), CALL_STACK);
+        if (stackQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
+            throw new IllegalStateException("The leaf element should have an element called " + CALL_STACK); //$NON-NLS-1$
+        }
+        List<Integer> subAttributes = getStateSystem().getSubAttributes(stackQuark, false);
         return new CallStack(getStateSystem(), subAttributes, getSymbolKeyElement(), getHostId(), fThreadIdProvider);
-    }
-
-    @Override
-    public @NonNull Collection<ICallStackLeafElement> getLeafElements() {
-        return Collections.singletonList(this);
     }
 
 }

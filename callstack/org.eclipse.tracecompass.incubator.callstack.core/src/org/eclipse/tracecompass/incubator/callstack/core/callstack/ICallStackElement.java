@@ -130,13 +130,6 @@ public interface ICallStackElement {
     ICallStackElement getParentElement();
 
     /**
-     * Get the leaf elements in this callstack hierarchy
-     *
-     * @return The collection of leaf elements that contain callstacks
-     */
-    Collection<ICallStackLeafElement> getLeafElements();
-
-    /**
      * Get the ID of the host this callstack is part of
      *
      * FIXME: Can a callstack cover multiple hosts? Definitely

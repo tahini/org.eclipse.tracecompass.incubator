@@ -27,6 +27,8 @@ import org.eclipse.tracecompass.common.core.StreamUtils;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
 import org.eclipse.tracecompass.incubator.analysis.core.model.ModelManager;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICalledFunction;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.CallGraphGroupBy;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.GroupNode;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.ICallGraphProvider;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.CallStack;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.CallStackSeries;
@@ -34,8 +36,6 @@ import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackEle
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackGroupDescriptor;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackLeafElement;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackProvider;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.CallGraphGroupBy;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.GroupNode;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.LeafGroupNode;
 import org.eclipse.tracecompass.segmentstore.core.ISegment;
 import org.eclipse.tracecompass.segmentstore.core.ISegmentStore;

@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.callstack.core.tests.flamegraph;
+package org.eclipse.tracecompass.incubator.callstack.core.tests.callgraph.instrumented;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -19,8 +19,8 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.GroupNode;
 import org.eclipse.tracecompass.incubator.callstack.core.tests.stubs.CallGraphAnalysisStub;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.GroupNode;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.instrumented.AggregatedCalledFunction;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.instrumented.CallGraphAnalysis;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.callgraph.instrumented.InstrumentedGroup;
@@ -68,7 +68,7 @@ public class AggregationTreeTest {
         return leafGroups;
     }
 
-    private List<InstrumentedGroup> getLeafGroups(CallGraphAnalysis cga) {
+    private @NonNull List<InstrumentedGroup> getLeafGroups(CallGraphAnalysis cga) {
         Collection<GroupNode> groups = cga.getGroups();
         List<InstrumentedGroup> leafGroups = new ArrayList<>();
         for (GroupNode group : groups) {

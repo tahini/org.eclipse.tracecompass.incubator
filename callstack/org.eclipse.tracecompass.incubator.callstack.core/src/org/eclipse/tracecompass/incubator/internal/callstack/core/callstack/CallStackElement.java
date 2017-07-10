@@ -9,17 +9,14 @@
 
 package org.eclipse.tracecompass.incubator.internal.callstack.core.callstack;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackElement;
-import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackLeafElement;
 import org.eclipse.tracecompass.incubator.callstack.core.callstack.CallStackSeries.IThreadIdResolver;
+import org.eclipse.tracecompass.incubator.callstack.core.callstack.ICallStackElement;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.exceptions.StateSystemDisposedException;
 import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
@@ -192,13 +189,6 @@ public class CallStackElement implements ICallStackElement {
     @Override
     public @Nullable CallStackElement getParentElement() {
         return fParent;
-    }
-
-    @Override
-    public @NonNull Collection<ICallStackLeafElement> getLeafElements() {
-        List<ICallStackLeafElement> finalElements = new ArrayList<>();
-        getChildren().forEach(el -> finalElements.addAll(el.getLeafElements()));
-        return finalElements;
     }
 
     /**

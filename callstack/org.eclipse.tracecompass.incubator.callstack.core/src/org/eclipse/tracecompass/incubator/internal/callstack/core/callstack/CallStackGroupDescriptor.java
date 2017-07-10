@@ -85,10 +85,10 @@ public class CallStackGroupDescriptor implements ICallStackGroupDescriptor {
         // Get the elements from the base quark at the given pattern
         List<Integer> quarks = fStateSystem.getQuarks(baseQuark, getSubPattern());
         if (quarks.isEmpty()) {
-            return Collections.EMPTY_LIST;
+            return Collections.emptyList();
         }
         if (parent != null && !(parent instanceof CallStackElement)) {
-            return Collections.EMPTY_LIST;
+            return Collections.emptyList();
         }
 
         CallStackGroupDescriptor nextGroup = fNextGroup;
