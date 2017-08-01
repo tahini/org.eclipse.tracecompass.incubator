@@ -60,7 +60,7 @@ public interface ICallGraphProvider {
      *            The element for which to get the calling context tree
      * @return The aggregated data for the first level of the callgraph
      */
-    public Collection<AggregatedCallSite> getCallingContextTree(ICallStackElement element);
+    Collection<AggregatedCallSite> getCallingContextTree(ICallStackElement element);
 
     /**
      * Factory method to create an aggregated callsite for a symbol
@@ -69,7 +69,7 @@ public interface ICallGraphProvider {
      *            The symbol
      * @return A new aggregated callsite
      */
-    public AggregatedCallSite createCallSite(Object symbol);
+    AggregatedCallSite createCallSite(Object symbol);
 
     /**
      * @param dstGroup

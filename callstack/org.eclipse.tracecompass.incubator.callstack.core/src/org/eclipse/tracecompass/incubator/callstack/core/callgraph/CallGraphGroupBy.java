@@ -9,15 +9,17 @@
 
 package org.eclipse.tracecompass.incubator.callstack.core.callgraph;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.eclipse.tracecompass.incubator.callstack.core.base.CallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.base.AllGroupDescriptor;
+
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 
 /**
  * A class containing helper methods to group aggregated callgraph data by the
@@ -43,46 +45,66 @@ public final class CallGraphGroupBy {
      * @return A collection of data that is the result of the grouping by the
      *         descriptor
      */
-    public static Collection<ICallStackElement> groupCallGraphBy(ICallStackGroupDescriptor groupBy, Collection<ICallStackElement> elements, ICallGraphProvider cgProvider) {
+    public static Multimap<ICallStackElement, AggregatedCallSite> groupCallGraphBy(ICallStackGroupDescriptor groupBy, Collection<ICallStackElement> elements, ICallGraphProvider cgProvider) {
         // Fast return: just aggregated all groups together
         if (groupBy.equals(AllGroupDescriptor.getInstance())) {
             return groupCallGraphByAll(elements, cgProvider);
         }
 
-        List<ICallStackElement> grouped = new ArrayList<>();
-        elements.forEach(g -> grouped.addAll(searchForGroups(g, groupBy, cgProvider)));
+        Multimap<ICallStackElement, AggregatedCallSite> grouped = HashMultimap.create();
+        elements.forEach(g -> grouped.putAll(searchForGroups(g, groupBy, cgProvider)));
         return grouped;
     }
 
-    private static void addGroupData(ICallStackElement srcGroup, ICallStackElement dstGroup, ICallGraphProvider cgProvider) {
-        cgProvider.getCallingContextTree(srcGroup).forEach(ad -> {
-            AggregatedCallSite callsite = cgProvider.createCallSite(ad.getSymbol());
-            callsite.merge(ad);
-            cgProvider.addAggregatedCallSite(dstGroup, callsite);
+    private static void mergeCallsites(
+            Map<Object, AggregatedCallSite> map, Collection<AggregatedCallSite> toMerge) {
+        toMerge.forEach(acs -> {
+            AggregatedCallSite mergeTo = map.get(acs.getSymbol());
+            if (mergeTo != null) {
+                mergeTo.merge(acs);
+            } else {
+                map.put(acs.getSymbol(), acs);
+            }
         });
-        srcGroup.getChildren().forEach(g -> addGroupData(g, dstGroup, cgProvider));
     }
 
-    private static Collection<ICallStackElement> groupCallGraphByAll(Collection<ICallStackElement> groups, ICallGraphProvider cgProvider) {
+    private static Collection<AggregatedCallSite> addGroupData(ICallStackElement srcGroup, ICallStackElement dstGroup, ICallGraphProvider cgProvider) {
+        Map<Object, AggregatedCallSite> callsiteMap = new HashMap<>();
+        mergeCallsites(callsiteMap, cgProvider.getCallingContextTree(srcGroup));
+        srcGroup.getChildren().forEach(group -> {
+            Collection<AggregatedCallSite> groupData = addGroupData(group, dstGroup, cgProvider);
+            mergeCallsites(callsiteMap, groupData);
+        });
+        return callsiteMap.values();
+    }
+
+    private static Multimap<ICallStackElement, AggregatedCallSite> groupCallGraphByAll(Collection<ICallStackElement> groups, ICallGraphProvider cgProvider) {
         // Fast return: just aggregate all groups together
         ICallStackElement allGroup = new CallStackElement("All", AllGroupDescriptor.getInstance(), null, null);
-        groups.forEach(g -> addGroupData(g, allGroup, cgProvider));
-        return Collections.singleton(allGroup);
+        Map<Object, AggregatedCallSite> callsiteMap = new HashMap<>();
+        groups.forEach(g -> {
+            Collection<AggregatedCallSite> groupData = addGroupData(g, allGroup, cgProvider);
+            mergeCallsites(callsiteMap, groupData);
+        });
+        HashMultimap<ICallStackElement, AggregatedCallSite> map = HashMultimap.create();
+        map.putAll(allGroup, callsiteMap.values());
+        return map;
     }
 
-    private static Collection<? extends ICallStackElement> searchForGroups(ICallStackElement element, ICallStackGroupDescriptor descriptor, ICallGraphProvider cgProvider) {
+    private static Multimap<ICallStackElement, AggregatedCallSite> searchForGroups(ICallStackElement element, ICallStackGroupDescriptor descriptor, ICallGraphProvider cgProvider) {
+        HashMultimap<ICallStackElement, AggregatedCallSite> map = HashMultimap.create();
         if (element.getGroup().equals(descriptor)) {
             ICallStackElement groupedElement = new CallStackElement(element.getName(), descriptor);
-            addGroupData(element, groupedElement, cgProvider);
-            return Collections.singleton(groupedElement);
+            map.putAll(groupedElement, addGroupData(element, groupedElement, cgProvider));
+            return map;
         }
         ICallStackGroupDescriptor nextGroup = descriptor.getNextGroup();
         if (nextGroup == null) {
-            return Collections.singleton(element);
+            map.putAll(element, cgProvider.getCallingContextTree(element));
+            return map;
         }
-        List<ICallStackElement> grouped = new ArrayList<>();
-        element.getChildren().forEach(g -> grouped.addAll(searchForGroups(g, nextGroup, cgProvider)));
-        return grouped;
+        element.getChildren().forEach(g -> map.putAll(searchForGroups(g, nextGroup, cgProvider)));
+        return map;
     }
 
 }

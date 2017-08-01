@@ -95,6 +95,8 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
 
     private @Nullable ICallStackGroupDescriptor fGroupBy = null;
 
+    private @Nullable Multimap<ICallStackElement, AggregatedCallSite> fGroupedCct = null;
+
     /**
      * Constructor
      *
@@ -304,6 +306,7 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
     @Override
     public void setGroupBy(@Nullable ICallStackGroupDescriptor descriptor) {
         fGroupBy = descriptor;
+        fGroupedCct = null;
     }
 
     @Override
@@ -314,7 +317,12 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
             return ImmutableList.copyOf(elements);
         }
 
-        return CallGraphGroupBy.groupCallGraphBy(groupBy, elements, this);
+        Multimap<ICallStackElement, AggregatedCallSite> groupedCct = fGroupedCct;
+        if (groupedCct == null) {
+            groupedCct = CallGraphGroupBy.groupCallGraphBy(groupBy, elements, this);
+            fGroupedCct = groupedCct;
+        }
+        return groupedCct.keySet();
     }
 
     @Override
@@ -327,6 +335,10 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
 
     @Override
     public Collection<AggregatedCallSite> getCallingContextTree(ICallStackElement element) {
+        Multimap<ICallStackElement, AggregatedCallSite> groupedCct = fGroupedCct;
+        if (groupedCct != null) {
+            return groupedCct.get(element);
+        }
         return fCcts.get(element);
     }
 

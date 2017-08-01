@@ -48,6 +48,7 @@ public abstract class ProfilingCallGraphAnalysisModule extends TmfAbstractAnalys
     private final Set<ICallStackElement> fRootElements = new HashSet<>();
     private final Multimap<ICallStackElement, AggregatedCallSite> fCcts = HashMultimap.create();
     private @Nullable ICallStackGroupDescriptor fGroupBy;
+    private @Nullable Multimap<ICallStackElement, AggregatedCallSite> fGroupedCct = null;
 
     /**
      * Get the root elements from this call graph hierarchy
@@ -76,12 +77,21 @@ public abstract class ProfilingCallGraphAnalysisModule extends TmfAbstractAnalys
             return ImmutableList.copyOf(elements);
         }
 
-        return CallGraphGroupBy.groupCallGraphBy(groupBy, elements, this);
+        // FIXME: The grouping part of this class is copy-pasted from
+        // instrumented call graph. either have a base class or move this
+        // functionnality to its own class
+        Multimap<ICallStackElement, AggregatedCallSite> groupedCct = fGroupedCct;
+        if (groupedCct == null) {
+            groupedCct = CallGraphGroupBy.groupCallGraphBy(groupBy, elements, this);
+            fGroupedCct = groupedCct;
+        }
+        return groupedCct.keySet();
     }
 
     @Override
     public void setGroupBy(@Nullable ICallStackGroupDescriptor descriptor) {
         fGroupBy = descriptor;
+        fGroupedCct = null;
     }
 
     @Override
@@ -107,9 +117,8 @@ public abstract class ProfilingCallGraphAnalysisModule extends TmfAbstractAnalys
     }
 
     /**
-     * /**
-     * Add a stack trace to this group, such that the symbol at position 0 is the
-     * top of the stack, ie the last symbol called.
+     * /** Add a stack trace to this group, such that the symbol at position 0
+     * is the top of the stack, ie the last symbol called.
      *
      * @param dstGroup
      *            The element to which to add this stack trace
@@ -131,8 +140,8 @@ public abstract class ProfilingCallGraphAnalysisModule extends TmfAbstractAnalys
     }
 
     /**
-     * Add a stack trace to this group, such that the symbol at position 0 is the
-     * top of the stack, ie the last symbol called.
+     * Add a stack trace to this group, such that the symbol at position 0 is
+     * the top of the stack, ie the last symbol called.
      *
      * @param dstGroup
      *            The element to which to add this stack trace
@@ -154,19 +163,20 @@ public abstract class ProfilingCallGraphAnalysisModule extends TmfAbstractAnalys
     }
 
     /**
-     * Method to implement to process a callstack event. If this event contains a
-     * stack trace to add to some element, the implementation first needs to find
-     * the element to which to add the stack trace. The root elements of the
-     * hierarchy should be kept in this class. A root element can be added by
-     * calling {@link #addRootElement(ICallStackElement)} and they can be retrieved
-     * with {@link #getRootElements()}.
+     * Method to implement to process a callstack event. If this event contains
+     * a stack trace to add to some element, the implementation first needs to
+     * find the element to which to add the stack trace. The root elements of
+     * the hierarchy should be kept in this class. A root element can be added
+     * by calling {@link #addRootElement(ICallStackElement)} and they can be
+     * retrieved with {@link #getRootElements()}.
      *
-     * Then from, the event, when the stack trace is retrieve, it can be aggregated
-     * to the element by calling {@link #addStackTrace(ICallStackElement, long[])}
-     * or {@link #addStackTrace(ICallStackElement, Object[])}. These methods will
-     * take care of creating the callsite objects and add the resulting callsite to
-     * the element. Refer to the documentation of those method for the order of the
-     * stack.
+     * Then from, the event, when the stack trace is retrieve, it can be
+     * aggregated to the element by calling
+     * {@link #addStackTrace(ICallStackElement, long[])} or
+     * {@link #addStackTrace(ICallStackElement, Object[])}. These methods will
+     * take care of creating the callsite objects and add the resulting callsite
+     * to the element. Refer to the documentation of those method for the order
+     * of the stack.
      *
      * @param event
      *            The trace event to process
@@ -231,8 +241,8 @@ public abstract class ProfilingCallGraphAnalysisModule extends TmfAbstractAnalys
                 processEvent(event);
             } else if (fTrace instanceof TmfExperiment) {
                 /*
-                 * If the request is for an experiment, check if the event is from one of the
-                 * child trace
+                 * If the request is for an experiment, check if the event is
+                 * from one of the child trace
                  */
                 for (ITmfTrace childTrace : ((TmfExperiment) fTrace).getTraces()) {
                     if (childTrace == event.getTrace()) {
