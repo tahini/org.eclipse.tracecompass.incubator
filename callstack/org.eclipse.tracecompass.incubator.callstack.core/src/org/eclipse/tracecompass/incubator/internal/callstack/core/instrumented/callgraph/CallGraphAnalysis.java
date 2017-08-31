@@ -228,7 +228,7 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
     }
 
     private void iterateOverCallstack(ICallStackElement element, CallStack callstack, ICalledFunction function, int nextLevel, AggregatedCalledFunction aggregatedCall, IHostModel model, long start, long end, IProgressMonitor monitor) {
-        fStore.add(function);
+//        fStore.add(function);
         if (nextLevel > callstack.getMaxDepth()) {
             return;
         }
