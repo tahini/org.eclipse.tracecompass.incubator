@@ -67,7 +67,7 @@ public abstract class InstrumentedCallStackAnalysis extends TmfStateSystemAnalys
 
     private @Nullable Collection<CallStackSeries> fCallStacks;
 
-    private CallGraphAnalysis fCallGraph;
+    private final CallGraphAnalysis fCallGraph;
 
     private static final String LINKS_SUFFIX = ".links.ht"; //$NON-NLS-1$
     /**
