@@ -23,5 +23,11 @@
          </tracetype>
       </module>
    </extension>
+   <extension
+         point="org.eclipse.linuxtools.tmf.analysis.xml.core.files">
+      <xmlfile
+            file="xml_analyses/GroupedTasks.xml">
+      </xmlfile>
+   </extension>
 
 </plugin>
