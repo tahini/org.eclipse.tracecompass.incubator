@@ -154,7 +154,7 @@ public class CallstackXmlAnalysis extends TmfAbstractAnalysisModule implements I
         if (analysisModule != null) {
             analysisModule.cancel();
         }
-
+        fCallGraph.cancel();
     }
 
     @Override
@@ -168,6 +168,15 @@ public class CallstackXmlAnalysis extends TmfAbstractAnalysisModule implements I
         if (analysisModule != null) {
             analysisModule.dispose();
         }
+        fCallGraph.dispose();
+    }
+
+    @Override
+    public boolean setTrace(@NonNull ITmfTrace trace) throws TmfAnalysisException {
+        if (!super.setTrace(trace)) {
+            return false;
+        }
+        return fCallGraph.setTrace(trace);
     }
 
     @Override
