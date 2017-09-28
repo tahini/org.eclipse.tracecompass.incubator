@@ -294,9 +294,7 @@ public class FlameChartView extends AbstractTimeGraphView {
 
     @Override
     protected @NonNull Iterable<ITmfTrace> getTracesToBuild(@Nullable ITmfTrace trace) {
-        // For callstacks, it makes little sense to build for experiment, each trace
-        // will have its own
-        return TmfTraceManager.getTraceSet(trace);
+        return TmfTraceManager.getTraceSetWithExperiment(trace);
     }
 
     private static class CallStackTreeLabelProvider extends TreeLabelProvider {

@@ -41,7 +41,6 @@ import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -128,7 +127,7 @@ public abstract class InstrumentedCallStackAnalysis extends TmfStateSystemAnalys
             if (ss == null) {
                 return Collections.emptySet();
             }
-            callstacks = Collections.singleton(new CallStackSeries(ss, PATTERNS, 0, "", getHostId(), new CallStackSeries.AttributeNameThreadResolver(1))); //$NON-NLS-1$
+            callstacks = Collections.singleton(new CallStackSeries(ss, getPatterns(), 0, "", getHostId(), new CallStackSeries.AttributeNameThreadResolver(1))); //$NON-NLS-1$
             fCallStacks = callstacks;
         }
         return callstacks;
@@ -151,7 +150,6 @@ public abstract class InstrumentedCallStackAnalysis extends TmfStateSystemAnalys
      *
      * @return The patterns for the different levels in the state system
      */
-    @VisibleForTesting
     protected List<String[]> getPatterns() {
         return PATTERNS;
     }

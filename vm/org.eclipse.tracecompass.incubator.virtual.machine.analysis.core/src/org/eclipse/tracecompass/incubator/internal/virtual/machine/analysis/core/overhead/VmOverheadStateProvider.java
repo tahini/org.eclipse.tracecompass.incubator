@@ -15,12 +15,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.analysis.os.linux.core.event.aspect.LinuxTidAspect;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.DefaultEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelTrace;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
 import org.eclipse.tracecompass.incubator.analysis.core.model.ModelManager;
+import org.eclipse.tracecompass.incubator.callstack.core.instrumented.statesystem.InstrumentedCallStackAnalysis;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualMachineModel;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualCPU;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualMachine;
@@ -32,6 +34,7 @@ import org.eclipse.tracecompass.tmf.core.event.ITmfEventField;
 import org.eclipse.tracecompass.tmf.core.statesystem.AbstractTmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
+import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
 
 import com.google.common.collect.HashBasedTable;
@@ -43,6 +46,16 @@ import com.google.common.collect.Table;
 public class VmOverheadStateProvider extends AbstractTmfStateProvider {
 
     /**
+     * The threads attribute in the state system
+     */
+    public static final String TRACES = "Traces"; //$NON-NLS-1$
+
+    /**
+     * The threads attribute in the state system
+     */
+    public static final String THREADS = "Threads"; //$NON-NLS-1$
+
+    /**
      * Version number of this state provider. Please bump this if you modify the
      * contents of the generated state history in some way.
      */
@@ -51,6 +64,8 @@ public class VmOverheadStateProvider extends AbstractTmfStateProvider {
     private static final int SCHED_SWITCH_INDEX = 0;
     private static final int KVM_ENTRY_INDEX = 1;
     private static final int KVM_EXIT_INDEX = 2;
+
+
 
     /* TODO: An analysis should support many hypervisor models */
     private IVirtualMachineModel fModel;
@@ -139,6 +154,8 @@ public class VmOverheadStateProvider extends AbstractTmfStateProvider {
 
         ITmfStateSystemBuilder ss = checkNotNull(getStateSystemBuilder());
 
+        /* Have the hypervisor models handle the event first */
+        fModel.handleEvent(event, eventLayout);
         // The model should have been populated by the dependent analysis, we can just use it
         VirtualMachine host = fModel.getCurrentMachine(event);
         if (host == null) {
@@ -156,13 +173,64 @@ public class VmOverheadStateProvider extends AbstractTmfStateProvider {
             }
             break;
         case KVM_ENTRY_INDEX:
+            handleKvmEntry(ss, event);
             break;
         case KVM_EXIT_INDEX:
+            handleKvmExit(ss, event);
             break;
         default:
             // Nothing to do
         }
 
+    }
+
+    private void handleKvmEntry(ITmfStateSystemBuilder ss, ITmfEvent event) {
+        Integer currentTid = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), LinuxTidAspect.class, event);
+        if (currentTid == null) {
+            return;
+        }
+        HostThread ht = new HostThread(event.getTrace().getHostId(), currentTid);
+        VirtualCPU vcpu = fModel.getVirtualCpu(ht);
+        if (vcpu != null) {
+            final long ts = event.getTimestamp().getValue();
+            VirtualMachine vm = vcpu.getVm();
+            IHostModel model = ModelManager.getModelFor(vm.getHostId());
+            int guestTid = model.getThreadOnCpu(vcpu.getCpuId().intValue(), ts);
+            if (guestTid != IHostModel.UNKNOWN_TID) {
+                int quark = ss.getQuarkAbsoluteAndAdd(TRACES, vm.getTraceName(), THREADS, String.valueOf(guestTid), InstrumentedCallStackAnalysis.CALL_STACK);
+                int tidQuark = ss.getQuarkRelativeAndAdd(quark, "1");
+                ss.modifyAttribute(ts, "Running", tidQuark);
+                int preemptQuark = ss.getQuarkRelativeAndAdd(quark, "2");
+                ss.removeAttribute(ts, preemptQuark);
+                int statusQuark = ss.getQuarkRelativeAndAdd(quark, "3");
+                ss.removeAttribute(ts, statusQuark);
+            }
+        }
+    }
+
+    private void handleKvmExit(ITmfStateSystemBuilder ss, ITmfEvent event) {
+        Integer currentTid = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), LinuxTidAspect.class, event);
+        if (currentTid == null) {
+            return;
+        }
+        HostThread ht = new HostThread(event.getTrace().getHostId(), currentTid);
+        VirtualCPU vcpu = fModel.getVirtualCpu(ht);
+        if (vcpu != null) {
+            final long ts = event.getTimestamp().getValue();
+            Long exitReason = event.getContent().getFieldValue(Long.class, "exit_reason");
+            VirtualMachine vm = vcpu.getVm();
+            IHostModel model = ModelManager.getModelFor(vm.getHostId());
+            int guestTid = model.getThreadOnCpu(vcpu.getCpuId().intValue(), ts);
+            if (guestTid != IHostModel.UNKNOWN_TID) {
+                int quark = ss.getQuarkAbsoluteAndAdd(TRACES, vm.getTraceName(), THREADS, String.valueOf(guestTid), InstrumentedCallStackAnalysis.CALL_STACK);
+                int tidQuark = ss.getQuarkRelativeAndAdd(quark, "1");
+                ss.modifyAttribute(ts, "Running", tidQuark);
+                int preemptQuark = ss.getQuarkRelativeAndAdd(quark, "2");
+                ss.modifyAttribute(ts, "VMM", preemptQuark);
+                int statusQuark = ss.getQuarkRelativeAndAdd(quark, "3");
+                ss.modifyAttribute(ts, String.valueOf(exitReason), statusQuark);
+            }
+        }
     }
 
     /**
@@ -174,20 +242,20 @@ public class VmOverheadStateProvider extends AbstractTmfStateProvider {
         int prevTid = ((Long) content.getField(eventLayout.fieldPrevTid()).getValue()).intValue();
         int nextTid = ((Long) content.getField(eventLayout.fieldNextTid()).getValue()).intValue();
 
-        int quark = ss.getQuarkAbsoluteAndAdd(event.getTrace().getName(), String.valueOf(prevTid), "CallStack");
-        int tidQuark = ss.getQuarkRelativeAndAdd(quark, "0");
+        int quark = ss.getQuarkAbsoluteAndAdd(TRACES, event.getTrace().getName(), THREADS, String.valueOf(prevTid), InstrumentedCallStackAnalysis.CALL_STACK);
+        int tidQuark = ss.getQuarkRelativeAndAdd(quark, "1");
         ss.removeAttribute(ts, tidQuark);
-        int preemptQuark = ss.getQuarkRelativeAndAdd(quark, "1");
+        int preemptQuark = ss.getQuarkRelativeAndAdd(quark, "2");
         ss.removeAttribute(ts, preemptQuark);
-        int statusQuark = ss.getQuarkRelativeAndAdd(quark, "2");
+        int statusQuark = ss.getQuarkRelativeAndAdd(quark, "3");
         ss.removeAttribute(ts, statusQuark);
 
-        quark = ss.getQuarkAbsoluteAndAdd(event.getTrace().getName(), String.valueOf(nextTid), "CallStack");
-        tidQuark = ss.getQuarkRelativeAndAdd(quark, "0");
-        ss.removeAttribute(ts, tidQuark);
-        preemptQuark = ss.getQuarkRelativeAndAdd(quark, "1");
+        quark = ss.getQuarkAbsoluteAndAdd(TRACES, event.getTrace().getName(), THREADS, String.valueOf(nextTid), InstrumentedCallStackAnalysis.CALL_STACK);
+        tidQuark = ss.getQuarkRelativeAndAdd(quark, "1");
+        ss.modifyAttribute(ts, "Running", tidQuark);
+        preemptQuark = ss.getQuarkRelativeAndAdd(quark, "2");
         ss.removeAttribute(ts, preemptQuark);
-        statusQuark = ss.getQuarkRelativeAndAdd(quark, "2");
+        statusQuark = ss.getQuarkRelativeAndAdd(quark, "3");
         ss.removeAttribute(ts, statusQuark);
     }
 
@@ -202,6 +270,7 @@ public class VmOverheadStateProvider extends AbstractTmfStateProvider {
         final long ts = event.getTimestamp().getValue();
         int prevTid = ((Long) content.getField(eventLayout.fieldPrevTid()).getValue()).intValue();
         int nextTid = ((Long) content.getField(eventLayout.fieldNextTid()).getValue()).intValue();
+        Long prevState = content.getFieldValue(Long.class, eventLayout.fieldPrevState());
 
         /* Verify if the previous thread corresponds to a virtual CPU */
         /*
@@ -215,13 +284,15 @@ public class VmOverheadStateProvider extends AbstractTmfStateProvider {
             IHostModel model = ModelManager.getModelFor(vm.getHostId());
             int guestTid = model.getThreadOnCpu(vcpu.getCpuId().intValue(), ts);
             if (guestTid != IHostModel.UNKNOWN_TID) {
-                int quark = ss.getQuarkAbsoluteAndAdd(vm.getTraceName(), String.valueOf(guestTid), "CallStack");
-                int tidQuark = ss.getQuarkRelativeAndAdd(quark, "0");
+                int quark = ss.getQuarkAbsoluteAndAdd(TRACES, vm.getTraceName(), THREADS, String.valueOf(guestTid), InstrumentedCallStackAnalysis.CALL_STACK);
+                int tidQuark = ss.getQuarkRelativeAndAdd(quark, "1");
                 ss.modifyAttribute(ts, "Running", tidQuark);
-                int preemptQuark = ss.getQuarkRelativeAndAdd(quark, "1");
+                int preemptQuark = ss.getQuarkRelativeAndAdd(quark, "2");
                 ss.modifyAttribute(ts, "VCPU Preempted", preemptQuark);
-                int statusQuark = ss.getQuarkRelativeAndAdd(quark, "2");
-                ss.modifyAttribute(ts, "VCPU Preempted", statusQuark);
+                int statusQuark = ss.getQuarkRelativeAndAdd(quark, "3");
+                if (prevState != null) {
+                    ss.modifyAttribute(ts, String.valueOf(prevState), statusQuark);
+                }
             }
         }
 
@@ -232,12 +303,12 @@ public class VmOverheadStateProvider extends AbstractTmfStateProvider {
             IHostModel model = ModelManager.getModelFor(vm.getHostId());
             int guestTid = model.getThreadOnCpu(vcpu.getCpuId().intValue(), ts);
             if (guestTid != IHostModel.UNKNOWN_TID) {
-                int quark = ss.getQuarkAbsoluteAndAdd(vm.getTraceName(), String.valueOf(guestTid), "CallStack");
-                int tidQuark = ss.getQuarkRelativeAndAdd(quark, "0");
+                int quark = ss.getQuarkAbsoluteAndAdd(TRACES, vm.getTraceName(), THREADS, String.valueOf(guestTid), InstrumentedCallStackAnalysis.CALL_STACK);
+                int tidQuark = ss.getQuarkRelativeAndAdd(quark, "1");
                 ss.modifyAttribute(ts, "Running", tidQuark);
-                int preemptQuark = ss.getQuarkRelativeAndAdd(quark, "1");
+                int preemptQuark = ss.getQuarkRelativeAndAdd(quark, "2");
                 ss.removeAttribute(ts, preemptQuark);
-                int statusQuark = ss.getQuarkRelativeAndAdd(quark, "2");
+                int statusQuark = ss.getQuarkRelativeAndAdd(quark, "3");
                 ss.removeAttribute(ts, statusQuark);
             }
         }
