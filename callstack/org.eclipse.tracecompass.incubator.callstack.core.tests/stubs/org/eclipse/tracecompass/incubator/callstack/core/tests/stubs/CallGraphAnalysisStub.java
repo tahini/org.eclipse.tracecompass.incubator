@@ -118,7 +118,10 @@ public class CallGraphAnalysisStub extends CallGraphAnalysis {
         this(new CSAnalysis(fixture, patterns));
     }
 
-    private CallGraphAnalysisStub(IFlameChartProvider csp) {
+    /**
+     * @param csp
+     */
+    public CallGraphAnalysisStub(IFlameChartProvider csp) {
         super(csp);
         fCsProvider = csp;
     }

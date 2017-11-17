@@ -85,6 +85,10 @@ public abstract class InstrumentedCallStackAnalysis extends TmfStateSystemAnalys
      * Listeners
      */
     private final ListenerList fListeners = new ListenerList(ListenerList.IDENTITY);
+    /*
+     * Whether the callgraph execution will be triggered automatically after build
+     */
+    private boolean fAutomaticCallgraph = true;
 
     /**
      * Abstract constructor (should only be called via the sub-classes'
@@ -166,7 +170,9 @@ public abstract class InstrumentedCallStackAnalysis extends TmfStateSystemAnalys
         if (segmentStore != null) {
             sendUpdate(segmentStore);
         }
-        fCallGraph.schedule();
+        if (fAutomaticCallgraph) {
+            fCallGraph.schedule();
+        }
         return true;
     }
 
@@ -290,6 +296,19 @@ public abstract class InstrumentedCallStackAnalysis extends TmfStateSystemAnalys
         for (IAnalysisProgressListener listener : getListeners()) {
             listener.onComplete(this, store);
         }
+    }
+
+    /**
+     * Set whether the callgraph execution should be triggered automatically after
+     * building the callstack or if it should wait to be requested
+     *
+     * @param trigger
+     *            {@code true} means the callgraph analysis will be executed after
+     *            the callstack, {@code false} means it will be executed on demand
+     *            only.
+     */
+    public void triggerAutomatically(boolean trigger) {
+        fAutomaticCallgraph = trigger;
     }
 
 }
