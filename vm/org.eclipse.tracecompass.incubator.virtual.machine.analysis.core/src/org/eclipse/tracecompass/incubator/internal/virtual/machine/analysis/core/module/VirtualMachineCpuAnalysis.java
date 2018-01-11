@@ -13,17 +13,34 @@
 
 package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.module;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.ListenerList;
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelAnalysisModule;
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelThreadInformationProvider;
 import org.eclipse.tracecompass.analysis.os.linux.core.tid.TidAnalysisModule;
+import org.eclipse.tracecompass.analysis.timing.core.segmentstore.IAnalysisProgressListener;
+import org.eclipse.tracecompass.analysis.timing.core.segmentstore.ISegmentStoreProvider;
+import org.eclipse.tracecompass.datastore.core.interval.IHTIntervalReader;
+import org.eclipse.tracecompass.datastore.core.serialization.ISafeByteBufferWriter;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.Activator;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.data.VcpuStateValues;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.data.VmAttributes;
+import org.eclipse.tracecompass.internal.datastore.core.serialization.SafeByteBufferWrapper;
+import org.eclipse.tracecompass.segmentstore.core.ISegment;
+import org.eclipse.tracecompass.segmentstore.core.ISegmentStore;
+import org.eclipse.tracecompass.segmentstore.core.SegmentStoreFactory;
+import org.eclipse.tracecompass.segmentstore.core.segment.interfaces.INamedSegment;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.StateSystemUtils;
 import org.eclipse.tracecompass.statesystem.core.exceptions.AttributeNotFoundException;
@@ -31,9 +48,10 @@ import org.eclipse.tracecompass.statesystem.core.exceptions.StateSystemDisposedE
 import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.statesystem.core.interval.TmfStateInterval;
 import org.eclipse.tracecompass.statesystem.core.statevalue.ITmfStateValue;
-import org.eclipse.tracecompass.statesystem.core.statevalue.TmfStateValue;
 import org.eclipse.tracecompass.statesystem.core.statevalue.ITmfStateValue.Type;
+import org.eclipse.tracecompass.statesystem.core.statevalue.TmfStateValue;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
+import org.eclipse.tracecompass.tmf.core.segment.ISegmentAspect;
 import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.TmfStateSystemAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
@@ -42,6 +60,7 @@ import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperimentUtils;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
@@ -53,7 +72,62 @@ import com.google.common.collect.TreeMultimap;
  * @author Mohamad Gebai
  * @author Geneviève Bastien
  */
-public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule {
+public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule implements ISegmentStoreProvider {
+
+    static class VmWrongSegment implements INamedSegment {
+
+        private final long fStart;
+        private final long fEnd;
+        private final boolean fReverse;
+        private final String fEventName;
+
+        /**
+         *
+         */
+        private static final long serialVersionUID = 8278947524454044651L;
+
+        public VmWrongSegment(long runTime, long time, String eventName) {
+            fStart = Math.min(runTime, time);
+            fEnd = Math.max(runTime, time);
+            fEventName = eventName;
+            fReverse = time < runTime;
+        }
+
+        public VmWrongSegment(long start, long end, byte reverse, String name) {
+            fStart = start;
+            fEnd = end;
+            fReverse = reverse < 0;
+            fEventName = name;
+        }
+
+        @Override
+        public long getStart() {
+            return (fReverse ? fEnd : fStart);
+        }
+
+        @Override
+        public long getEnd() {
+            return (fReverse ? fStart : fEnd);
+        }
+
+        @Override
+        public int getSizeOnDisk() {
+            return Long.BYTES * 2 + Byte.BYTES + SafeByteBufferWrapper.getStringSizeInBuffer(fEventName);
+        }
+
+        @Override
+        public String getName() {
+            return fEventName;
+        }
+
+        @Override
+        public void writeSegment(ISafeByteBufferWriter buffer) {
+            buffer.putLong(fStart);
+            buffer.putLong(fEnd);
+            buffer.put(fReverse ? (byte) 1 : (byte) -1);
+            buffer.putString(fEventName);
+        }
+    }
 
     /** The ID of this analysis module */
     public static final String ID = "org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.VirtualMachineAnalysisModule"; //$NON-NLS-1$
@@ -66,6 +140,41 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule {
     /* State value for a preempted virtual CPU */
     private static final ITmfStateValue VCPU_PREEMPT_VALUE = TmfStateValue.newValueInt(VcpuStateValues.VCPU_PREEMPT);
 
+    private static final String SEGSTORE_SUFFIX = ".segments";
+    private static final IHTIntervalReader<ISegment> SEGMENT_READER = buffer -> new VmWrongSegment(buffer.getLong(), buffer.getLong(), buffer.get(), buffer.getString());
+
+    private static final ISegmentAspect SEGMENT_ASPECT_EVENT_NAME = new ISegmentAspect() {
+
+        @Override
+        public String getName() {
+            return "Event Name";
+        }
+
+        @Override
+        public String getHelpText() {
+            return "Event Name";
+        }
+
+        @Override
+        public @Nullable Comparator<?> getComparator() {
+            return null;
+        }
+
+        @Override
+        public @Nullable Object resolve(ISegment segment) {
+            if (!(segment instanceof VmWrongSegment)) {
+                return null;
+            }
+            return ((VmWrongSegment) segment).getName();
+        }
+
+    };
+
+    private static final List<ISegmentAspect> SEGMENT_ASPECTS = ImmutableList.of(SEGMENT_ASPECT_EVENT_NAME);
+
+    private final ListenerList fListeners = new ListenerList(ListenerList.IDENTITY);
+    private @Nullable ISegmentStore<ISegment> fSegmentStore;
+
     /**
      * Constructor
      */
@@ -74,12 +183,63 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule {
     }
 
     @Override
+    protected boolean executeAnalysis(@Nullable final IProgressMonitor monitor) {
+        try {
+         // Initialize segment store
+            ITmfTrace trace = getTrace();
+            if (trace == null) {
+                return false;
+            }
+            String filename = getId() + SEGSTORE_SUFFIX;
+            /* See if the data file already exists on disk */
+            String dir = TmfTraceManager.getSupplementaryFileDir(trace);
+            final Path file = Paths.get(dir, filename);
+
+            ISegmentStore<ISegment> segmentStore = SegmentStoreFactory.createOnDiskSegmentStore(file, SEGMENT_READER);
+            fSegmentStore = segmentStore;
+
+            boolean result = super.executeAnalysis(monitor);
+            if (!result) {
+                return false;
+            }
+            sendUpdate(segmentStore);
+            return true;
+        } catch (IOException e) {
+            Activator.getInstance().logError("Error creating segment store", e); //$NON-NLS-1$
+        }
+        return false;
+    }
+
+    /**
+     * Returns all the listeners
+     *
+     * @return latency listeners
+     */
+    protected Iterable<IAnalysisProgressListener> getListeners() {
+        List<IAnalysisProgressListener> listeners = new ArrayList<>();
+        for (Object listener : fListeners.getListeners()) {
+            if (listener != null) {
+                listeners.add((IAnalysisProgressListener) listener);
+            }
+        }
+        return listeners;
+    }
+
+    private void sendUpdate(ISegmentStore<ISegment> segmentStore) {
+        for (IAnalysisProgressListener listener : getListeners()) {
+            listener.onComplete(this, segmentStore);
+        }
+    }
+
+    @Override
     protected ITmfStateProvider createStateProvider() {
         ITmfTrace trace = getTrace();
-        if (!(trace instanceof TmfExperiment)) {
+        ISegmentStore<ISegment> segmentStore = fSegmentStore;
+        if (!(trace instanceof TmfExperiment) || segmentStore == null) {
             throw new IllegalStateException();
         }
-        return new VirtualMachineStateProvider((TmfExperiment) trace);
+
+        return new VirtualMachineStateProvider((TmfExperiment) trace, segmentStore);
     }
 
     @Override
@@ -214,6 +374,26 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule {
         } catch (AttributeNotFoundException | StateSystemDisposedException e) {
         }
         return map;
+    }
+
+    @Override
+    public void addListener(IAnalysisProgressListener listener) {
+        fListeners.add(listener);
+    }
+
+    @Override
+    public void removeListener(IAnalysisProgressListener listener) {
+        fListeners.remove(listener);
+    }
+
+    @Override
+    public Iterable<ISegmentAspect> getSegmentAspects() {
+        return SEGMENT_ASPECTS;
+    }
+
+    @Override
+    public @Nullable ISegmentStore<ISegment> getSegmentStore() {
+        return fSegmentStore;
     }
 
 }

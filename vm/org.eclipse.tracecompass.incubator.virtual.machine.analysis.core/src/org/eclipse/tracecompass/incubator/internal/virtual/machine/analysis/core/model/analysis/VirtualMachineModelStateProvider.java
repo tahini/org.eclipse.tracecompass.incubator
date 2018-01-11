@@ -10,11 +10,10 @@
  *   Mohamad Gebai - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.module;
+package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis;
 
 import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,10 +31,8 @@ import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualCPU;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualMachine;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.qemukvm.QemuKvmVmModel;
-import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.module.VirtualMachineCpuAnalysis.VmWrongSegment;
-import org.eclipse.tracecompass.segmentstore.core.ISegment;
-import org.eclipse.tracecompass.segmentstore.core.ISegmentStore;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
+import org.eclipse.tracecompass.statesystem.core.exceptions.AttributeNotFoundException;
 import org.eclipse.tracecompass.statesystem.core.exceptions.StateValueTypeException;
 import org.eclipse.tracecompass.statesystem.core.exceptions.TimeRangeException;
 import org.eclipse.tracecompass.statesystem.core.statevalue.ITmfStateValue;
@@ -49,32 +46,28 @@ import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
 
 import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
 import com.google.common.collect.Table;
 
 /**
- * This is the state provider which translates the virtual machine experiment
- * events to a state system.
+ * This is the state provider that builds the model for the Virtual Machine
+ * environment
  *
  * Attribute tree:
  *
  * <pre>
- * |- Virtual Machines
- * |  |- <Guest Host ID> -> Friendly name (trace name)
- * |  |  |- <VCPU number>
- * |  |  |  |- Status -> <Status value>
+ * |- <Physical machine host ID> -> Friendly name (trace name)
+ * |  |- Guests VMs                                       ---
+ * |  |  |- <Guest Host ID> -> Friendly name (trace name)   | recursive
+ * |  |  |  |- Process ID -> Process ID                     |
+ * |  |  |  |- CPUs                                         |
+ * |  |  |  |  |- <VCPU id> -> TID on host                  |
+ * |  |- Containers                                         |
+ * |  |  |- <Container ID>                                ---
  * </pre>
- *
- * The status value of the VCPUs are either {@link VcpuStateValues#VCPU_IDLE},
- * {@link VcpuStateValues#VCPU_UNKNOWN} or {@link VcpuStateValues#VCPU_RUNNING}.
- * Those three values are ORed with flags {@link VcpuStateValues#VCPU_VMM}
- * and/or {@link VcpuStateValues#VCPU_PREEMPT} to indicate respectively whether
- * they are in hypervisor mode or preempted on the host.
  *
  * @author Mohamad Gebai
  */
-public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
+public class VirtualMachineModelStateProvider extends AbstractTmfStateProvider {
 
     /**
      * Version number of this state provider. Please bump this if you modify the
@@ -88,9 +81,6 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
     private IVirtualMachineModel fModel;
     private final Table<ITmfTrace, String, @Nullable Integer> fEventNames;
     private final Map<ITmfTrace, IKernelAnalysisEventLayout> fLayouts;
-    private final ISegmentStore<ISegment> fSegmentStore;
-    private final Map<VirtualCPU, Long> fLastRunningTimes = new HashMap<>();
-    private final Multimap<VirtualCPU, ITmfEvent> fWrongEvents = HashMultimap.create();
 
     // ------------------------------------------------------------------------
     // Constructor
@@ -101,18 +91,14 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
      *
      * @param experiment
      *            The virtual machine experiment
-     * @param segmentStore
-     *            The segment store to store events that should not happen where
-     *            they happen
      */
-    public VirtualMachineStateProvider(TmfExperiment experiment, ISegmentStore<ISegment> segmentStore) {
+    public VirtualMachineModelStateProvider(TmfExperiment experiment) {
         super(experiment, "Virtual Machine State Provider"); //$NON-NLS-1$
 
         fModel = QemuKvmVmModel.get(experiment);
         Table<ITmfTrace, String, @Nullable Integer> table = HashBasedTable.create();
         fEventNames = table;
         fLayouts = new HashMap<>();
-        fSegmentStore = segmentStore;
     }
 
     // ------------------------------------------------------------------------
@@ -150,9 +136,9 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
     }
 
     @Override
-    public VirtualMachineStateProvider getNewInstance() {
+    public VirtualMachineModelStateProvider getNewInstance() {
         TmfExperiment trace = getTrace();
-        return new VirtualMachineStateProvider(trace, fSegmentStore);
+        return new VirtualMachineModelStateProvider(trace);
     }
 
     @Override
@@ -172,9 +158,15 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
             }
         }
 
+        if (!eventName.equals(eventLayout.eventSchedSwitch()) &&
+                !fModel.getRequiredEvents(eventLayout).contains(eventName)) {
+            return;
+        }
+
         ITmfStateSystemBuilder ss = checkNotNull(getStateSystemBuilder());
         ITmfStateValue value;
 
+        final ITmfEventField content = event.getContent();
         final long ts = event.getTimestamp().getValue();
         final String hostId = event.getTrace().getHostId();
         try {
@@ -189,8 +181,10 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
                 /*
                  * If event from a guest OS, make sure the guest exists in the state system
                  */
-                int vmQuark = ss.optQuarkRelative(getNodeVirtualMachines(), host.getHostId());
-                if (vmQuark < 0) {
+                int vmQuark = -1;
+                try {
+                    vmQuark = ss.getQuarkRelative(getNodeVirtualMachines(), host.getHostId());
+                } catch (AttributeNotFoundException e) {
                     /*
                      * We should enter this catch only once per machine, so it is not so costly to
                      * do compared with adding the trace's name for each guest event
@@ -199,31 +193,7 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
                     TmfStateValue machineName = TmfStateValue.newValueString(event.getTrace().getName());
                     ss.modifyAttribute(ts, machineName, vmQuark);
                 }
-
-                // Put out a warning if the event happened when the virtual CPU is supposed to
-                // be out
-                Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
-                if (cpu != null) {
-                    VirtualCPU vcpu = VirtualCPU.getVirtualCPU(host, cpu.longValue());
-                    int curStatusQuark = ss.getQuarkRelativeAndAdd(getNodeVirtualMachines(), host.getHostId(),
-                            vcpu.getCpuId().toString(), VmAttributes.STATUS);
-                    if (curStatusQuark >= 0) {
-                        int val = ss.queryOngoingState(curStatusQuark).unboxInt();
-                        if (val > 0 && (val & (VcpuStateValues.VCPU_PREEMPT | VcpuStateValues.VCPU_VMM)) > 0) {
-                            // This event should not have happened
-                            fWrongEvents.put(vcpu, event);
-                        }
-                    }
-                }
-
             }
-
-            if (!eventName.equals(eventLayout.eventSchedSwitch()) &&
-                    !fModel.getRequiredEvents(eventLayout).contains(eventName)) {
-                return;
-            }
-
-            ITmfEventField content = event.getContent();
 
             /* Have the hypervisor models handle the event first */
             fModel.handleEvent(event, eventLayout);
@@ -257,13 +227,9 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
                      */
                     int curStatusQuark = ss.getQuarkRelativeAndAdd(getNodeVirtualMachines(), host.getHostId(),
                             cpu.toString(), VmAttributes.STATUS);
-                    // In theory, sched switches should not happen when vcpu is preempted or in vmm,
-                    // but in practice, synchronization is not perfect and it may.
-                    int currentStatus = ss.queryOngoingState(curStatusQuark).unboxInt();
-                    int curVmStatus = currentStatus & (VcpuStateValues.VCPU_PREEMPT | VcpuStateValues.VCPU_VMM);
-                    value = TmfStateValue.newValueInt(VcpuStateValues.VCPU_IDLE | curVmStatus);
+                    value = TmfStateValue.newValueInt(VcpuStateValues.VCPU_IDLE);
                     if (nextTid > 0) {
-                        value = TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING | curVmStatus);
+                        value = TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING);
                     }
                     ss.modifyAttribute(ts, value, curStatusQuark);
                     break;
@@ -285,12 +251,11 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
                             vcpu.getCpuId().toString(), VmAttributes.STATUS);
 
                     /* Add the preempted flag to the status */
-                    ITmfStateValue prevState = ss.queryOngoingState(curStatusQuark);
-                    if ((prevState.unboxInt() & VcpuStateValues.VCPU_IDLE) == 0) {
-                        int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, prevState.unboxInt());
+                    value = ss.queryOngoingState(curStatusQuark);
+                    if ((value.unboxInt() & VcpuStateValues.VCPU_IDLE) == 0) {
+                        int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, value.unboxInt());
                         value = TmfStateValue.newValueInt(newVal | VcpuStateValues.VCPU_PREEMPT);
                         ss.modifyAttribute(ts, value, curStatusQuark);
-                        vcpuStatusChanged(vcpu, prevState.unboxInt(), value.unboxInt(), ts);
                     }
                 }
 
@@ -308,11 +273,10 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
                             vcpu.getCpuId().toString(), VmAttributes.STATUS);
 
                     /* Remove the preempted flag from the status */
-                    ITmfStateValue prevState = ss.queryOngoingState(curStatusQuark);
-                    int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, prevState.unboxInt());
+                    value = ss.queryOngoingState(curStatusQuark);
+                    int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, value.unboxInt());
                     value = TmfStateValue.newValueInt(newVal & ~VcpuStateValues.VCPU_PREEMPT);
                     ss.modifyAttribute(ts, value, curStatusQuark);
-                    vcpuStatusChanged(vcpu, prevState.unboxInt(), value.unboxInt(), ts);
 
                 }
 
@@ -337,12 +301,11 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
                     VirtualMachine vm = virtualCpu.getVm();
                     int curStatusQuark = ss.getQuarkRelativeAndAdd(getNodeVirtualMachines(), vm.getHostId(),
                             Long.toString(virtualCpu.getCpuId()), VmAttributes.STATUS);
-                    ITmfStateValue prevState = ss.queryOngoingState(curStatusQuark);
-                    if ((prevState.unboxInt() & VcpuStateValues.VCPU_IDLE) == 0) {
-                        int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, prevState.unboxInt());
+                    value = ss.queryOngoingState(curStatusQuark);
+                    if ((value.unboxInt() & VcpuStateValues.VCPU_IDLE) == 0) {
+                        int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, value.unboxInt());
                         value = TmfStateValue.newValueInt(newVal | VcpuStateValues.VCPU_VMM);
                         ss.modifyAttribute(ts, value, curStatusQuark);
-                        vcpuStatusChanged(virtualCpu, prevState.unboxInt(), value.unboxInt(), ts);
                     }
                 }
 
@@ -355,11 +318,10 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
                     VirtualMachine vm = virtualCpu.getVm();
                     int curStatusQuark = ss.getQuarkRelativeAndAdd(getNodeVirtualMachines(), vm.getHostId(),
                             Long.toString(virtualCpu.getCpuId()), VmAttributes.STATUS);
-                    ITmfStateValue prevState = ss.queryOngoingState(curStatusQuark);
-                    int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, prevState.unboxInt());
+                    value = ss.queryOngoingState(curStatusQuark);
+                    int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, value.unboxInt());
                     value = TmfStateValue.newValueInt(newVal & ~VcpuStateValues.VCPU_VMM);
                     ss.modifyAttribute(ts, value, curStatusQuark);
-                    vcpuStatusChanged(virtualCpu, prevState.unboxInt(), value.unboxInt(), ts);
                 }
 
             }
@@ -369,42 +331,6 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
         } catch (TimeRangeException | StateValueTypeException e) {
             Activator.getInstance().logError("Error handling event in VirtualMachineStateProvider", e); //$NON-NLS-1$
         }
-    }
-
-    private static boolean isStatusVm(int status) {
-        return (status & (VcpuStateValues.VCPU_PREEMPT | VcpuStateValues.VCPU_VMM)) > 0;
-    }
-
-    private void vcpuStatusChanged(VirtualCPU vcpu, int prevStatus, int curStatus, long ts) {
-        if (isStatusVm(prevStatus) && !isStatusVm(curStatus)) {
-            // The VM is running again
-            Collection<ITmfEvent> events = fWrongEvents.removeAll(vcpu);
-            Long lastRun = fLastRunningTimes.get(vcpu);
-            if (lastRun == null) {
-                // This should not happen
-                return;
-            }
-            for (ITmfEvent event : events) {
-                long nanos = event.getTimestamp().toNanos();
-                String eventName = vcpu.getVm().getTraceName() + ':' + event.getName();
-                if (nanos - lastRun < ts - nanos) {
-                    fSegmentStore.add(new VmWrongSegment(lastRun, nanos, eventName));
-                } else {
-                    fSegmentStore.add(new VmWrongSegment(ts, nanos, eventName));
-                }
-            }
-        }
-        if (!isStatusVm(prevStatus) && isStatusVm(curStatus)) {
-            // The VM is not running anymore
-            fLastRunningTimes.put(vcpu, ts);
-        }
-
-    }
-
-    @Override
-    public void done() {
-        super.done();
-        fSegmentStore.close(false);
     }
 
     // ------------------------------------------------------------------------
