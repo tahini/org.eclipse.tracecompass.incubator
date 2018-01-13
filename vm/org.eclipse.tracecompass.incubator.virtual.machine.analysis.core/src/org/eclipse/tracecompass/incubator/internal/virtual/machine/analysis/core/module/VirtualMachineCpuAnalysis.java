@@ -377,6 +377,24 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule impl
     }
 
     @Override
+    public void dispose() {
+        super.dispose();
+        ISegmentStore<ISegment> segmentStore = fSegmentStore;
+        if (segmentStore != null) {
+            segmentStore.dispose();
+        }
+    }
+
+    @Override
+    protected void disposeProvider(boolean deleteFiles) {
+        super.disposeProvider(deleteFiles);
+        ISegmentStore<ISegment> segmentStore = fSegmentStore;
+        if (segmentStore != null) {
+            segmentStore.close(deleteFiles);
+        }
+    }
+
+    @Override
     public void addListener(IAnalysisProgressListener listener) {
         fListeners.add(listener);
     }

@@ -351,7 +351,7 @@ public class VirtualMachineModelStateProvider extends AbstractTmfStateProvider {
         /* Get the LTTng kernel analysis for the host */
         String hostId = event.getTrace().getHostId();
         IHostModel model = ModelManager.getModelFor(hostId);
-        int tid = model.getThreadOnCpu(cpu, ts);
+        int tid = model.getThreadOnCpu(cpu, ts, true);
 
         if (tid == IHostModel.UNKNOWN_TID) {
             return null;

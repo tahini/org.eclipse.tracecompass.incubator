@@ -175,7 +175,7 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
         ITmfStateSystemBuilder ss = checkNotNull(getStateSystemBuilder());
         ITmfStateValue value;
 
-        final long ts = event.getTimestamp().getValue();
+        final long ts = event.getTimestamp().toNanos();
         final String hostId = event.getTrace().getHostId();
         try {
             /* Do we know this trace's role yet? */
@@ -286,12 +286,10 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
 
                     /* Add the preempted flag to the status */
                     ITmfStateValue prevState = ss.queryOngoingState(curStatusQuark);
-                    if ((prevState.unboxInt() & VcpuStateValues.VCPU_IDLE) == 0) {
-                        int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, prevState.unboxInt());
-                        value = TmfStateValue.newValueInt(newVal | VcpuStateValues.VCPU_PREEMPT);
-                        ss.modifyAttribute(ts, value, curStatusQuark);
-                        vcpuStatusChanged(vcpu, prevState.unboxInt(), value.unboxInt(), ts);
-                    }
+                    int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, prevState.unboxInt());
+                    value = TmfStateValue.newValueInt(newVal | VcpuStateValues.VCPU_PREEMPT);
+                    ss.modifyAttribute(ts, value, curStatusQuark);
+                    vcpuStatusChanged(vcpu, prevState.unboxInt(), value.unboxInt(), ts);
                 }
 
                 /* Verify if the next thread corresponds to a virtual CPU */
@@ -338,12 +336,10 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
                     int curStatusQuark = ss.getQuarkRelativeAndAdd(getNodeVirtualMachines(), vm.getHostId(),
                             Long.toString(virtualCpu.getCpuId()), VmAttributes.STATUS);
                     ITmfStateValue prevState = ss.queryOngoingState(curStatusQuark);
-                    if ((prevState.unboxInt() & VcpuStateValues.VCPU_IDLE) == 0) {
-                        int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, prevState.unboxInt());
-                        value = TmfStateValue.newValueInt(newVal | VcpuStateValues.VCPU_VMM);
-                        ss.modifyAttribute(ts, value, curStatusQuark);
-                        vcpuStatusChanged(virtualCpu, prevState.unboxInt(), value.unboxInt(), ts);
-                    }
+                    int newVal = Math.max(VcpuStateValues.VCPU_UNKNOWN, prevState.unboxInt());
+                    value = TmfStateValue.newValueInt(newVal | VcpuStateValues.VCPU_VMM);
+                    ss.modifyAttribute(ts, value, curStatusQuark);
+                    vcpuStatusChanged(virtualCpu, prevState.unboxInt(), value.unboxInt(), ts);
                 }
 
                 /*
@@ -404,7 +400,6 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
     @Override
     public void done() {
         super.done();
-        fSegmentStore.close(false);
     }
 
     // ------------------------------------------------------------------------
@@ -425,7 +420,7 @@ public class VirtualMachineStateProvider extends AbstractTmfStateProvider {
         /* Get the LTTng kernel analysis for the host */
         String hostId = event.getTrace().getHostId();
         IHostModel model = ModelManager.getModelFor(hostId);
-        int tid = model.getThreadOnCpu(cpu, ts);
+        int tid = model.getThreadOnCpu(cpu, ts, true);
 
         if (tid == IHostModel.UNKNOWN_TID) {
             return null;

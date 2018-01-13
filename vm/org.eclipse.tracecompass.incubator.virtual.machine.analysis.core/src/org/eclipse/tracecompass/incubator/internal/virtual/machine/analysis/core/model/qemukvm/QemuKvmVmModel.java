@@ -271,7 +271,7 @@ public class QemuKvmVmModel implements IVirtualMachineModel {
             }
 
             IHostModel model = ModelManager.getModelFor(hostId);
-            int tid = model.getThreadOnCpu(cpu, ts);
+            int tid = model.getThreadOnCpu(cpu, ts, true);
             if (tid == IHostModel.UNKNOWN_TID) {
                 /*
                  * We do not know which process is running at this
