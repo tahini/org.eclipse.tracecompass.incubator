@@ -14,19 +14,23 @@
 package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
-import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.tid.TidAnalysisModule;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualEnvironmentModel;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
+import org.eclipse.tracecompass.tmf.core.exceptions.TmfAnalysisException;
+import org.eclipse.tracecompass.tmf.core.signal.TmfSignalHandler;
+import org.eclipse.tracecompass.tmf.core.signal.TmfTraceClosedSignal;
 import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.TmfStateSystemAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
-
-import com.google.common.collect.ImmutableSet;
 
 /**
  * Module for the virtual machine CPU analysis. It tracks the status of the
@@ -39,16 +43,37 @@ public class VirtualMachineModelAnalysis extends TmfStateSystemAnalysisModule {
 
     /** The ID of this analysis module */
     public static final String ID = "org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.model.analysis"; //$NON-NLS-1$
+    private static final Map<TmfExperiment, VirtualMachineModelAnalysis> INSTANCE_MAP = new HashMap<>();
 
-    // TODO: Update with event layout when requirements are back */
-    static final Set<String> REQUIRED_EVENTS = ImmutableSet.of(
-            // LttngStrings.SCHED_SWITCH
-            );
+    private @Nullable VirtualEnvironment fVirtualEnvironment = null;
+
+    /**
+     * Get the model analysis for this experiment. The module needs to be scheduled
+     * by the caller
+     *
+     * @param experiment
+     *            The virtual machine experiment
+     * @return The model analysis
+     */
+    public static synchronized VirtualMachineModelAnalysis getModel(TmfExperiment experiment) {
+        VirtualMachineModelAnalysis module = INSTANCE_MAP.get(experiment);
+        if (module == null) {
+            module = new VirtualMachineModelAnalysis();
+            module.setId(ID);
+            try {
+                module.setTrace(experiment);
+            } catch (TmfAnalysisException e) {
+                throw new IllegalStateException(e.getMessage());
+            }
+            INSTANCE_MAP.put(experiment, module);
+        }
+        return module;
+    }
 
     /**
      * Constructor
      */
-    public VirtualMachineModelAnalysis() {
+    private VirtualMachineModelAnalysis() {
         super();
     }
 
@@ -62,7 +87,7 @@ public class VirtualMachineModelAnalysis extends TmfStateSystemAnalysisModule {
     }
 
     @Override
-    protected @NonNull StateSystemBackendType getBackendType() {
+    protected StateSystemBackendType getBackendType() {
         return StateSystemBackendType.FULL;
     }
 
@@ -80,6 +105,24 @@ public class VirtualMachineModelAnalysis extends TmfStateSystemAnalysisModule {
         }
         TmfTraceUtils.getAnalysisModulesOfClass(trace, TidAnalysisModule.class).forEach(modules::add);
         return modules;
+    }
+
+    @Override
+    @TmfSignalHandler
+    public void traceClosed(TmfTraceClosedSignal signal) {
+        super.traceClosed(signal);
+        // Dispose of this analysis, since it is not linked to the trace it will not be
+        // automatic
+        dispose();
+    }
+
+    /**
+     * Get the virtual environment computed by this analysis
+     *
+     * @return The virtual environment
+     */
+    public IVirtualEnvironmentModel getVirtualEnvironmentModel() {
+        return fVirtualEnvironment;
     }
 
 }

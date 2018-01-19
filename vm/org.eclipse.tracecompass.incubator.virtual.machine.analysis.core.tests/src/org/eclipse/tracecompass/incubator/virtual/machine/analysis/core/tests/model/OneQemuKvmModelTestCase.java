@@ -1,0 +1,69 @@
+/*******************************************************************************
+ * Copyright (c) 2017 École Polytechnique de Montréal
+ *
+ * All rights reserved. This program and the accompanying materials are
+ * made available under the terms of the Eclipse Public License v1.0 which
+ * accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
+
+package org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.model;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.handlers.IVirtualMachineEventHandler;
+import org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.shared.vm.VmTestCase;
+import org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.shared.vm.VmTestExperiment;
+import org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.shared.vm.VmTraces;
+import org.eclipse.tracecompass.statesystem.core.statevalue.TmfStateValue;
+import org.eclipse.tracecompass.statesystem.core.tests.shared.utils.StateSystemTestUtils;
+
+/**
+ * Test case for the QemuKvm experiment and Fused VM analysis
+ *
+ * @author Geneviève Bastien
+ */
+public class OneQemuKvmModelTestCase extends VmTestCase {
+
+    private static final String HOST_ID = VmTraces.HOST_ONE_QEMUKVM.getHostId();
+    private static final String GUEST_ID = VmTraces.GUEST_ONE_QEMUKVM.getHostId();
+
+    /**
+     * Constructor
+     */
+    public OneQemuKvmModelTestCase() {
+        super(VmTestExperiment.ONE_QEMUKVM);
+    }
+
+    @Override
+    public Set<IntervalInfo> getTestIntervals() {
+        return Collections.emptySet();
+    }
+
+    /**
+     * * |- <Machine host ID> -> Friendly name (trace name, can be host and/or guest)
+ * |  |- Guests VMs                                       ---
+ * |  |  |- <Guest Host ID> -> Friendly name (trace name)   | recursive
+ * |  |  |  |- Process ID -> Process ID                     |
+ * |  |  |  |- CPUs                                         |
+ * |  |  |  |  |- <VCPU id> -> TID on host                  |
+ * |  |- Containers                                         |
+ * |  |  |- <Container ID>                                ---
+     */
+    @Override
+    public Set<PunctualInfo> getPunctualTestData() {
+        Set<PunctualInfo> info = new HashSet<>();
+
+        // Check the 'Machines' sub-tree towards the end of the trace
+        PunctualInfo oneInfo = new PunctualInfo(300L);
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID), TmfStateValue.newValueString(VmTraces.HOST_ONE_QEMUKVM.getFileName()));
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID, IVirtualMachineEventHandler.GUEST_VMS, GUEST_ID), TmfStateValue.newValueString(VmTraces.GUEST_ONE_QEMUKVM.getFileName()));
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID, IVirtualMachineEventHandler.GUEST_VMS, GUEST_ID, IVirtualMachineEventHandler.CPUS, "0"), TmfStateValue.newValueInt(31));
+        info.add(oneInfo);
+
+        return info;
+    }
+
+}
