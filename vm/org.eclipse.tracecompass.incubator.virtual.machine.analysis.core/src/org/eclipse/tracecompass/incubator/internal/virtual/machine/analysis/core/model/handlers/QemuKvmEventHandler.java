@@ -20,6 +20,8 @@ import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualCPU;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualMachine;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualEnvironmentBuilder;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualMachineModelAnalysis;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.qemukvm.QemuKvmStrings;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
@@ -34,13 +36,6 @@ import com.google.common.collect.ImmutableSet;
  * @author Geneviève Bastien
  */
 public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
-
-    /* Associate a host's thread to a virtual CPU */
-    private final Map<HostThread, VirtualCPU> fTidToVcpu = new HashMap<>();
-    /* Associate a host's thread to a virtual machine */
-    private final Map<HostThread, VirtualMachine> fTidToVm = new HashMap<>();
-    /* Maps a virtual machine name to a virtual machine */
-    private final Map<String, VirtualMachine> fKnownMachines = new HashMap<>();
 
     private Map<IKernelAnalysisEventLayout, Set<String>> fRequiredEvents = new HashMap<>();
 
@@ -78,18 +73,13 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
      *            The event to handle
      */
     @Override
-    public void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event, IKernelAnalysisEventLayout layout) {
+    public void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, IKernelAnalysisEventLayout layout) {
         String eventName = event.getName();
-        String hostId = event.getTrace().getHostId();
-        VirtualMachine machine = fKnownMachines.get(hostId);
+        VirtualMachine machine = virtEnv.getCurrentMachine(event);
         long ts = event.getTimestamp().toNanos();
-        if (machine == null) {
-            machine = createMachine(ss, ts, hostId, event.getTrace().getName());
-            fKnownMachines.put(hostId, machine);
-        }
         if (layout.eventsKVMEntry().contains(eventName)) {
             setMachineHost(ss, machine);
-            handleKvmEntry(ss, ts, event, machine);
+            handleKvmEntry(ss, ts, event, virtEnv, machine);
         } else if (layout.eventsKVMExit().contains(eventName)) {
             setMachineHost(ss, machine);
         } else if (eventName.equals(QemuKvmStrings.VMSYNC_GH_GUEST) || eventName.equals(QemuKvmStrings.VMSYNC_HG_GUEST)) {
@@ -100,17 +90,17 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
             handleGuestEvent(event, machine);
         } else if (eventName.equals(QemuKvmStrings.VMSYNC_GH_HOST)) {
             setMachineHost(ss, machine);
-            handleHostEvent(ss, ts, event, machine);
+            handleHostEvent(ss, ts, event, virtEnv, machine);
         }
     }
 
-    private void handleHostEvent(ITmfStateSystemBuilder ss, long ts, ITmfEvent event, VirtualMachine hostMachine) {
+    private static void handleHostEvent(ITmfStateSystemBuilder ss, long ts, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, VirtualMachine hostMachine) {
         HostThread ht = IVirtualMachineEventHandler.getCurrentHostThread(event, ts);
         if (ht == null) {
             return;
         }
 
-        VirtualMachine vm = fTidToVm.get(ht);
+        VirtualMachine vm = virtEnv.getGuestMachine(event, ht);
         if (vm != null) {
             // Machine is already known, exit
             return;
@@ -121,17 +111,20 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
             return;
         }
 
-        for (VirtualMachine machine : fKnownMachines.values()) {
+        for (VirtualMachine machine : virtEnv.getMachines()) {
             if (machine.getVmUid() == vmUid) {
                 /*
                  * We found the VM being run, let's associate it with the
-                 * thread ID
+                 * thread ID and set its hypervisor
                  */
                 hostMachine.addChild(machine);
-                int guestQuark = ss.getQuarkAbsoluteAndAdd(hostMachine.getHostId(), IVirtualMachineEventHandler.GUEST_VMS, machine.getHostId());
+                int guestQuark = ss.getQuarkAbsoluteAndAdd(hostMachine.getHostId(), VirtualMachineModelAnalysis.GUEST_VMS, machine.getHostId());
                 ss.modifyAttribute(ts, machine.getTraceName(), guestQuark);
 
-                fTidToVm.put(ht, machine);
+                virtEnv.setGuestMachine(machine, ht);
+
+                int hypervisorQuark = ss.getQuarkRelativeAndAdd(guestQuark, VirtualMachineModelAnalysis.HYPERVISOR);
+                ss.modifyAttribute(ts, "Qemu/KVM", hypervisorQuark);
 
                 // we have the thread running, its associated process represents the guest
                 Integer pid = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), LinuxPidAspect.class, event);
@@ -140,9 +133,9 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
                 }
                 HostThread parentHt = new HostThread(ht.getHost(), pid);
                 // Update guest process if not known
-                if (!fTidToVm.containsKey(parentHt)) {
-                    fTidToVm.put(parentHt, machine);
-                    int guestProcessQuark = ss.getQuarkRelativeAndAdd(guestQuark, IVirtualMachineEventHandler.PROCESS);
+                if (virtEnv.getGuestMachine(event, parentHt) == null) {
+                    virtEnv.setGuestMachine(machine, parentHt);
+                    int guestProcessQuark = ss.getQuarkRelativeAndAdd(guestQuark, VirtualMachineModelAnalysis.PROCESS);
                     ss.modifyAttribute(ts, pid, guestProcessQuark);
                 }
             }
@@ -164,28 +157,23 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
         }
         // Set the machine as host and add the quark for guests
         machine.setHost();
-        ss.getQuarkAbsoluteAndAdd(machine.getHostId(), IVirtualMachineEventHandler.GUEST_VMS);
+        ss.getQuarkAbsoluteAndAdd(machine.getHostId(), VirtualMachineModelAnalysis.GUEST_VMS);
     }
 
-    private static VirtualMachine createMachine(ITmfStateSystemBuilder ss, long ts, String hostId, String traceName) {
-        int quark = ss.getQuarkAbsoluteAndAdd(hostId);
-        ss.modifyAttribute(ts, traceName, quark);
-        return VirtualMachine.newUnknownMachine(hostId, traceName);
-    }
-
-    private void handleKvmEntry(ITmfStateSystemBuilder ss, long ts, ITmfEvent event, VirtualMachine machine) {
+    private static void handleKvmEntry(ITmfStateSystemBuilder ss, long ts, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, VirtualMachine machine) {
         HostThread ht = IVirtualMachineEventHandler.getCurrentHostThread(event, ts);
         if (ht == null) {
             return;
         }
-        if (fTidToVcpu.containsKey(ht)) {
+        VirtualCPU vcpu = virtEnv.getVirtualCpu(event, ht);
+        if (vcpu != null) {
             // The current thread has a vcpu configured, ignore
             return;
         }
         // Try to find the guest that corresponds to this one
-        VirtualMachine vm = fTidToVm.get(ht);
+        VirtualMachine vm = virtEnv.getGuestMachine(event, ht);
         if (vm == null) {
-            vm = findVmFromProcess(event, ht);
+            vm = findVmFromProcess(event, ht, virtEnv);
             if (vm == null) {
                 return;
             }
@@ -197,12 +185,13 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
             return;
         }
         VirtualCPU virtualCPU = VirtualCPU.getVirtualCPU(vm, vcpuId);
-        fTidToVcpu.put(ht, virtualCPU);
-        int vcpuQuark = ss.getQuarkAbsoluteAndAdd(machine.getHostId(), IVirtualMachineEventHandler.GUEST_VMS, vm.getHostId(), IVirtualMachineEventHandler.CPUS, vcpuId.toString());
+        virtEnv.setGuestCpu(virtualCPU, ht);
+        int vcpuQuark = ss.getQuarkAbsoluteAndAdd(machine.getHostId(), VirtualMachineModelAnalysis.GUEST_VMS, vm.getHostId(), VirtualMachineModelAnalysis.CPUS, vcpuId.toString());
         ss.modifyAttribute(ts, ht.getTid(), vcpuQuark);
     }
 
-    private @Nullable VirtualMachine findVmFromProcess(ITmfEvent event, HostThread ht) {
+    private @Nullable
+    static VirtualMachine findVmFromProcess(ITmfEvent event, HostThread ht, VirtualEnvironmentBuilder virtEnv) {
         /*
          * Maybe the process of the current thread has a VM associated, see if we
          * can infer the VM for this thread
@@ -212,11 +201,8 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
             return null;
         }
         HostThread parentHt = new HostThread(ht.getHost(), pid);
-        VirtualMachine vm = fTidToVm.get(parentHt);
-        if (vm == null) {
-            return null;
-        }
-        fTidToVm.put(ht, vm);
+        VirtualMachine vm = virtEnv.getGuestMachine(event, parentHt);
+        virtEnv.setGuestMachine(vm, ht);
 
         return vm;
 

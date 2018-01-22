@@ -12,13 +12,12 @@ package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.cor
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.analysis.os.linux.core.event.aspect.LinuxTidAspect;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
-import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
-import org.eclipse.tracecompass.incubator.analysis.core.model.ModelManager;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualEnvironmentBuilder;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
-import org.eclipse.tracecompass.tmf.core.event.aspect.TmfCpuAspect;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 
 /**
@@ -29,38 +28,40 @@ import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 public interface IVirtualMachineEventHandler {
 
     /**
-     * The name of the guest VMs attribute in the state system
+     * Get the events required by this event handler
+     *
+     * @param layout
+     *            The event layout to get events for
+     * @return The required events for a given handler
      */
-    String GUEST_VMS = "Guests"; //$NON-NLS-1$
-    /**
-     * The name of the CPUs attribute in the state system
-     */
-    String CPUS = "CPUs"; //$NON-NLS-1$
-    /**
-     * The name of the process attribute in the state system
-     */
-    String PROCESS = "Process Id"; //$NON-NLS-1$
-
     Set<String> getRequiredEvents(IKernelAnalysisEventLayout layout);
 
-    void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event, IKernelAnalysisEventLayout eventLayout);
+    /**
+     * @param ss
+     * @param event
+     * @param virtEnv
+     * @param eventLayout
+     */
+    void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, IKernelAnalysisEventLayout eventLayout);
 
+    /**
+     * Utility method to retrieve the current running thread
+     *
+     * @param event
+     *            The event for which to get the thread
+     * @param ts
+     *            The timestamp
+     * @return The currently running thread or <code>null</code> if no thread is
+     *         running
+     */
     static @Nullable HostThread getCurrentHostThread(ITmfEvent event, long ts) {
-        /* Get the CPU the event is running on */
-        Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
-        if (cpu == null) {
+        /* Get the tid of the event */
+        Integer tid = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), LinuxTidAspect.class, event);
+        if (tid == null) {
             /* We couldn't find any CPU information, ignore this event */
             return null;
         }
-        /* Get the LTTng kernel analysis for the host */
-        String hostId = event.getTrace().getHostId();
-        IHostModel model = ModelManager.getModelFor(hostId);
-        int tid = model.getThreadOnCpu(cpu, ts, true);
-
-        if (tid == IHostModel.UNKNOWN_TID) {
-            return null;
-        }
-        return new HostThread(hostId, tid);
+        return new HostThread(event.getTrace().getHostId(), tid);
     }
 
 }

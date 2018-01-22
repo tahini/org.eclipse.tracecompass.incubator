@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.handlers.IVirtualMachineEventHandler;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualMachineModelAnalysis;
 import org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.shared.vm.VmTestCase;
 import org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.shared.vm.VmTestExperiment;
 import org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.shared.vm.VmTraces;
@@ -59,8 +59,8 @@ public class OneQemuKvmModelTestCase extends VmTestCase {
         // Check the 'Machines' sub-tree towards the end of the trace
         PunctualInfo oneInfo = new PunctualInfo(300L);
         oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID), TmfStateValue.newValueString(VmTraces.HOST_ONE_QEMUKVM.getFileName()));
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID, IVirtualMachineEventHandler.GUEST_VMS, GUEST_ID), TmfStateValue.newValueString(VmTraces.GUEST_ONE_QEMUKVM.getFileName()));
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID, IVirtualMachineEventHandler.GUEST_VMS, GUEST_ID, IVirtualMachineEventHandler.CPUS, "0"), TmfStateValue.newValueInt(31));
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID, VirtualMachineModelAnalysis.GUEST_VMS, GUEST_ID), TmfStateValue.newValueString(VmTraces.GUEST_ONE_QEMUKVM.getFileName()));
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID, VirtualMachineModelAnalysis.GUEST_VMS, GUEST_ID, VirtualMachineModelAnalysis.CPUS, "0"), TmfStateValue.newValueInt(31));
         info.add(oneInfo);
 
         return info;

@@ -22,6 +22,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.DefaultEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelTrace;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualEnvironmentModel;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.handlers.IVirtualMachineEventHandler;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.handlers.QemuKvmEventHandler;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
@@ -68,6 +69,10 @@ public class VirtualMachineModelStateProvider extends AbstractTmfStateProvider {
 
     private final Collection<IVirtualMachineEventHandler> fHandlers;
 
+    private final VirtualMachineModelAnalysis fAnalysis;
+
+    private @Nullable VirtualEnvironmentBuilder fVirtualizedEnvironment;
+
     // ------------------------------------------------------------------------
     // Constructor
     // ------------------------------------------------------------------------
@@ -77,12 +82,16 @@ public class VirtualMachineModelStateProvider extends AbstractTmfStateProvider {
      *
      * @param experiment
      *            The virtual machine experiment
+     * @param analysis
+     *            The model analysis, used to retrieve the virtual environment once
+     *            the build is started
      */
-    public VirtualMachineModelStateProvider(TmfExperiment experiment) {
+    public VirtualMachineModelStateProvider(TmfExperiment experiment, VirtualMachineModelAnalysis analysis) {
         super(experiment, "Virtual Machine State Provider"); //$NON-NLS-1$
 
         fLayouts = new HashMap<>();
         fHandlers = ImmutableSet.of(new QemuKvmEventHandler());
+        fAnalysis = analysis;
     }
 
     // ------------------------------------------------------------------------
@@ -126,7 +135,7 @@ public class VirtualMachineModelStateProvider extends AbstractTmfStateProvider {
     @Override
     public VirtualMachineModelStateProvider getNewInstance() {
         TmfExperiment trace = getTrace();
-        return new VirtualMachineModelStateProvider(trace);
+        return new VirtualMachineModelStateProvider(trace, fAnalysis);
     }
 
     @Override
@@ -151,8 +160,17 @@ public class VirtualMachineModelStateProvider extends AbstractTmfStateProvider {
         if (handlers.isEmpty()) {
             return;
         }
+        VirtualEnvironmentBuilder virtEnv = fVirtualizedEnvironment;
+        if (virtEnv == null) {
+            IVirtualEnvironmentModel ve = fAnalysis.getVirtualEnvironmentModel();
+            if (!(ve instanceof VirtualEnvironmentBuilder)) {
+                throw new IllegalStateException("The virtualized environment is not in build mode"); //$NON-NLS-1$
+            }
+            virtEnv = (VirtualEnvironmentBuilder) ve;
+            fVirtualizedEnvironment = virtEnv;
+        }
         for (IVirtualMachineEventHandler handler : handlers) {
-            handler.handleEvent(ss, event, eventLayout);
+            handler.handleEvent(ss, event, virtEnv, eventLayout);
         }
     }
 

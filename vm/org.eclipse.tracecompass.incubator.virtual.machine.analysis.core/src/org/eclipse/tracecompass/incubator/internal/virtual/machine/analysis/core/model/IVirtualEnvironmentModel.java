@@ -9,6 +9,8 @@
 
 package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model;
 
+import java.util.Collection;
+
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
@@ -47,8 +49,16 @@ public interface IVirtualEnvironmentModel {
     VirtualMachine getCurrentMachine(ITmfEvent event);
 
     /**
-     * Get the virtual CPU from a guest that corresponds to a specific thread from
-     * a host
+     * Get all the machines, hosts, guests and unknowns, described by this virtual
+     * environment
+     *
+     * @return All the known machines
+     */
+    Collection<VirtualMachine> getMachines();
+
+    /**
+     * Get the virtual CPU from a guest that corresponds to a specific thread from a
+     * host
      *
      * @param event
      *            The event being handled
@@ -61,6 +71,19 @@ public interface IVirtualEnvironmentModel {
     @Nullable VirtualCPU getVirtualCpu(ITmfEvent event, HostThread ht);
 
     /**
+     * Get the guest that corresponds to a specific thread from a host
+     *
+     * @param event
+     *            The event being handled
+     * @param ht
+     *            The current thread this event belongs to. This thread should be
+     *            running on the host.
+     * @return The guest machine corresponding to this thread or {@code null} if no
+     *         guest corresponds to the thread
+     */
+    @Nullable VirtualMachine getGuestMachine(ITmfEvent event, HostThread ht);
+
+    /**
      * Get the host thread corresponding to a virtual CPU
      *
      * @param vcpu
@@ -68,7 +91,7 @@ public interface IVirtualEnvironmentModel {
      * @return The HostThread corresponding to this CPU, or <code>null</code> if no
      *         such thread is found
      */
-//    @Nullable
-//    HostThread getVirtualCpuTid(VirtualCPU vcpu);
+    // @Nullable
+    // HostThread getVirtualCpuTid(VirtualCPU vcpu);
 
 }

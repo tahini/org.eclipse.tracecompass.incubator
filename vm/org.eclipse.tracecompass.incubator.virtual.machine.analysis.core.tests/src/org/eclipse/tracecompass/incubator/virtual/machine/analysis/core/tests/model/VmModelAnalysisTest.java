@@ -78,7 +78,7 @@ public class VmModelAnalysisTest {
         });
     }
 
-    private VirtualMachineModelAnalysis setUp() throws TmfAnalysisException {
+    private VirtualMachineModelAnalysis setUp() {
         TmfExperiment experiment = fTestCase.getExperiment();
 
         /* Open the traces */
@@ -89,7 +89,6 @@ public class VmModelAnalysisTest {
         experiment.traceOpened(new TmfTraceOpenedSignal(this, experiment, null));
 
         VirtualMachineModelAnalysis module = VirtualMachineModelAnalysis.getModel(experiment);
-        module.setTrace(experiment);
         module.schedule();
         assertTrue(module.waitForCompletion());
 

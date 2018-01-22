@@ -22,6 +22,8 @@ import java.util.Set;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.tid.TidAnalysisModule;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualEnvironmentModel;
+import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
+import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.exceptions.TmfAnalysisException;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSignalHandler;
@@ -41,11 +43,28 @@ import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
  */
 public class VirtualMachineModelAnalysis extends TmfStateSystemAnalysisModule {
 
+    /**
+     * The name of the guest VMs attribute in the state system
+     */
+    public static final String GUEST_VMS = "Guests"; //$NON-NLS-1$
+    /**
+     * The name of the CPUs attribute in the state system
+     */
+    public static final String CPUS = "CPUs"; //$NON-NLS-1$
+    /**
+     * The name of the process attribute in the state system
+     */
+    public static final String PROCESS = "Process Id"; //$NON-NLS-1$
+    /**
+     * The hypervisor attribute in the state system
+     */
+    public static final String HYPERVISOR = "Hypervisor"; //$NON-NLS-1$
+
     /** The ID of this analysis module */
     public static final String ID = "org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.model.analysis"; //$NON-NLS-1$
     private static final Map<TmfExperiment, VirtualMachineModelAnalysis> INSTANCE_MAP = new HashMap<>();
 
-    private @Nullable VirtualEnvironment fVirtualEnvironment = null;
+    private @Nullable IVirtualEnvironmentModel fVirtualEnvironment = null;
 
     /**
      * Get the model analysis for this experiment. The module needs to be scheduled
@@ -83,7 +102,7 @@ public class VirtualMachineModelAnalysis extends TmfStateSystemAnalysisModule {
         if (!(trace instanceof TmfExperiment)) {
             throw new IllegalStateException();
         }
-        return new VirtualMachineModelStateProvider((TmfExperiment) trace);
+        return new VirtualMachineModelStateProvider((TmfExperiment) trace, this);
     }
 
     @Override
@@ -113,16 +132,34 @@ public class VirtualMachineModelAnalysis extends TmfStateSystemAnalysisModule {
         super.traceClosed(signal);
         // Dispose of this analysis, since it is not linked to the trace it will not be
         // automatic
-        dispose();
+        if (signal.getTrace() == getTrace()) {
+            dispose();
+        }
     }
 
     /**
-     * Get the virtual environment computed by this analysis
+     * Get the virtual environment computed by this analysis. The caller must first
+     * make sure this analysis is initialized by calling the
+     * {@link #waitForInitialization()} method, otherwise it will throw a
+     * NullPointerException.
      *
      * @return The virtual environment
      */
-    public IVirtualEnvironmentModel getVirtualEnvironmentModel() {
-        return fVirtualEnvironment;
+    public synchronized IVirtualEnvironmentModel getVirtualEnvironmentModel() {
+        IVirtualEnvironmentModel ve = fVirtualEnvironment;
+        if (ve == null) {
+            ITmfStateSystem stateSystem = getStateSystem();
+            if (stateSystem == null) {
+                throw new NullPointerException("State System null: must call #waitForInitialization() before calling this method"); //$NON-NLS-1$
+            }
+            if (stateSystem instanceof ITmfStateSystemBuilder) {
+                ve = new VirtualEnvironmentBuilder((ITmfStateSystemBuilder) stateSystem);
+            } else {
+                ve = new VirtualEnvironment(stateSystem);
+            }
+            fVirtualEnvironment = ve;
+        }
+        return ve;
     }
 
 }
