@@ -18,7 +18,8 @@ import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 /**
  * Interface that represents the model of a virtual environment. The
  * implementations should be hypervisor-agnostic and model both virtual machines
- * and containers.
+ * and containers. All calls to this interface's methods should be blocking, ie
+ * wait until the data is available before returning an answer.
  *
  * @author Geneviève Bastien
  */
@@ -50,7 +51,7 @@ public interface IVirtualEnvironmentModel {
 
     /**
      * Get all the machines, hosts, guests and unknowns, described by this virtual
-     * environment
+     * environment. This method is not blocking.
      *
      * @return All the known machines
      */
@@ -68,7 +69,8 @@ public interface IVirtualEnvironmentModel {
      * @return The virtual CPU corresponding to this thread or {@code null} if no
      *         virtual CPU corresponds to the thread
      */
-    @Nullable VirtualCPU getVirtualCpu(ITmfEvent event, HostThread ht);
+    @Nullable
+    VirtualCPU getVirtualCpu(ITmfEvent event, HostThread ht);
 
     /**
      * Get the guest that corresponds to a specific thread from a host
@@ -81,7 +83,8 @@ public interface IVirtualEnvironmentModel {
      * @return The guest machine corresponding to this thread or {@code null} if no
      *         guest corresponds to the thread
      */
-    @Nullable VirtualMachine getGuestMachine(ITmfEvent event, HostThread ht);
+    @Nullable
+    VirtualMachine getGuestMachine(ITmfEvent event, HostThread ht);
 
     /**
      * Get the host thread corresponding to a virtual CPU

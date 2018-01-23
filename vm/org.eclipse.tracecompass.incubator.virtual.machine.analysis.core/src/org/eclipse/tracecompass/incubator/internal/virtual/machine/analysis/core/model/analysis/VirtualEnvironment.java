@@ -27,7 +27,9 @@ import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import com.google.common.primitives.Longs;
 
 /**
- * The virtual environment model implementation based on a state system
+ * The virtual environment model implementation based on a complete state
+ * system. The methods in this class do not need to block as the analysis is
+ * finished building
  *
  * Package-private so it is not directly accessible to the other analyses of
  * this plugin
@@ -121,7 +123,7 @@ class VirtualEnvironment implements IVirtualEnvironmentModel {
     }
 
     @Override
-    public synchronized VirtualMachine getCurrentMachine(ITmfEvent event) {
+    public VirtualMachine getCurrentMachine(ITmfEvent event) {
         VirtualMachine machine = innerGetCurrentMachine(event);
         if (machine == null) {
             throw new NullPointerException("Machine should not be null"); //$NON-NLS-1$

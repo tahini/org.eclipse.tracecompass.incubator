@@ -75,7 +75,7 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
     @Override
     public void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, IKernelAnalysisEventLayout layout) {
         String eventName = event.getName();
-        VirtualMachine machine = virtEnv.getCurrentMachine(event);
+        VirtualMachine machine = virtEnv.getCurrentMachineBuild(event);
         long ts = event.getTimestamp().toNanos();
         if (layout.eventsKVMEntry().contains(eventName)) {
             setMachineHost(ss, machine);
@@ -100,7 +100,7 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
             return;
         }
 
-        VirtualMachine vm = virtEnv.getGuestMachine(event, ht);
+        VirtualMachine vm = virtEnv.getGuestMachineBuild(event, ht);
         if (vm != null) {
             // Machine is already known, exit
             return;
@@ -133,7 +133,7 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
                 }
                 HostThread parentHt = new HostThread(ht.getHost(), pid);
                 // Update guest process if not known
-                if (virtEnv.getGuestMachine(event, parentHt) == null) {
+                if (virtEnv.getGuestMachineBuild(event, parentHt) == null) {
                     virtEnv.setGuestMachine(machine, parentHt);
                     int guestProcessQuark = ss.getQuarkRelativeAndAdd(guestQuark, VirtualMachineModelAnalysis.PROCESS);
                     ss.modifyAttribute(ts, pid, guestProcessQuark);
@@ -165,13 +165,13 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
         if (ht == null) {
             return;
         }
-        VirtualCPU vcpu = virtEnv.getVirtualCpu(event, ht);
+        VirtualCPU vcpu = virtEnv.getVirtualCpuBuild(event, ht);
         if (vcpu != null) {
             // The current thread has a vcpu configured, ignore
             return;
         }
         // Try to find the guest that corresponds to this one
-        VirtualMachine vm = virtEnv.getGuestMachine(event, ht);
+        VirtualMachine vm = virtEnv.getGuestMachineBuild(event, ht);
         if (vm == null) {
             vm = findVmFromProcess(event, ht, virtEnv);
             if (vm == null) {
@@ -201,7 +201,7 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
             return null;
         }
         HostThread parentHt = new HostThread(ht.getHost(), pid);
-        VirtualMachine vm = virtEnv.getGuestMachine(event, parentHt);
+        VirtualMachine vm = virtEnv.getGuestMachineBuild(event, parentHt);
         virtEnv.setGuestMachine(vm, ht);
 
         return vm;

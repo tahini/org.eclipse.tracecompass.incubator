@@ -37,7 +37,9 @@ import com.google.common.collect.Multimap;
 
 /**
  * This is the state provider that builds the model for the Virtual Machine
- * environment
+ * environment.
+ *
+ *
  *
  * Attribute tree:
  *

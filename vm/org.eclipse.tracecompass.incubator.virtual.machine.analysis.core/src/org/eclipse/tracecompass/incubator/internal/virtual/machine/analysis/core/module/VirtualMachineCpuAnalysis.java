@@ -17,8 +17,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -28,7 +28,6 @@ import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelAnalysisModule;
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelThreadInformationProvider;
-import org.eclipse.tracecompass.analysis.os.linux.core.tid.TidAnalysisModule;
 import org.eclipse.tracecompass.analysis.timing.core.segmentstore.IAnalysisProgressListener;
 import org.eclipse.tracecompass.analysis.timing.core.segmentstore.ISegmentStoreProvider;
 import org.eclipse.tracecompass.datastore.core.interval.IHTIntervalReader;
@@ -36,6 +35,7 @@ import org.eclipse.tracecompass.datastore.core.serialization.ISafeByteBufferWrit
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.Activator;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.data.VcpuStateValues;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.data.VmAttributes;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualMachineModelAnalysis;
 import org.eclipse.tracecompass.internal.datastore.core.serialization.SafeByteBufferWrapper;
 import org.eclipse.tracecompass.segmentstore.core.ISegment;
 import org.eclipse.tracecompass.segmentstore.core.ISegmentStore;
@@ -56,7 +56,6 @@ import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.TmfStateSystemAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
-import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperimentUtils;
 
@@ -254,14 +253,12 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule impl
 
     @Override
     protected Iterable<IAnalysisModule> getDependentAnalyses() {
-        Set<IAnalysisModule> modules = new HashSet<>();
-        /* Depends on the LTTng Kernel analysis modules */
-        for (ITmfTrace trace : TmfTraceManager.getTraceSet(getTrace())) {
-            for (TidAnalysisModule module : TmfTraceUtils.getAnalysisModulesOfClass(trace, TidAnalysisModule.class)) {
-                modules.add(module);
-            }
+        ITmfTrace exp = getTrace();
+        if (exp instanceof TmfExperiment) {
+            return Collections.singleton(VirtualMachineModelAnalysis.getModel((TmfExperiment) exp));
         }
-        return modules;
+
+        return Collections.emptySet();
     }
 
     private static Multimap<Integer, ITmfStateInterval> createThreadMultimap() {

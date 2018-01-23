@@ -153,7 +153,7 @@ public class VirtualMachineModelAnalysis extends TmfStateSystemAnalysisModule {
                 throw new NullPointerException("State System null: must call #waitForInitialization() before calling this method"); //$NON-NLS-1$
             }
             if (stateSystem instanceof ITmfStateSystemBuilder) {
-                ve = new VirtualEnvironmentBuilder((ITmfStateSystemBuilder) stateSystem);
+                ve = new VirtualEnvironmentBuilder((ITmfStateSystemBuilder) stateSystem, this);
             } else {
                 ve = new VirtualEnvironment(stateSystem);
             }
@@ -161,5 +161,16 @@ public class VirtualMachineModelAnalysis extends TmfStateSystemAnalysisModule {
         }
         return ve;
     }
+
+    @Override
+    public void dispose() {
+        ITmfTrace trace = getTrace();
+        if (trace instanceof TmfExperiment) {
+            INSTANCE_MAP.remove(trace);
+        }
+        super.dispose();
+    }
+
+
 
 }

@@ -15,6 +15,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.tests.stubs.LinuxTestCase.IntervalInfo;
 import org.eclipse.tracecompass.analysis.os.linux.core.tests.stubs.LinuxTestCase.PunctualInfo;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualMachineModelAnalysis;
@@ -22,12 +23,12 @@ import org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.sh
 import org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.shared.vm.VmTestExperiment;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.tests.shared.utils.StateSystemTestUtils;
-import org.eclipse.tracecompass.tmf.core.exceptions.TmfAnalysisException;
 import org.eclipse.tracecompass.tmf.core.signal.TmfTraceOpenedSignal;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -42,6 +43,7 @@ import org.junit.runners.Parameterized.Parameters;
 public class VmModelAnalysisTest {
 
     private final VmTestCase fTestCase;
+    private @Nullable VirtualMachineModelAnalysis fAnalysis;
 
     /**
      * Constructor
@@ -57,11 +59,35 @@ public class VmModelAnalysisTest {
     }
 
     /**
+     * Create the analysis
+     */
+    @Before
+    public void setUp() {
+        TmfExperiment experiment = fTestCase.getExperiment();
+
+        /* Open the traces */
+        for (ITmfTrace trace : experiment.getTraces()) {
+            ((TmfTrace) trace).traceOpened(new TmfTraceOpenedSignal(this, trace, null));
+        }
+
+        experiment.traceOpened(new TmfTraceOpenedSignal(this, experiment, null));
+
+        VirtualMachineModelAnalysis module = VirtualMachineModelAnalysis.getModel(experiment);
+        module.schedule();
+        assertTrue(module.waitForCompletion());
+        fAnalysis = module;
+    }
+
+    /**
      * Clean up
      */
     @After
     public void tearDown() {
         fTestCase.dispose();
+        VirtualMachineModelAnalysis analysis = fAnalysis;
+        if (analysis != null) {
+            analysis.dispose();
+        }
     }
 
     /**
@@ -78,71 +104,44 @@ public class VmModelAnalysisTest {
         });
     }
 
-    private VirtualMachineModelAnalysis setUp() {
-        TmfExperiment experiment = fTestCase.getExperiment();
-
-        /* Open the traces */
-        for (ITmfTrace trace : experiment.getTraces()) {
-            ((TmfTrace) trace).traceOpened(new TmfTraceOpenedSignal(this, trace, null));
-        }
-
-        experiment.traceOpened(new TmfTraceOpenedSignal(this, experiment, null));
-
-        VirtualMachineModelAnalysis module = VirtualMachineModelAnalysis.getModel(experiment);
-        module.schedule();
-        assertTrue(module.waitForCompletion());
-
-        return module;
-    }
-
     /**
      * Test that the analysis executes without problems
-     *
-     * @throws TmfAnalysisException
-     *             Exception thrown by set up
      */
     @Test
-    public void testAnalysisExecution() throws TmfAnalysisException {
-        VirtualMachineModelAnalysis module = setUp();
+    public void testAnalysisExecution() {
+        VirtualMachineModelAnalysis module = fAnalysis;
+        assertNotNull(module);
         assertNotNull(module.getStateSystem());
     }
 
     /**
      * Test the intervals built by the state provider
-     *
-     * @throws TmfAnalysisException
-     *             Exception thrown by set up
      */
     @Test
-    public void testStateProviderIntervalData() throws TmfAnalysisException {
-        VirtualMachineModelAnalysis module = setUp();
+    public void testStateProviderIntervalData() {
+        VirtualMachineModelAnalysis module = fAnalysis;
         assertNotNull(module);
 
         ITmfStateSystem ss = module.getStateSystem();
         assertNotNull(ss);
 
-        for (@NonNull
-        IntervalInfo info : fTestCase.getTestIntervals()) {
+        for (@NonNull IntervalInfo info : fTestCase.getTestIntervals()) {
             StateSystemTestUtils.testIntervalForAttributes(ss, info.getIntervals(), info.getAttributePath());
         }
     }
 
     /**
      * Test the data of attributes at punctual times
-     *
-     * @throws TmfAnalysisException
-     *             Exception thrown by set up
      */
     @Test
-    public void testStateProviderPunctualData() throws TmfAnalysisException {
-        VirtualMachineModelAnalysis module = setUp();
+    public void testStateProviderPunctualData() {
+        VirtualMachineModelAnalysis module = fAnalysis;
         assertNotNull(module);
 
         ITmfStateSystem ss = module.getStateSystem();
         assertNotNull(ss);
 
-        for (@NonNull
-        PunctualInfo info : fTestCase.getPunctualTestData()) {
+        for (@NonNull PunctualInfo info : fTestCase.getPunctualTestData()) {
             StateSystemTestUtils.testValuesAtTime(ss, info.getTimestamp(), info.getValues());
         }
     }
