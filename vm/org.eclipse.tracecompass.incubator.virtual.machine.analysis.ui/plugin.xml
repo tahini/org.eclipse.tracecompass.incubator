@@ -49,7 +49,7 @@
             class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
             id="org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.vm.ui.vmview">
          <analysisId
-               id="org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.VirtualMachineAnalysisModule">
+               id="org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.virtualcpu.VirtualMachineCpuAnalysis">
          </analysisId>
       </output>
       <output
@@ -63,21 +63,21 @@
             class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
             id="org.eclipse.tracecompass.analysis.timing.ui.segstore.table:org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.VirtualMachineAnalysisModule">
          <analysisId
-               id="org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.VirtualMachineAnalysisModule">
+               id="org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.virtualcpu.VirtualMachineCpuAnalysis">
          </analysisId>
       </output>
       <output
             class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
             id="org.eclipse.tracecompass.analysis.timing.ui.segstore.statistics:org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.VirtualMachineAnalysisModule">
          <analysisId
-               id="org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.VirtualMachineAnalysisModule">
+               id="org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.virtualcpu.VirtualMachineCpuAnalysis">
          </analysisId>
       </output>
       <output
             class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
             id="org.eclipse.tracecompass.analysis.timing.ui.segstore.scatter:org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.VirtualMachineAnalysisModule">
          <analysisId
-               id="org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.VirtualMachineAnalysisModule">
+               id="org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.virtualcpu.VirtualMachineCpuAnalysis">
          </analysisId>
       </output>
    </extension>

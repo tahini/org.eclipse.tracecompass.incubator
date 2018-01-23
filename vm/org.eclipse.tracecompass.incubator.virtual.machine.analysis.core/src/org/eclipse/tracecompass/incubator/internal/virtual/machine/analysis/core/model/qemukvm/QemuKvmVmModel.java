@@ -50,6 +50,9 @@ import com.google.common.collect.Table;
  * hypervisor. It also requires vmsync_* events from both guests and hosts to
  * identify which thread from a host belongs to which machine.
  *
+ * FIXME: Remove this class entirely once the fused analysis does not require it
+ * Part of it is in the model, part in each analysis
+ *
  * @author Mohamad Gebai
  */
 public class QemuKvmVmModel implements IVirtualMachineModel {

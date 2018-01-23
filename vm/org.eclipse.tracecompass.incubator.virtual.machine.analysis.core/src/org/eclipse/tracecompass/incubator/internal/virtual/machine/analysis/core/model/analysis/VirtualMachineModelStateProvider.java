@@ -22,8 +22,9 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.DefaultEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelTrace;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.IVirtualMachineEventHandler;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualEnvironmentModel;
-import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.handlers.IVirtualMachineEventHandler;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.handlers.IVirtualMachineModelBuilderEventHandler;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.handlers.QemuKvmEventHandler;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
@@ -67,9 +68,9 @@ public class VirtualMachineModelStateProvider extends AbstractTmfStateProvider {
 
     private final Map<ITmfTrace, IKernelAnalysisEventLayout> fLayouts;
 
-    private final Multimap<String, IVirtualMachineEventHandler> fEventNames = HashMultimap.create();
+    private final Multimap<String, IVirtualMachineModelBuilderEventHandler> fEventNames = HashMultimap.create();
 
-    private final Collection<IVirtualMachineEventHandler> fHandlers;
+    private final Collection<IVirtualMachineModelBuilderEventHandler> fHandlers;
 
     private final VirtualMachineModelAnalysis fAnalysis;
 
@@ -158,7 +159,7 @@ public class VirtualMachineModelStateProvider extends AbstractTmfStateProvider {
         }
 
         ITmfStateSystemBuilder ss = checkNotNull(getStateSystemBuilder());
-        Collection<IVirtualMachineEventHandler> handlers = fEventNames.get(eventName);
+        Collection<IVirtualMachineModelBuilderEventHandler> handlers = fEventNames.get(eventName);
         if (handlers.isEmpty()) {
             return;
         }

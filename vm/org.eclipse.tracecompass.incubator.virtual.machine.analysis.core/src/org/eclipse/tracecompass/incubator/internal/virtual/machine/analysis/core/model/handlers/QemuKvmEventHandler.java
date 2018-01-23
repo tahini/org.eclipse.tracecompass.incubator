@@ -18,6 +18,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.event.aspect.LinuxPidAspect;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.IVirtualMachineEventHandler;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualCPU;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualMachine;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualEnvironmentBuilder;
@@ -35,7 +36,7 @@ import com.google.common.collect.ImmutableSet;
  *
  * @author Geneviève Bastien
  */
-public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
+public class QemuKvmEventHandler implements IVirtualMachineModelBuilderEventHandler {
 
     private Map<IKernelAnalysisEventLayout, Set<String>> fRequiredEvents = new HashMap<>();
 
@@ -73,7 +74,7 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
      *            The event to handle
      */
     @Override
-    public void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, IKernelAnalysisEventLayout layout) {
+    public void handleBuilderEvent(ITmfStateSystemBuilder ss, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, IKernelAnalysisEventLayout layout) {
         String eventName = event.getName();
         VirtualMachine machine = virtEnv.getCurrentMachineBuild(event);
         long ts = event.getTimestamp().toNanos();
@@ -124,7 +125,7 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
                 virtEnv.setGuestMachine(machine, ht);
 
                 int hypervisorQuark = ss.getQuarkRelativeAndAdd(guestQuark, VirtualMachineModelAnalysis.HYPERVISOR);
-                ss.modifyAttribute(ts, "Qemu/KVM", hypervisorQuark);
+                ss.modifyAttribute(ts, "Qemu/KVM", hypervisorQuark); //$NON-NLS-1$
 
                 // we have the thread running, its associated process represents the guest
                 Integer pid = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), LinuxPidAspect.class, event);
@@ -190,8 +191,7 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
         ss.modifyAttribute(ts, ht.getTid(), vcpuQuark);
     }
 
-    private @Nullable
-    static VirtualMachine findVmFromProcess(ITmfEvent event, HostThread ht, VirtualEnvironmentBuilder virtEnv) {
+    private @Nullable static VirtualMachine findVmFromProcess(ITmfEvent event, HostThread ht, VirtualEnvironmentBuilder virtEnv) {
         /*
          * Maybe the process of the current thread has a VM associated, see if we
          * can infer the VM for this thread
@@ -202,10 +202,11 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
         }
         HostThread parentHt = new HostThread(ht.getHost(), pid);
         VirtualMachine vm = virtEnv.getGuestMachineBuild(event, parentHt);
-        virtEnv.setGuestMachine(vm, ht);
+        if (vm != null) {
+            virtEnv.setGuestMachine(vm, ht);
+        }
 
         return vm;
-
     }
 
 }

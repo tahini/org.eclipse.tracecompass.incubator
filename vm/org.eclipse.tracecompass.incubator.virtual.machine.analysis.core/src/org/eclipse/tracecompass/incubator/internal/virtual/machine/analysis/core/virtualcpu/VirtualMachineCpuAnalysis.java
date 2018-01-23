@@ -11,7 +11,7 @@
  *   Geneviève Bastien - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.module;
+package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.virtualcpu;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -32,11 +33,10 @@ import org.eclipse.tracecompass.analysis.timing.core.segmentstore.IAnalysisProgr
 import org.eclipse.tracecompass.analysis.timing.core.segmentstore.ISegmentStoreProvider;
 import org.eclipse.tracecompass.datastore.core.interval.IHTIntervalReader;
 import org.eclipse.tracecompass.datastore.core.serialization.ISafeByteBufferWriter;
+import org.eclipse.tracecompass.datastore.core.serialization.SafeByteBufferFactory;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.Activator;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.data.VcpuStateValues;
-import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.data.VmAttributes;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualMachineModelAnalysis;
-import org.eclipse.tracecompass.internal.datastore.core.serialization.SafeByteBufferWrapper;
 import org.eclipse.tracecompass.segmentstore.core.ISegment;
 import org.eclipse.tracecompass.segmentstore.core.ISegmentStore;
 import org.eclipse.tracecompass.segmentstore.core.SegmentStoreFactory;
@@ -111,7 +111,7 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule impl
 
         @Override
         public int getSizeOnDisk() {
-            return Long.BYTES * 2 + Byte.BYTES + SafeByteBufferWrapper.getStringSizeInBuffer(fEventName);
+            return Long.BYTES * 2 + Byte.BYTES + SafeByteBufferFactory.getStringSizeInBuffer(fEventName);
         }
 
         @Override
@@ -129,7 +129,7 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule impl
     }
 
     /** The ID of this analysis module */
-    public static final String ID = "org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.VirtualMachineAnalysisModule"; //$NON-NLS-1$
+    public static final String ID = "org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.virtualcpu.VirtualMachineCpuAnalysis"; //$NON-NLS-1$
 
     // TODO: Update with event layout when requirements are back */
     static final Set<String> REQUIRED_EVENTS = ImmutableSet.of(
@@ -139,19 +139,19 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule impl
     /* State value for a preempted virtual CPU */
     private static final ITmfStateValue VCPU_PREEMPT_VALUE = TmfStateValue.newValueInt(VcpuStateValues.VCPU_PREEMPT);
 
-    private static final String SEGSTORE_SUFFIX = ".segments";
+    private static final String SEGSTORE_SUFFIX = ".segments"; //$NON-NLS-1$
     private static final IHTIntervalReader<ISegment> SEGMENT_READER = buffer -> new VmWrongSegment(buffer.getLong(), buffer.getLong(), buffer.get(), buffer.getString());
 
     private static final ISegmentAspect SEGMENT_ASPECT_EVENT_NAME = new ISegmentAspect() {
 
         @Override
         public String getName() {
-            return "Event Name";
+            return Objects.requireNonNull(Messages.VirtualMachineCPUAnalysis_EventNameAspectName);
         }
 
         @Override
         public String getHelpText() {
-            return "Event Name";
+            return Objects.requireNonNull(Messages.VirtualMachineCPUAnalysis_EventNameAspectHelp);
         }
 
         @Override
@@ -192,7 +192,7 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule impl
             String filename = getId() + SEGSTORE_SUFFIX;
             /* See if the data file already exists on disk */
             String dir = TmfTraceManager.getSupplementaryFileDir(trace);
-            final Path file = Paths.get(dir, filename);
+            final Path file = Objects.requireNonNull(Paths.get(dir, filename));
 
             ISegmentStore<ISegment> segmentStore = SegmentStoreFactory.createOnDiskSegmentStore(file, SEGMENT_READER);
             fSegmentStore = segmentStore;
@@ -237,8 +237,13 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule impl
         if (!(trace instanceof TmfExperiment) || segmentStore == null) {
             throw new IllegalStateException();
         }
+        VirtualMachineModelAnalysis model = VirtualMachineModelAnalysis.getModel((TmfExperiment) trace);
+        model.schedule();
+        if (!model.waitForInitialization()) {
+            throw new IllegalStateException("Problem initializing the model analysis"); //$NON-NLS-1$
+        }
 
-        return new VirtualMachineStateProvider((TmfExperiment) trace, segmentStore);
+        return new VirtualMachineCpuStateProvider((TmfExperiment) trace, segmentStore, model.getVirtualEnvironmentModel());
     }
 
     @Override
@@ -383,8 +388,8 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule impl
     }
 
     @Override
-    protected void disposeProvider(boolean deleteFiles) {
-        super.disposeProvider(deleteFiles);
+    protected void completingBuild(boolean deleteFiles) {
+        super.completingBuild(deleteFiles);
         ISegmentStore<ISegment> segmentStore = fSegmentStore;
         if (segmentStore != null) {
             segmentStore.close(deleteFiles);

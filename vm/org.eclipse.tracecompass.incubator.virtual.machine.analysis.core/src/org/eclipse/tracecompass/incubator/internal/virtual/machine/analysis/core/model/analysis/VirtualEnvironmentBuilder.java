@@ -23,12 +23,16 @@ import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
  * analysis has reached the timestamp of the request. It also provides
  * non-blocking methods for the building state provider to use.
  *
- * Package-private so it is not directly accessible to the other analyses of
- * this plugin
- *
  * @author Geneviève Bastien
  */
 public class VirtualEnvironmentBuilder extends VirtualEnvironment {
+
+    /**
+     * Give the model analysis a headstart on the other analyses, so later events
+     * can enhance the model (no need to wait until the end of the trace, this
+     * buffer is enough)
+     */
+    private static final long ANALYSIS_BUFFER = 100000000L;
 
     private final ITmfStateSystemBuilder fStateSystem;
     private final VirtualMachineModelAnalysis fAnalysis;
@@ -46,7 +50,7 @@ public class VirtualEnvironmentBuilder extends VirtualEnvironment {
     }
 
     private void waitAnalysis(ITmfEvent event) {
-        long ts = event.getTimestamp().toNanos();
+        long ts = event.getTimestamp().toNanos() + ANALYSIS_BUFFER;
         while (!fAnalysis.isQueryable(ts)) {
             try {
                 Thread.sleep(100);

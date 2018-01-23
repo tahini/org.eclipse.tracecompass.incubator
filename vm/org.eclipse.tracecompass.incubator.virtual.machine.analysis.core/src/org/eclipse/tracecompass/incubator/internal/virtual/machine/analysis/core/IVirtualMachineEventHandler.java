@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.handlers;
+package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core;
 
 import java.util.Set;
 
@@ -15,7 +15,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.event.aspect.LinuxTidAspect;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
-import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualEnvironmentBuilder;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualEnvironmentModel;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
@@ -42,7 +42,7 @@ public interface IVirtualMachineEventHandler {
      * @param virtEnv
      * @param eventLayout
      */
-    void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, IKernelAnalysisEventLayout eventLayout);
+    void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event, IVirtualEnvironmentModel virtEnv, IKernelAnalysisEventLayout eventLayout);
 
     /**
      * Utility method to retrieve the current running thread
