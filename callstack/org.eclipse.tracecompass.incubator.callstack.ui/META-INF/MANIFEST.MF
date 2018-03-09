@@ -29,6 +29,7 @@ Export-Package: org.eclipse.tracecompass.incubator.internal.callstack.ui;x-inter
  org.eclipse.tracecompass.incubator.internal.callstack.ui.handler;x-internal:=true,
  org.eclipse.tracecompass.incubator.internal.callstack.ui.views.cct;x-internal:=true,
  org.eclipse.tracecompass.incubator.internal.callstack.ui.views.flamechart;x-internal:=true,
+ org.eclipse.tracecompass.incubator.internal.callstack.ui.views.flamechart2;x-internal:=true,
  org.eclipse.tracecompass.incubator.internal.callstack.ui.views.functiondensity;x-friends:="org.eclipse.tracecompass.incubator.callstack.ui.swtbot.tests",
  org.eclipse.tracecompass.incubator.internal.callstack.ui.views.stacktable;x-internal:=true
 Import-Package: com.google.common.annotations,

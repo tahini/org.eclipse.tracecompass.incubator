@@ -44,6 +44,15 @@
             restorable="true">
       </view>
       <view
+            category="org.eclipse.linuxtools.tmf.ui.views.category"
+            allowMultiple="true"
+            class="org.eclipse.tracecompass.incubator.internal.callstack.ui.views.flamechart2.FlameChartView"
+            icon="icons/obj16/stckframe_obj.gif"
+            id="org.eclipse.tracecompass.incubator.callstack.ui.views.flamechart2"
+            name="Second flame chart"
+            restorable="true">
+      </view>
+      <view
       		category="org.eclipse.linuxtools.tmf.ui.views.category"
             allowMultiple="true"
             class="org.eclipse.tracecompass.incubator.internal.callstack.ui.views.cct.CallingContextTreeView"
