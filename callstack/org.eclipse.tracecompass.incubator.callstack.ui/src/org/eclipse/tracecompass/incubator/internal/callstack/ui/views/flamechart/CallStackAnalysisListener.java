@@ -34,6 +34,7 @@ public class CallStackAnalysisListener implements ITmfNewAnalysisModuleListener 
     public void moduleCreated(IAnalysisModule module) {
         if (module instanceof IFlameChartProvider) {
             module.registerOutput(new TmfAnalysisViewOutput(FlameChartView.ID, module.getId()));
+            module.registerOutput(new TmfAnalysisViewOutput(org.eclipse.tracecompass.incubator.internal.callstack.ui.views.flamechart2.FlameChartView.ID, module.getId()));
             module.registerOutput(new TmfAnalysisViewOutput(FunctionDensityView.ID, module.getId()));
         }
         if (module instanceof ICallGraphProvider) {
