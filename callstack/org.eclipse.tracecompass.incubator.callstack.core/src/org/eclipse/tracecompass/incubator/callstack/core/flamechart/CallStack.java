@@ -130,6 +130,17 @@ public class CallStack {
         }
     }
 
+    /**
+     * Get the quark for a given depth
+     *
+     * @param depth
+     *            The requested depth
+     * @return Get the quark for the function at a given depth
+     */
+    public Integer getQuarkAtDepth(int depth) {
+        return fQuarks.get(depth - 1);
+    }
+
     private String getHostId(long time) {
         return fHostProvider.apply(time);
     }

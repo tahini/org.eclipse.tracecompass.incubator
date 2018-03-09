@@ -38,4 +38,12 @@ public interface IFlameChartProvider extends IAnalysisModule, ISegmentStoreProvi
      * @return The ID of the host
      */
     String getHostId();
+
+    /**
+     * Return whether this analysis is complete
+     *
+     * @return <code>true</code> if the analysis is completed, whether failed or
+     *         not, <code>false</code> if it is currently running
+     */
+    boolean isComplete();
 }
