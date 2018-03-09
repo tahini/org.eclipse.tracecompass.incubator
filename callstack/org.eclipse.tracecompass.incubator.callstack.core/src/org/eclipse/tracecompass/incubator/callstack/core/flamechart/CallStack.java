@@ -10,8 +10,10 @@
 package org.eclipse.tracecompass.incubator.callstack.core.flamechart;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -127,6 +129,17 @@ public class CallStack {
         } catch (AttributeNotFoundException | StateSystemDisposedException | TimeRangeException e) {
             return Collections.EMPTY_LIST;
         }
+    }
+
+    /**
+     * Get the quark for a given depth
+     *
+     * @param depth
+     *            The requested depth
+     * @return Get the quark for the function at a given depth
+     */
+    public Integer getQuarkAtDepth(int depth) {
+        return fQuarks.get(depth - 1);
     }
 
     private String getHostId(long time) {
@@ -303,6 +316,18 @@ public class CallStack {
     }
 
     /**
+     * Get the unique {@link HostThread} for this callstack. This returns a value only if the TID is not variable in time _and_ it is defined
+     *
+     * @return The {@link HostThread} that spans this callstack or <code>null</code> if TID is variable or it is not defined.
+     */
+    public @Nullable HostThread getHostThread() {
+        if (!isTidVariable()) {
+            return getHostThread(fStateSystem.getStartTime());
+        }
+        return null;
+    }
+
+    /**
      * Return whether the TID is variable through time for this callstack or if it
      * fixed
      *
@@ -407,16 +432,76 @@ public class CallStack {
      *
      * @param function
      *            The function for which to get the kernel statuses
-     * @param resolution
-     *            The resolution, ie the number of nanoseconds between kernel status
-     *            queries. A value lower or equal to 1 will return all intervals.
+     * @param times
+     *            The times at which to query kernel statuses. An empty collection
+     *            will return all intervals.
      * @return An iterator over the kernel status. The iterator can be empty is
      *         statuses are not available or if the function is outside the range of
      *         the available data.
      */
-    public Iterable<ProcessStatusInterval> getKernelStatuses(ICalledFunction function, long resolution) {
+    public Iterable<ProcessStatusInterval> getKernelStatuses(ICalledFunction function, Collection<Long> times) {
         IHostModel model = ModelManager.getModelFor(getHostId(function.getStart()));
+        int resolution = 1;
+        // Filter the times
+        if (!times.isEmpty()) {
+            // Filter the times overlapping this function and calculate a resolution
+            List<Long> filtered = new ArrayList<>();
+            for (Long time : times) {
+                if (function.intersects(time)) {
+                    filtered.add(time);
+                }
+            }
+            Collections.sort(filtered);
+            resolution = !filtered.isEmpty() ? (int) (filtered.get(filtered.size() - 1) - filtered.get(0) / filtered.size()) : resolution;
+            return model.getThreadStatusIntervals(function.getThreadId(), function.getStart(), function.getEnd(), resolution);
+        }
         return model.getThreadStatusIntervals(function.getThreadId(), function.getStart(), function.getEnd(), resolution);
+    }
+
+    /**
+     * Transforms a state interval from the state system into a
+     * {@link ICalledFunction}. The function allows to retrieve data from this
+     * function, for instance, the thread ID, the symbol provider, etc.
+     *
+     * Note: It is the responsibility of the caller to make sure that the interval
+     * does not have a null-value, otherwise, a NullPointerException will be thrown.
+     *
+     * @param callInterval
+     *            The state interval
+     * @return An {@link ICalledFunction} object, with its fields resolved
+     */
+    public ICalledFunction getFunctionFromInterval(ITmfStateInterval callInterval) {
+        int threadId = getThreadId(callInterval.getStartTime());
+        return CalledFunctionFactory.create(callInterval.getStartTime(),
+                callInterval.getEndTime() + 1,
+                callInterval.getValue(),
+                getSymbolKeyAt(callInterval.getStartTime()),
+                threadId,
+                null,
+                ModelManager.getModelFor(getHostId(callInterval.getStartTime())));
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(fSymbolKeyElement, fThreadIdProvider, fStateSystem, fQuarks, fHostProvider);
+    }
+
+    @Override
+    public boolean equals(@Nullable Object obj) {
+        if (!(obj instanceof CallStack)) {
+            return false;
+        }
+        CallStack other = (CallStack) obj;
+        return (Objects.equals(fSymbolKeyElement, other.fSymbolKeyElement) &&
+                Objects.equals(fThreadIdProvider, other.fThreadIdProvider) &&
+                Objects.equals(fStateSystem, other.fStateSystem) &&
+                Objects.equals(fQuarks, other.fQuarks) &&
+                Objects.equals(fHostProvider, other.fHostProvider));
+    }
+
+    @Override
+    public String toString() {
+        return "Callstack for quarks " + fQuarks; //$NON-NLS-1$
     }
 
 }
