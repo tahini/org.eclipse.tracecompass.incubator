@@ -27,6 +27,7 @@ import org.eclipse.tracecompass.incubator.analysis.core.model.ModelManager;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
 import org.eclipse.tracecompass.incubator.callstack.core.flamechart.CallStack;
+import org.eclipse.tracecompass.incubator.callstack.core.instrumented.CallStackDepth;
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.ICalledFunction;
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.statesystem.CallStackHostUtils.IHostIdProvider;
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.statesystem.CallStackHostUtils.IHostIdResolver;
@@ -38,11 +39,14 @@ import org.eclipse.tracecompass.segmentstore.core.ISegment;
 import org.eclipse.tracecompass.segmentstore.core.ISegmentStore;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.exceptions.StateSystemDisposedException;
+import org.eclipse.tracecompass.statesystem.core.exceptions.TimeRangeException;
 import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 
 import com.google.common.base.Function;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
+import com.google.common.collect.Multimap;
 
 /**
  * A callstack series contain the information necessary to build all the
@@ -368,6 +372,7 @@ public class CallStackSeries implements ISegmentStore<ISegment> {
     private final String fName;
     private final @Nullable IThreadIdResolver fResolver;
     private final IHostIdResolver fHostResolver;
+    private final ITmfStateSystem fStateSystem;
 
     /**
      * Constructor
@@ -400,6 +405,7 @@ public class CallStackSeries implements ISegmentStore<ISegment> {
             InstrumentedGroupDescriptor level = new InstrumentedGroupDescriptor(ss, patternPaths.get(i), prevLevel, symbolKeyLevelIndex == i ? true : false);
             prevLevel = level;
         }
+        fStateSystem = ss;
         fRootGroup = prevLevel;
         fName = name;
         fResolver = threadResolver;
@@ -431,6 +437,27 @@ public class CallStackSeries implements ISegmentStore<ISegment> {
      */
     public String getName() {
         return fName;
+    }
+
+    /**
+     * Query the requested callstacks and return the functions. The keys will be preserved
+     *
+     * @param collection The callstack entries to query
+     * @param times
+     * @return
+     */
+    public Multimap<CallStackDepth, ICalledFunction> queryCallStacks(Collection<CallStackDepth> callstacks, Collection<Long> times) {
+        Map<Integer, CallStackDepth> quarks = new HashMap<>();
+        for (CallStackDepth csDepth : callstacks) {
+            quarks.put(csDepth.getQuark(), csDepth);
+        }
+        Multimap<CallStackDepth, ICalledFunction> map = ArrayListMultimap.create();
+        try {
+            Iterable<ITmfStateInterval> query2d = fStateSystem.query2D(quarks.keySet(), times);
+        } catch (IndexOutOfBoundsException | TimeRangeException | StateSystemDisposedException e) {
+            e.printStackTrace();
+        }
+        return map;
     }
 
     // ---------------------------------------------------

@@ -10,6 +10,7 @@
 package org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -37,6 +38,8 @@ import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLo
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.flamechart.CallStack;
+import org.eclipse.tracecompass.incubator.callstack.core.instrumented.CallStackDepth;
+import org.eclipse.tracecompass.incubator.callstack.core.instrumented.ICalledFunction;
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.IFlameChartProvider;
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.statesystem.CallStackSeries;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.InstrumentedCallStackElement;
@@ -78,6 +81,7 @@ import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Multimap;
 
 /**
  * This class provides the data from an instrumented callstack analysis, in the
@@ -102,17 +106,18 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
     private final Map<Long, FlameChartEntryModel> fEntries = new HashMap<>();
     private final BiMap<Long, Long> fKernelToCs = HashBiMap.create();
     private final Collection<ISymbolProvider> fProviders = new ArrayList<>();
-    private final BiMap<Long, Integer> fIdToQuark = HashBiMap.create();
+    private final BiMap<Long, CallStackDepth> fIdToCallstack = HashBiMap.create();
+    private final BiMap<Long, InstrumentedCallStackElement> fIdToElement = HashBiMap.create();
 
-    private final LoadingCache<Pair<Integer, ITmfStateInterval>, @Nullable String> fTimeEventNames = Objects.requireNonNull(CacheBuilder.newBuilder()
+    private final LoadingCache<Pair<Integer, ICalledFunction>, @Nullable String> fTimeEventNames = Objects.requireNonNull(CacheBuilder.newBuilder()
             .maximumSize(1000)
-            .build(new CacheLoader<Pair<Integer, ITmfStateInterval>, @Nullable String>() {
+            .build(new CacheLoader<Pair<Integer, ICalledFunction>, @Nullable String>() {
                 @Override
-                public @Nullable String load(Pair<Integer, ITmfStateInterval> pidInterval) {
+                public @Nullable String load(Pair<Integer, ICalledFunction> pidInterval) {
                     Integer pid = pidInterval.getFirst();
-                    ITmfStateInterval interval = pidInterval.getSecond();
+                    ICalledFunction interval = pidInterval.getSecond();
 
-                    Object nameValue = interval.getValue();
+                    Object nameValue = interval.getSymbol();
                     Long address = null;
                     String name = null;
                     if (nameValue instanceof String) {
@@ -131,7 +136,7 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
                         name = "0x" + Long.toUnsignedString(address, 16); //$NON-NLS-1$
                     }
                     if (address != null) {
-                        name = SymbolProviderUtils.getSymbolText(fProviders, pid, interval.getStartTime(), address);
+                        name = SymbolProviderUtils.getSymbolText(fProviders, pid, interval.getStart(), address);
                     }
                     return name;
                 }
@@ -195,13 +200,17 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
     }
 
     // Get an entry for a quark
-    private long getEntryId(int quark) {
-        return fIdToQuark.inverse().computeIfAbsent(quark, q -> ENTRY_ID.getAndIncrement());
+    private long getEntryId(CallStackDepth stack) {
+        return fIdToCallstack.inverse().computeIfAbsent(stack, q -> ENTRY_ID.getAndIncrement());
     }
 
     // Get a new entry ID
     private static long getEntryId() {
         return ENTRY_ID.getAndIncrement();
+    }
+
+    private long getEntryId(InstrumentedCallStackElement instrumentedCallStackElement) {
+        return fIdToElement.inverse().computeIfAbsent(instrumentedCallStackElement, q -> ENTRY_ID.getAndIncrement());
     }
 
     // Get a new entry for a kernel entry ID
@@ -261,7 +270,7 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
 
     private void processCallStackElement(ICallStackElement element, Builder<FlameChartEntryModel> builder, FlameChartEntryModel parentEntry) {
 
-        long elementId = (element instanceof InstrumentedCallStackElement) ? getEntryId(((InstrumentedCallStackElement) element).getQuark()) : getEntryId();
+        long elementId = (element instanceof InstrumentedCallStackElement) ? getEntryId(((InstrumentedCallStackElement) element)) : getEntryId();
         FlameChartEntryModel entry = new FlameChartEntryModel(elementId, parentEntry.getId(), element, element.getName(), parentEntry.getStartTime(), parentEntry.getEndTime(), FlameChartEntryModel.EntryType.LEVEL, IHostModel.UNKNOWN_TID);
         builder.add(entry);
 
@@ -271,7 +280,7 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
             InstrumentedCallStackElement finalElement = (InstrumentedCallStackElement) element;
             CallStack callStack = finalElement.getCallStack();
             for (int i = 0; i < callStack.getMaxDepth(); i++) {
-                FlameChartEntryModel flameChartEntry = new FlameChartEntryModel(getEntryId(callStack.getQuarkAtDepth(i + 1)), entry.getId(), element, String.valueOf(i + 1), parentEntry.getStartTime(), parentEntry.getEndTime(),
+                FlameChartEntryModel flameChartEntry = new FlameChartEntryModel(getEntryId(new CallStackDepth(callStack, callStack.getQuarkAtDepth(i + 1))), entry.getId(), element, String.valueOf(i + 1), parentEntry.getStartTime(), parentEntry.getEndTime(),
                         FlameChartEntryModel.EntryType.FUNCTION, IHostModel.UNKNOWN_TID);
                 builder.add(flameChartEntry);
                 if (i == 0 && callStack.hasKernelStatuses()) {
@@ -285,6 +294,8 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
         element.getChildren().stream().forEach(e -> processCallStackElement(e, builder, entry));
 
     }
+
+
 
     // Get the selected entries with the quark
     private BiMap<Long, FlameChartEntryModel> getSelectedEntries(SelectionTimeQueryFilter filter) {
@@ -419,33 +430,23 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
 
         // Get the data for the model entries that are of type function
         Map<Long, List<ITimeGraphState>> rows = new HashMap<>();
-        Map<Long, Integer> csEntries = new HashMap<>();
+        Map<Long, CallStackDepth> csEntries = new HashMap<>();
         for (Entry<Long, @NonNull FlameChartEntryModel> entry : entries.entrySet()) {
-            Integer quark = fIdToQuark.get(entry.getKey());
-            if (quark != null && entry.getValue().getEntryType().equals(EntryType.FUNCTION)) {
-                csEntries.put(entry.getKey(), quark);
+            CallStackDepth selectedDepth = fIdToCallstack.get(entry.getKey());
+            if (selectedDepth != null && entry.getValue().getEntryType().equals(EntryType.FUNCTION)) {
+                csEntries.put(entry.getKey(), selectedDepth);
             }
         }
 
-        // FIXME hackish: Is there a way to hide the state system from even the provider
-        // and get the data from the flame chart provider itself?
-        ITmfStateSystem ss = getStateSystem();
-        ArrayListMultimap<Integer, ITmfStateInterval> intervals = ArrayListMultimap.create();
-        Collection<Long> times = getTimes(filter, ss.getStartTime(), ss.getCurrentEndTime());
-        /* Do the actual query */
-        for (ITmfStateInterval interval : ss.query2D(csEntries.values(), times)) {
-            if (subMonitor.isCanceled()) {
-                return null;
-            }
-            intervals.put(interval.getAttribute(), interval);
-        }
-        subMonitor.worked(1);
+        long[] timesRequested = filter.getTimesRequested();
+        Collection<Long> times = Arrays.stream(timesRequested).boxed().collect(Collectors.toList());
+        Multimap<CallStackDepth, ICalledFunction> csFunctions = fFcProvider.queryCallStacks(csEntries.values(), times);
 
-        for (Map.Entry<Long, Integer> entry : csEntries.entrySet()) {
+        for (Map.Entry<Long, CallStackDepth> entry : csEntries.entrySet()) {
             if (subMonitor.isCanceled()) {
                 return null;
             }
-            Collection<ITmfStateInterval> states = intervals.get(entry.getValue());
+            Collection<ICalledFunction> states = csFunctions.get(entry.getKey());
             List<ITimeGraphState> eventList = new ArrayList<>(states.size());
             states.forEach(state -> eventList.add(createTimeGraphState(state, fEntries.get(entry.getKey()))));
             eventList.sort(Comparator.comparingLong(ITimeGraphState::getStartTime));
@@ -464,19 +465,17 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
         return iterator.next();
     }
 
-    private ITimeGraphState createTimeGraphState(ITmfStateInterval interval, @Nullable FlameChartEntryModel entry) {
-        long startTime = interval.getStartTime();
-        long duration = interval.getEndTime() - startTime + 1;
-        Object value = interval.getValue();
-        Integer pid = IHostModel.UNKNOWN_TID;
+    private ITimeGraphState createTimeGraphState(ICalledFunction state, @Nullable FlameChartEntryModel entry) {
+        long startTime = state.getStart();
+        long duration = state.getEnd() - startTime + 1;
+        Object value = state.getSymbol();
+        Integer pid = state.getProcessId();
         if (entry != null) {
             pid = entry.getPid(startTime);
         }
-        if (value != null) {
-            String name = String.valueOf(fTimeEventNames.getUnchecked(new Pair<>(pid, interval)));
-            return new TimeGraphState(startTime, duration, value.hashCode(), name);
-        }
-        return new TimeGraphState(startTime, duration, Integer.MIN_VALUE);
+
+        String name = String.valueOf(fTimeEventNames.getUnchecked(new Pair<>(pid, state)));
+        return new TimeGraphState(startTime, duration, value.hashCode(), name);
     }
 
     /**

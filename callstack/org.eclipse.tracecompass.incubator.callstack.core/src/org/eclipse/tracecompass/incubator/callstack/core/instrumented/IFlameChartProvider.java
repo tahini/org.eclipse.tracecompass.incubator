@@ -9,11 +9,17 @@
 
 package org.eclipse.tracecompass.incubator.callstack.core.instrumented;
 
+import java.util.Collection;
+import java.util.List;
+
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.timing.core.segmentstore.ISegmentStoreProvider;
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.statesystem.CallStackHostUtils;
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.statesystem.CallStackSeries;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
+
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 
 /**
  * Interface that can be implemented by components who provide call stacks as
@@ -46,4 +52,17 @@ public interface IFlameChartProvider extends IAnalysisModule, ISegmentStoreProvi
      *         not, <code>false</code> if it is currently running
      */
     boolean isComplete();
+
+    /**
+     * @param collection
+     * @param times
+     * @return
+     */
+    default Multimap<CallStackDepth, ICalledFunction> queryCallStacks(Collection<CallStackDepth> collection, Collection<Long> times) {
+        CallStackSeries callStackSeries = getCallStackSeries();
+        if (callStackSeries == null) {
+            return ArrayListMultimap.create();
+        }
+        return callStackSeries.queryCallStacks(collection, times);
+    }
 }
