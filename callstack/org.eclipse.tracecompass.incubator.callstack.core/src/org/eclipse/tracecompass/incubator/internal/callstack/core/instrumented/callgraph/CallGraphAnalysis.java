@@ -139,7 +139,8 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
             IFlameChartProvider callstackModule = (IFlameChartProvider) module;
             IHostModel model = ModelManager.getModelFor(callstackModule.getHostId());
 
-            for (CallStackSeries callstack : callstackModule.getCallStackSeries()) {
+            CallStackSeries callstack = callstackModule.getCallStackSeries();
+            if (callstack != null) {
                 if (!iterateOverCallstackSerie(callstack, model, callgraph, range.getStartTime().toNanos(), range.getEndTime().toNanos(), monitor)) {
                     return false;
                 }
@@ -248,14 +249,14 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
      *
      * @return The collection of callstack series
      */
-    public Collection<CallStackSeries> getSeries() {
-        List<CallStackSeries> series = new ArrayList<>();
+    public @Nullable CallStackSeries getSeries() {
+        CallStackSeries series = null;
         for (IAnalysisModule dependent : getDependentAnalyses()) {
             if (!(dependent instanceof IFlameChartProvider)) {
                 continue;
             }
             IFlameChartProvider csProvider = (IFlameChartProvider) dependent;
-            series.addAll(csProvider.getCallStackSeries());
+            series = csProvider.getCallStackSeries();
         }
         return series;
     }
@@ -279,10 +280,16 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
 
     @Override
     public Collection<ICallStackGroupDescriptor> getGroupDescriptors() {
-        return StreamUtils.getStream(getDependentAnalyses())
-                .flatMap(m -> StreamUtils.getStream(((IFlameChartProvider) m).getCallStackSeries()))
-                .map(CallStackSeries::getRootGroup)
+        List<@Nullable CallStackSeries> series =StreamUtils.getStream(getDependentAnalyses())
+                .map(m -> ((IFlameChartProvider) m).getCallStackSeries())
                 .collect(Collectors.toList());
+        List<ICallStackGroupDescriptor> descriptors = new ArrayList<>();
+        for (CallStackSeries serie : series) {
+            if (serie != null) {
+                descriptors.add(serie.getRootGroup());
+            }
+        }
+        return descriptors;
     }
 
     @Override
