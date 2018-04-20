@@ -280,7 +280,6 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
             // Initialize the thread status data provider
             if (needsKernel) {
                 prepareKernelData(monitor, start);
-
             }
             List<FlameChartEntryModel> tree = builder.build();
             tree.forEach(entry -> fEntries.put(entry.getId(), entry));
@@ -378,7 +377,7 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
                 if (filter.getStart() == Long.MIN_VALUE) {
                     return new TmfModelResponse<>(getFollowEvent(entry, filter.getEnd(), false), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
                 } else if (filter.getEnd() == Long.MAX_VALUE) {
-                    return new TmfModelResponse<>(getFollowEvent(entry, filter.getEnd(), true), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
+                    return new TmfModelResponse<>(getFollowEvent(entry, filter.getStart(), true), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
                 }
             }
             // For each kernel status entry, add the first row of the callstack
@@ -630,8 +629,33 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
      * @return the next / previous state encapsulated in a row if it exists, else
      *         null
      */
-    private static @Nullable List<ITimeGraphRowModel> getFollowEvent(Entry<Long, FlameChartEntryModel> entry, long time, boolean forward) {
-        // TODO Implement for incubator
+    private @Nullable List<ITimeGraphRowModel> getFollowEvent(Entry<Long, FlameChartEntryModel> entry, long time, boolean forward) {
+        FlameChartEntryModel value = entry.getValue();
+        switch (value.getEntryType()) {
+        case FUNCTION:
+            CallStackDepth selectedDepth = fIdToCallstack.get(entry.getKey());
+            if (selectedDepth == null) {
+                return null;
+            }
+            ICalledFunction nextFunction = selectedDepth.getCallStack().getNextFunction(time, forward);
+            if (nextFunction != null) {
+                new TimeGraphRowModel(entry.getKey(), createTimeGraphState(nextFunction)
+                TimeGraphState state = new TimeGraphState(interval.getStartTime(),
+                      interval.getEndTime() - interval.getStartTime(), value);
+              TimeGraphRowModel row = new TimeGraphRowModel(entry.getKey(),
+                      Collections.singletonList(state));
+              return Collections.singletonList(row);
+            }
+            break;
+        case KERNEL:
+            break;
+        case LEVEL:
+            // Fall-through
+        case TRACE:
+            // Fall-through
+        default:
+            return null;
+        }
         return null;
 
 //        int parentQuark = ss.getParentAttributeQuark(entry.getValue());
