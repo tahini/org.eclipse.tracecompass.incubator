@@ -28,6 +28,7 @@ import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.handlers.QemuKvmEventHandler;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
+import org.eclipse.tracecompass.tmf.core.project.model.ITmfPropertiesProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.AbstractTmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
@@ -65,6 +66,7 @@ public class VirtualMachineModelStateProvider extends AbstractTmfStateProvider {
      * contents of the generated state history in some way.
      */
     private static final int VERSION = 1;
+    private static final String PRODUCT_UUID_ENV = "product_uuid"; //$NON-NLS-1$
 
     private final Map<ITmfTrace, IKernelAnalysisEventLayout> fLayouts;
 
@@ -171,6 +173,17 @@ public class VirtualMachineModelStateProvider extends AbstractTmfStateProvider {
             }
             virtEnv = (VirtualEnvironmentBuilder) ve;
             fVirtualizedEnvironment = virtEnv;
+            // Initialize the traces' host and product UUID
+            for (ITmfTrace trace : getTrace().getTraces()) {
+                if (!(trace instanceof ITmfPropertiesProvider)) {
+                    continue;
+                }
+                String productUuid = ((ITmfPropertiesProvider) trace).getProperties().get(PRODUCT_UUID_ENV);
+                if (productUuid == null) {
+                    continue;
+                }
+                virtEnv.getOrCreateMachine(productUuid.toUpperCase(), trace);
+            }
         }
         for (IVirtualMachineEventHandler handler : handlers) {
             handler.handleEvent(ss, event, virtEnv, eventLayout);

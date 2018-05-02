@@ -18,6 +18,7 @@ import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualMachineModelAnalysis;
 import org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.shared.vm.VmTestExperiment;
 import org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.shared.vm.VmTraces;
+import org.eclipse.tracecompass.statesystem.core.statevalue.TmfStateValue;
 import org.eclipse.tracecompass.statesystem.core.tests.shared.utils.StateSystemTestUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -27,16 +28,16 @@ import com.google.common.collect.ImmutableList;
  *
  * @author Geneviève Bastien
  */
-public class OneQemuKvmModelTestCase extends VmModelTestCase {
+public class OneQemuKvmLegacyModelTestCase extends VmModelTestCase {
 
-    private static final String HOST_ID = VmTraces.HOST_ONE_QEMUKVM.getHostId();
-    private static final String GUEST_ID = VmTraces.GUEST_ONE_QEMUKVM.getHostId();
+    private static final String HOST_ID = VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId();
+    private static final String GUEST_ID = VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId();
 
     /**
      * Constructor
      */
-    public OneQemuKvmModelTestCase() {
-        super(VmTestExperiment.ONE_QEMUKVM);
+    public OneQemuKvmLegacyModelTestCase() {
+        super(VmTestExperiment.ONE_QEMUKVM_LEGACY);
     }
 
     @Override
@@ -50,9 +51,9 @@ public class OneQemuKvmModelTestCase extends VmModelTestCase {
 
         // Check the 'Machines' sub-tree towards the end of the trace
         PunctualInfo oneInfo = new PunctualInfo(300L);
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID), VmTraces.HOST_ONE_QEMUKVM.getFileName());
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID, VirtualMachineModelAnalysis.GUEST_VMS, GUEST_ID), VmTraces.GUEST_ONE_QEMUKVM.getFileName());
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID, VirtualMachineModelAnalysis.GUEST_VMS, GUEST_ID, VirtualMachineModelAnalysis.CPUS, "0"), 31);
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID), TmfStateValue.newValueString(VmTraces.HOST_ONE_QEMUKVM_LEGACY.getFileName()));
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID, VirtualMachineModelAnalysis.GUEST_VMS, GUEST_ID), TmfStateValue.newValueString(VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getFileName()));
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(HOST_ID, VirtualMachineModelAnalysis.GUEST_VMS, GUEST_ID, VirtualMachineModelAnalysis.CPUS, "0"), TmfStateValue.newValueInt(31));
         info.add(oneInfo);
 
         return info;
@@ -61,8 +62,9 @@ public class OneQemuKvmModelTestCase extends VmModelTestCase {
     @Override
     public Collection<VirtualMachine> getMachines() {
         VirtualMachine host = VirtualMachine.newHostMachine(HOST_ID, HOST_ID);
-        host.setProductUuid('"' + HOST_ID + " product\"");
-        VirtualMachine guest = VirtualMachine.newGuestMachine('"' + GUEST_ID + " product\"", GUEST_ID, GUEST_ID);
+        host.setProductUuid(HOST_ID + " product");
+        // 2 product UUID in this case, so don't check this value
+        VirtualMachine guest = VirtualMachine.newGuestMachine("", GUEST_ID, GUEST_ID);
         host.addChild(guest);
 
         return ImmutableList.of(host, guest);

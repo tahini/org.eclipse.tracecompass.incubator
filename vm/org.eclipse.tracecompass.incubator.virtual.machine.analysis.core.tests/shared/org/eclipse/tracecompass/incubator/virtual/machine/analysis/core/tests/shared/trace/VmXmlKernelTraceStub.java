@@ -9,14 +9,18 @@
 
 package org.eclipse.tracecompass.incubator.virtual.machine.analysis.core.tests.shared.trace;
 
+import java.util.Map;
+
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.event.aspect.ThreadPriorityAspect;
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelTidAspect;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelTrace;
 import org.eclipse.tracecompass.tmf.core.event.aspect.ITmfEventAspect;
+import org.eclipse.tracecompass.tmf.core.project.model.ITmfPropertiesProvider;
 import org.eclipse.tracecompass.tmf.tests.stubs.trace.xml.TmfXmlTraceStubNs;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 /**
@@ -25,7 +29,7 @@ import com.google.common.collect.ImmutableSet;
  *
  * @author Geneviève Bastien
  */
-public class VmXmlKernelTraceStub extends TmfXmlTraceStubNs implements IKernelTrace {
+public class VmXmlKernelTraceStub extends TmfXmlTraceStubNs implements IKernelTrace, ITmfPropertiesProvider {
 
     private @Nullable IKernelAnalysisEventLayout fLayout;
 
@@ -59,6 +63,11 @@ public class VmXmlKernelTraceStub extends TmfXmlTraceStubNs implements IKernelTr
         builder.add(KernelTidAspect.INSTANCE);
         builder.add(ThreadPriorityAspect.INSTANCE);
         return builder.build();
+    }
+
+    @Override
+    public Map<String, String> getProperties() {
+        return ImmutableMap.of("product_uuid", '"' + getHostId() + " product\"");
     }
 
 }

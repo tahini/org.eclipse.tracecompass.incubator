@@ -32,7 +32,7 @@ public final class VirtualMachine {
     private static final int GUEST = (1 << 1);
     private static final int CONTAINER = (1 << 2);
 
-    private long fVmUid;
+    private String fVmUid;
     private final String fHostId;
     private int fType;
     private final String fTraceName;
@@ -51,7 +51,7 @@ public final class VirtualMachine {
      * @return A virtual machine
      */
     public static VirtualMachine newUnknownMachine(String hostId, String traceName) {
-        return new VirtualMachine(UNKNOWN, hostId, -1, traceName);
+        return new VirtualMachine(UNKNOWN, hostId, "-1", traceName); //$NON-NLS-1$
     }
 
     /**
@@ -65,7 +65,7 @@ public final class VirtualMachine {
      * @return A {@link VirtualMachine} of type host
      */
     public static VirtualMachine newHostMachine(String hostId, String traceName) {
-        return new VirtualMachine(HOST, hostId, -1, traceName);
+        return new VirtualMachine(HOST, hostId, "-1", traceName); //$NON-NLS-1$
     }
 
     /**
@@ -81,7 +81,7 @@ public final class VirtualMachine {
      *            The name of the trace
      * @return A {@link VirtualMachine} of type guest.
      */
-    public static VirtualMachine newGuestMachine(long uid, String hostId, String traceName) {
+    public static VirtualMachine newGuestMachine(String uid, String hostId, String traceName) {
         return new VirtualMachine(GUEST, hostId, uid, traceName);
     }
 
@@ -90,19 +90,19 @@ public final class VirtualMachine {
      * in the host, a virtual machine or an other namespace
      *
      * @param uid
-     *            Unique identifier of the container. It is the namespace
-     *            identifier
+     *            Some unique identifier of this guest machine that can be used
+     *            in both the guest and the host to match both machines.
      * @param hostId
      *            ID of the machine containing the container.
      * @param traceName
      *            The name of the trace
      * @return A {@link VirtualMachine} of type container.
      */
-    public static VirtualMachine newContainerMachine(long uid, String hostId, String traceName) {
+    public static VirtualMachine newContainerMachine(String uid, String hostId, String traceName) {
         return new VirtualMachine(CONTAINER, hostId, uid, traceName);
     }
 
-    private VirtualMachine(int type, String hostId, long uid, String traceName) {
+    private VirtualMachine(int type, String hostId, String uid, String traceName) {
         fType = type;
         fVmUid = uid;
         fHostId = hostId;
@@ -120,14 +120,20 @@ public final class VirtualMachine {
     }
 
     /**
-     * Add the guest type to the machine
+     * Set the unique identifier of this machine
      *
      * @param uid
-     *            The ID of the virtual machine
+     *            The UUID of the virtual machine
      */
-    public void setGuest(long uid) {
-        fType |= GUEST;
+    public void setProductUuid(String uid) {
         fVmUid = uid;
+    }
+
+    /**
+     * Add the guest type to the machine
+     */
+    public void setGuest() {
+        fType |= GUEST;
     }
 
     /**
@@ -169,7 +175,7 @@ public final class VirtualMachine {
      *
      * @return The Virtual Machine unique ID.
      */
-    public long getVmUid() {
+    public String getVmUid() {
         return fVmUid;
     }
 
@@ -213,6 +219,7 @@ public final class VirtualMachine {
      */
     public void addChild(VirtualMachine child) {
         fChildren.add(child);
+        child.setGuest();
     }
 
     /**

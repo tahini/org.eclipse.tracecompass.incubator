@@ -31,8 +31,8 @@ import com.google.common.collect.ImmutableList;
  */
 public class TwoHostsTestCase extends VmTestCase {
 
-    private static final ITmfStateValue HOST_SV_STRING = TmfStateValue.newValueString(VmTraces.HOST_ONE_QEMUKVM.getHostId());
-    private static final ITmfStateValue GUEST_SV_STRING = TmfStateValue.newValueString(VmTraces.GUEST_ONE_QEMUKVM.getHostId());
+    private static final ITmfStateValue HOST_SV_STRING = TmfStateValue.newValueString(VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId());
+    private static final ITmfStateValue GUEST_SV_STRING = TmfStateValue.newValueString(VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId());
 
     /**
      * Constructor
@@ -85,14 +85,14 @@ public class TwoHostsTestCase extends VmTestCase {
 
         // Check the 'Machines' sub-tree towards the end of the trace
         PunctualInfo oneInfo = new PunctualInfo(300L);
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM.getHostId(), FusedAttributes.CPUS, "0"), TmfStateValue.nullValue());
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM.getHostId(), FusedAttributes.PARENT), TmfStateValue.nullValue());
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM.getHostId(), FusedAttributes.CONTAINERS), TmfStateValue.nullValue());
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.CPUS, "0"), TmfStateValue.nullValue());
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.PARENT), TmfStateValue.nullValue());
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.CONTAINERS), TmfStateValue.nullValue());
 
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), FusedAttributes.CPUS, "0"), TmfStateValue.newValueInt(31));
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), FusedAttributes.PARENT), HOST_SV_STRING);
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), FusedAttributes.PCPUS, "0"), TmfStateValue.nullValue());
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), FusedAttributes.CONTAINERS), TmfStateValue.nullValue());
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.CPUS, "0"), TmfStateValue.newValueInt(31));
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.PARENT), HOST_SV_STRING);
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.PCPUS, "0"), TmfStateValue.nullValue());
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.CONTAINERS), TmfStateValue.nullValue());
         info.add(oneInfo);
 
         return info;

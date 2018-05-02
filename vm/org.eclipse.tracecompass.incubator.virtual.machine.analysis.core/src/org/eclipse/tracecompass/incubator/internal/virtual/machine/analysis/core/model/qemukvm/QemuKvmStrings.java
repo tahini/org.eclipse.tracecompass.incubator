@@ -87,4 +87,16 @@ public interface QemuKvmStrings {
      * Event that tells that the next entries are not for the VM that exited
      */
     String KVM_NESTED_VMEXIT_INJECT = "kvm_nested_vmexit_inject";
+    /**
+     * Event that statedumps information about a kvm guest
+     */
+    String KVM_GUEST_STATEDUMP = "lttng_sessiond_statedump:kvm_guest";
+    /**
+     * Event that indicate a kvm guest has been created
+     */
+    String KVM_GUEST_CREATED = "udev_monitor:kvm_created";
+    /**
+     * Event that indicates a kvm guest has been destroyed
+     */
+    String KVM_GUEST_DESTROYED = "udev_monitor:kvm_destroyed";
 }

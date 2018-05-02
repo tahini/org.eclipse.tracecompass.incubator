@@ -196,4 +196,123 @@ public class VirtualMachineAnalysisTest {
         }
     }
 
+    /**
+     * Test the analysis execution with stub traces of a virtual machine with one
+     * virtual machine and one CPU, with the legacy method
+     */
+    @Test
+    public void testStubTracesOneQemuKvmLegacy() {
+
+        assumeTrue(VmTestExperiment.ONE_QEMUKVM_LEGACY.exists());
+        TmfExperiment experiment = VmTestExperiment.ONE_QEMUKVM_LEGACY.getExperiment(true);
+
+        /* Open the traces */
+        for (ITmfTrace trace : experiment.getTraces()) {
+            ((TmfTrace) trace).traceOpened(new TmfTraceOpenedSignal(this, trace, null));
+        }
+
+        /*
+         * TODO For now, make sure the LttngKernelAnalysis have been run for each trace
+         * before running the analysis. When event request precedence is implemented, we
+         * can remove this
+         */
+        for (ITmfTrace trace : experiment.getTraces()) {
+            for (KernelAnalysisModule module : TmfTraceUtils.getAnalysisModulesOfClass(trace, KernelAnalysisModule.class)) {
+                module.schedule();
+                module.waitForCompletion();
+            }
+        }
+        /* End of TODO block */
+
+        experiment.traceOpened(new TmfTraceOpenedSignal(this, experiment, null));
+        VirtualResourcesAnalysis module = null;
+        for (VirtualResourcesAnalysis mod : TmfTraceUtils.getAnalysisModulesOfClass(experiment, VirtualResourcesAnalysis.class)) {
+            module = mod;
+            break;
+        }
+        assertNotNull(module);
+        module.schedule();
+        if (!module.waitForCompletion()) {
+            fail("Module did not complete properly");
+        }
+
+        try {
+            /* Check the state system */
+            ITmfStateSystem ss = module.getStateSystem();
+            assertNotNull(ss);
+            int vmQuark;
+
+            vmQuark = ss.getQuarkAbsolute(VmAttributes.VIRTUAL_MACHINES);
+
+            List<Integer> guestQuarks = ss.getSubAttributes(vmQuark, false);
+            assertEquals("Number of guests", 1, guestQuarks.size());
+            List<Integer> vcpuQuarks = ss.getSubAttributes(guestQuarks.get(0), false);
+            assertEquals("Number of virtual CPUs", 1, vcpuQuarks.size());
+            Integer statusQuark = ss.getQuarkRelative(vcpuQuarks.get(0), VmAttributes.STATUS);
+
+            /* Check the intervals for the virtual CPU */
+            List<ITmfStateInterval> intervals = StateSystemUtils.queryHistoryRange(ss, statusQuark, ss.getStartTime(), ss.getCurrentEndTime());
+
+            /* Expected interval values for the virtual CPU */
+            int[] expectedStarts = { 1, 10, 45, 60, 95, 100, 150, 155, 195, 210, 245, 260, 295, 300, 350, 355, 375 };
+            ITmfStateValue[] expectedValues = { TmfStateValue.newValueInt(VcpuStateValues.VCPU_UNKNOWN),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING | VcpuStateValues.VCPU_VMM),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING | VcpuStateValues.VCPU_VMM),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING | VcpuStateValues.VCPU_VMM | VcpuStateValues.VCPU_PREEMPT),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING | VcpuStateValues.VCPU_VMM),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING | VcpuStateValues.VCPU_VMM),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING | VcpuStateValues.VCPU_VMM),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING | VcpuStateValues.VCPU_VMM),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING | VcpuStateValues.VCPU_VMM | VcpuStateValues.VCPU_PREEMPT),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING | VcpuStateValues.VCPU_VMM),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING) };
+            verifyStateIntervals("Virtual CPU", intervals, expectedStarts, expectedValues);
+
+            /* Check the status of the guest's threads */
+            int[] expectedStartsT130 = { 10, 35, 45, 75, 175, 195, 225, 275, 295, 300, 350, 375 };
+            int[] expectedEndsT130 = { 34, 74, 59, 174, 224, 209, 274, 374, 299, 349, 354, 375 };
+            ITmfStateValue[] expectedValuesT30 = { TmfStateValue.newValueInt(VcpuStateValues.VCPU_IDLE),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_PREEMPT),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_IDLE),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_PREEMPT),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_IDLE),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_PREEMPT),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_PREEMPT),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_PREEMPT),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING) };
+
+            int[] expectedStartsT131 = { 10, 35, 75, 95, 100, 150, 175, 225, 245, 275, 375 };
+            int[] expectedEndsT131 = { 34, 74, 174, 99, 149, 154, 224, 274, 259, 374, 375 };
+            ITmfStateValue[] expectedValuesT31 = { TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_IDLE),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_PREEMPT),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_PREEMPT),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_PREEMPT),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_IDLE),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_PREEMPT),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_IDLE),
+                    TmfStateValue.newValueInt(VcpuStateValues.VCPU_RUNNING) };
+
+            Multimap<Integer, ITmfStateInterval> threadIntervals = module.getUpdatedThreadIntervals(guestQuarks.get(0), ss.getStartTime(), ss.getCurrentEndTime(), 1, new NullProgressMonitor());
+            verifyIntervalsWithMask("Thread 130", threadIntervals.get(130), expectedStartsT130, expectedEndsT130, expectedValuesT30, VcpuStateValues.VCPU_PREEMPT);
+            verifyIntervalsWithMask("Thread 131", threadIntervals.get(131), expectedStartsT131, expectedEndsT131, expectedValuesT31, VcpuStateValues.VCPU_PREEMPT);
+
+        } catch (AttributeNotFoundException | StateSystemDisposedException e) {
+            fail(e.getMessage());
+        } finally {
+            TmfSignalManager.dispatchSignal(new TmfTraceClosedSignal(this, experiment));
+            experiment.dispose();
+        }
+    }
+
 }

@@ -73,7 +73,7 @@ public class FusedVmAnalysisTest {
     @Parameters(name = "{index}: {0}")
     public static Iterable<Object[]> getParameters() {
         return Arrays.asList(new Object[][] {
-                { VmTestExperiment.ONE_QEMUKVM.name(), new OneQemuKvmFusedTestCase() },
+                { VmTestExperiment.ONE_QEMUKVM_LEGACY.name(), new OneQemuKvmLegacyFusedTestCase() },
                 { VmTestExperiment.ONE_CONTAINER.name(), new SimpleContainersTestCase() },
                 { VmTestExperiment.QEMU_CONTAINER.name(), new QemuContainerTestCase() },
                 // TODO: Support experiment with multiple physical machines

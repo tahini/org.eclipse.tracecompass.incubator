@@ -11,8 +11,10 @@ package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.cor
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
@@ -41,7 +43,10 @@ public class VirtualEnvironment implements IVirtualEnvironmentModel {
     protected final BiMap<HostThread, VirtualCPU> fTidToVcpu = HashBiMap.create();
     /** Associate a host's thread to a virtual machine */
     protected final Map<HostThread, VirtualMachine> fTidToVm = new HashMap<>();
-    /** Maps a virtual machine name to a virtual machine */
+    /**
+     * Maps a virtual machine host ID or product UUID to a virtual machine. A same
+     * machine may be linked by both its UUID and host ID
+     */
     protected final Map<String, VirtualMachine> fKnownMachines = new HashMap<>();
 
     /**
@@ -56,24 +61,42 @@ public class VirtualEnvironment implements IVirtualEnvironmentModel {
 
     private void loadModel(ITmfStateSystem stateSystem) {
         try {
+            // Some quarks are symlinks to others, make sure they are visited only once
+            Set<Integer> visited = new HashSet<>();
             // Get the intervals at the end, where the model is full
             List<ITmfStateInterval> fullStates = stateSystem.queryFullState(stateSystem.getCurrentEndTime());
             // Create all machines
             List<Integer> quarks = stateSystem.getSubAttributes(ITmfStateSystem.ROOT_ATTRIBUTE, false);
             for (Integer machineQuark : quarks) {
-                VirtualMachine machine = getOrCreateMachine(stateSystem, machineQuark, fullStates);
-                int vmQuark = stateSystem.optQuarkRelative(machineQuark, VirtualMachineModelAnalysis.GUEST_VMS);
-                if (vmQuark > 0) {
-                    machine.setHost();
-                    List<Integer> vmQuarks = stateSystem.getSubAttributes(vmQuark, false);
-                    for (Integer guestQuark : vmQuarks) {
-                        fillGuestMachine(stateSystem, guestQuark, machine, fullStates);
-                    }
+                // If the object type is Integer, then this machine is a sym link to another host
+                Object linkOrName = fullStates.get(machineQuark).getValue();
+                if (linkOrName instanceof Integer) {
+                    // Visit the linked quark
+                    VirtualMachine machine = visitMachineQuark(stateSystem, fullStates, (Integer) linkOrName);
+                    machine.setProductUuid(stateSystem.getAttributeName(machineQuark));
+                    visited.add((Integer) linkOrName);
+                } else {
+                    visitMachineQuark(stateSystem, fullStates, machineQuark);
                 }
+                visited.add(machineQuark);
+
             }
         } catch (StateSystemDisposedException e) {
             // State System disposed, the model will not be used, ignore
         }
+    }
+
+    private VirtualMachine visitMachineQuark(ITmfStateSystem stateSystem, List<ITmfStateInterval> fullStates, Integer machineQuark) {
+        VirtualMachine machine = getOrCreateMachine(stateSystem, machineQuark, fullStates);
+        int vmQuark = stateSystem.optQuarkRelative(machineQuark, VirtualMachineModelAnalysis.GUEST_VMS);
+        if (vmQuark > 0) {
+            machine.setHost();
+            List<Integer> vmQuarks = stateSystem.getSubAttributes(vmQuark, false);
+            for (Integer guestQuark : vmQuarks) {
+                fillGuestMachine(stateSystem, guestQuark, machine, fullStates);
+            }
+        }
+        return machine;
     }
 
     private VirtualMachine getOrCreateMachine(ITmfStateSystem stateSystem, int quark, List<ITmfStateInterval> fullStates) {
@@ -89,7 +112,7 @@ public class VirtualEnvironment implements IVirtualEnvironmentModel {
     private void fillGuestMachine(ITmfStateSystem stateSystem, int guestQuark, VirtualMachine hostMachine, List<ITmfStateInterval> fullStates) {
         VirtualMachine guest = getOrCreateMachine(stateSystem, guestQuark, fullStates);
         // Set guest and add as a child of the host
-        guest.setGuest(1L);
+        guest.setGuest();
         hostMachine.addChild(guest);
 
         // Set the process ID
@@ -152,7 +175,9 @@ public class VirtualEnvironment implements IVirtualEnvironmentModel {
 
     @Override
     public Collection<VirtualMachine> getMachines() {
-        return fKnownMachines.values();
+        Set<VirtualMachine> machines = new HashSet<>();
+        machines.addAll(fKnownMachines.values());
+        return machines;
     }
 
     @Override

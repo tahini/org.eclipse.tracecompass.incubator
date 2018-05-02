@@ -130,9 +130,9 @@ public class VirtualResourcesViewTest {
     @Ignore
     @Test
     public void testOneQemuKvm() {
-        String[] physCPU0 = { VmTraces.HOST_ONE_QEMUKVM.getHostId(), Messages.FusedVMView_PhysicalCpusEntry, "PCPU 0" };
-        String[] virtCPU0 = { VmTraces.HOST_ONE_QEMUKVM.getHostId(), Messages.FusedVMView_VirtualMachinesEntry, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), Messages.FusedVMView_PhysicalCpusEntry, "PCPU 0" };
-        testExperiment(VmTestExperiment.ONE_QEMUKVM, ImmutableSet.of(physCPU0, virtCPU0));
+        String[] physCPU0 = { VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId(), Messages.FusedVMView_PhysicalCpusEntry, "PCPU 0" };
+        String[] virtCPU0 = { VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId(), Messages.FusedVMView_VirtualMachinesEntry, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), Messages.FusedVMView_PhysicalCpusEntry, "PCPU 0" };
+        testExperiment(VmTestExperiment.ONE_QEMUKVM_LEGACY, ImmutableSet.of(physCPU0, virtCPU0));
     }
 
     /**
@@ -161,9 +161,9 @@ public class VirtualResourcesViewTest {
         // The getHostId method of the traces cannot be overridden in those
         // tests, as the SWTBOT utils uses trace compass's default behavior, so
         // the host ID will be the ones from the ONE_QEMUKVM experiment
-        String[] physCPU0 = { VmTraces.HOST_ONE_QEMUKVM.getHostId(), Messages.FusedVMView_PhysicalCpusEntry, "PCPU 0" };
-        String[] virtCPU0 = { VmTraces.HOST_ONE_QEMUKVM.getHostId(), Messages.FusedVMView_VirtualMachinesEntry, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), Messages.FusedVMView_PhysicalCpusEntry, "PCPU 0" };
-        String[] contCPU0 = { VmTraces.HOST_ONE_QEMUKVM.getHostId(), Messages.FusedVMView_VirtualMachinesEntry, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), Messages.FusedVMView_ContainersEntry, "987654", Messages.FusedVMView_PhysicalCpusEntry, "PCPU 0" };
+        String[] physCPU0 = { VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId(), Messages.FusedVMView_PhysicalCpusEntry, "PCPU 0" };
+        String[] virtCPU0 = { VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId(), Messages.FusedVMView_VirtualMachinesEntry, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), Messages.FusedVMView_PhysicalCpusEntry, "PCPU 0" };
+        String[] contCPU0 = { VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId(), Messages.FusedVMView_VirtualMachinesEntry, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), Messages.FusedVMView_ContainersEntry, "987654", Messages.FusedVMView_PhysicalCpusEntry, "PCPU 0" };
 
         testExperiment(VmTestExperiment.QEMU_CONTAINER, ImmutableSet.of(physCPU0, virtCPU0, contCPU0));
     }

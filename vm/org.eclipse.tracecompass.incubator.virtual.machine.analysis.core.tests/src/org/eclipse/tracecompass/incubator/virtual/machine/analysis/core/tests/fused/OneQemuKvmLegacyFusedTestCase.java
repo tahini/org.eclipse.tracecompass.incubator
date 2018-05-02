@@ -30,16 +30,16 @@ import com.google.common.collect.ImmutableList;
  *
  * @author Geneviève Bastien
  */
-public class OneQemuKvmFusedTestCase extends VmTestCase {
+public class OneQemuKvmLegacyFusedTestCase extends VmTestCase {
 
-    private static final ITmfStateValue HOST_SV_STRING = TmfStateValue.newValueString(VmTraces.HOST_ONE_QEMUKVM.getHostId());
-    private static final ITmfStateValue GUEST_SV_STRING = TmfStateValue.newValueString(VmTraces.GUEST_ONE_QEMUKVM.getHostId());
+    private static final ITmfStateValue HOST_SV_STRING = TmfStateValue.newValueString(VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId());
+    private static final ITmfStateValue GUEST_SV_STRING = TmfStateValue.newValueString(VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId());
 
     /**
      * Constructor
      */
-    public OneQemuKvmFusedTestCase() {
-        super(VmTestExperiment.ONE_QEMUKVM);
+    public OneQemuKvmLegacyFusedTestCase() {
+        super(VmTestExperiment.ONE_QEMUKVM_LEGACY);
     }
 
     @Override
@@ -86,16 +86,16 @@ public class OneQemuKvmFusedTestCase extends VmTestCase {
 
         // Check the 'Machines' sub-tree towards the end of the trace
         PunctualInfo oneInfo = new PunctualInfo(300L);
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM.getHostId()), StateValues.MACHINE_HOST);
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM.getHostId(), FusedAttributes.CPUS, "0"), null);
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM.getHostId(), FusedAttributes.PARENT), null);
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM.getHostId(), FusedAttributes.CONTAINERS), null);
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId()), StateValues.MACHINE_HOST);
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.CPUS, "0"), null);
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.PARENT), null);
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.HOST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.CONTAINERS), null);
 
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM.getHostId()), StateValues.MACHINE_GUEST);
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), FusedAttributes.CPUS, "0"), 31);
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), FusedAttributes.PARENT), VmTraces.HOST_ONE_QEMUKVM.getHostId());
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), FusedAttributes.PCPUS, "0"), null);
-        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), FusedAttributes.CONTAINERS), null);
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId()), StateValues.MACHINE_GUEST);
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.CPUS, "0"), 31);
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.PARENT), VmTraces.HOST_ONE_QEMUKVM.getHostId());
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.PCPUS, "0"), null);
+        oneInfo.addValue(StateSystemTestUtils.makeAttribute(FusedAttributes.HOSTS, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), FusedAttributes.CONTAINERS), null);
         info.add(oneInfo);
 
         return info;

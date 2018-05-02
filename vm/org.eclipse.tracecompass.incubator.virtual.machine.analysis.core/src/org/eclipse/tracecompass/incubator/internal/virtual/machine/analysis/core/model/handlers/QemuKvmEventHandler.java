@@ -40,11 +40,18 @@ public class QemuKvmEventHandler implements IVirtualMachineModelBuilderEventHand
 
     private Map<IKernelAnalysisEventLayout, Set<String>> fRequiredEvents = new HashMap<>();
 
+    // Events from the legacy addons module by Francis Giraldeau and Mohamad Gebasi
     private static final ImmutableSet<String> VMSYNC_EVENTS = ImmutableSet.of(
             QemuKvmStrings.VMSYNC_GH_GUEST,
             QemuKvmStrings.VMSYNC_GH_HOST,
             QemuKvmStrings.VMSYNC_HG_GUEST,
             QemuKvmStrings.VMSYNC_HG_HOST);
+
+    // KVM events from LTTng
+    private static final ImmutableSet<String> KVM_EVENTS = ImmutableSet.of(
+            QemuKvmStrings.KVM_GUEST_STATEDUMP,
+            QemuKvmStrings.KVM_GUEST_CREATED,
+            QemuKvmStrings.KVM_GUEST_DESTROYED);
 
     /**
      * Constructor
@@ -60,6 +67,7 @@ public class QemuKvmEventHandler implements IVirtualMachineModelBuilderEventHand
             events.addAll(layout.eventsKVMEntry());
             events.addAll(layout.eventsKVMExit());
             events.addAll(VMSYNC_EVENTS);
+            events.addAll(KVM_EVENTS);
             fRequiredEvents.put(layout, events);
         }
         return events;
@@ -88,14 +96,63 @@ public class QemuKvmEventHandler implements IVirtualMachineModelBuilderEventHand
                 // There's nothing more we can learn from these events, return
                 return;
             }
-            handleGuestEvent(event, machine);
+            handleLegacyGuestEvent(event, machine);
         } else if (eventName.equals(QemuKvmStrings.VMSYNC_GH_HOST)) {
             setMachineHost(ss, machine);
-            handleHostEvent(ss, ts, event, virtEnv, machine);
+            handleLegacyHostEvent(ss, ts, event, virtEnv, machine);
+        } else if (eventName.equals(QemuKvmStrings.KVM_GUEST_CREATED)) {
+            setMachineHost(ss, machine);
+            handleGuestCreated(ss, ts, event, virtEnv, machine);
+        } else if (eventName.equals(QemuKvmStrings.KVM_GUEST_DESTROYED)) {
+            setMachineHost(ss, machine);
+        } else if (eventName.equals(QemuKvmStrings.KVM_GUEST_STATEDUMP)) {
+            setMachineHost(ss, machine);
+            handleGuestStatedump(ss, ts, event, virtEnv, machine);
         }
     }
 
-    private static void handleHostEvent(ITmfStateSystemBuilder ss, long ts, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, VirtualMachine hostMachine) {
+    private static void handleGuestStatedump(ITmfStateSystemBuilder ss, long ts, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, VirtualMachine machine) {
+        ITmfEventField content = event.getContent();
+        Integer guestPid = content.getFieldValue(Integer.class, "pid"); //$NON-NLS-1$
+        String guestUuid = content.getFieldValue(String.class, "guest_uuid"); //$NON-NLS-1$
+
+        if (guestPid == null || guestUuid == null) {
+            return;
+        }
+        guestUuid = '"' + guestUuid + '"';
+        setGuestMachine(ss, ts, virtEnv, machine, guestPid, guestUuid.toUpperCase());
+    }
+
+    private static void setGuestMachine(ITmfStateSystemBuilder ss, long ts, VirtualEnvironmentBuilder virtEnv, VirtualMachine hostMachine, Integer guestPid, String guestUuid) {
+        // Get the guest machine and add it as a child of the host machine
+        VirtualMachine guestMachine = virtEnv.getMachineByUuid(ts, guestUuid);
+        hostMachine.addChild(guestMachine);
+
+        int guestQuark = ss.getQuarkAbsoluteAndAdd(hostMachine.getHostId(), VirtualMachineModelAnalysis.GUEST_VMS, guestMachine.getHostId());
+        ss.modifyAttribute(ts, guestMachine.getTraceName(), guestQuark);
+
+        // Set the host thread to the guest pid
+        HostThread parentHt = new HostThread(hostMachine.getHostId(), guestPid);
+        // Update guest process if not known
+
+        virtEnv.setGuestMachine(guestMachine, parentHt);
+        int guestProcessQuark = ss.getQuarkRelativeAndAdd(guestQuark, VirtualMachineModelAnalysis.PROCESS);
+        ss.modifyAttribute(ts, guestPid, guestProcessQuark);
+    }
+
+    private static void handleGuestCreated(ITmfStateSystemBuilder ss, long ts, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, VirtualMachine hostMachine) {
+        ITmfEventField content = event.getContent();
+        Integer guestPid = content.getFieldValue(Integer.class, "pid"); //$NON-NLS-1$
+        String guestProductUUID = content.getFieldValue(String.class, "uuid"); //$NON-NLS-1$
+
+        if (guestPid == null || guestProductUUID == null) {
+            return;
+        }
+        guestProductUUID = '"' + guestProductUUID + '"';
+        setGuestMachine(ss, ts, virtEnv, hostMachine, guestPid, guestProductUUID.toUpperCase());
+    }
+
+    private static void handleLegacyHostEvent(ITmfStateSystemBuilder ss, long ts, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, VirtualMachine hostMachine) {
         HostThread ht = IVirtualMachineEventHandler.getCurrentHostThread(event, ts);
         if (ht == null) {
             return;
@@ -107,13 +164,10 @@ public class QemuKvmEventHandler implements IVirtualMachineModelBuilderEventHand
             return;
         }
 
-        Long vmUid = event.getContent().getFieldValue(Long.class, QemuKvmStrings.VM_UID_PAYLOAD);
-        if (vmUid == null) {
-            return;
-        }
+        String vmUid = event.getContent().getFieldValue(String.class, QemuKvmStrings.VM_UID_PAYLOAD);
 
         for (VirtualMachine machine : virtEnv.getMachines()) {
-            if (machine.getVmUid() == vmUid) {
+            if (machine.getVmUid().equals(vmUid)) {
                 /*
                  * We found the VM being run, let's associate it with the
                  * thread ID and set its hypervisor
@@ -143,11 +197,12 @@ public class QemuKvmEventHandler implements IVirtualMachineModelBuilderEventHand
         }
     }
 
-    private static void handleGuestEvent(ITmfEvent event, VirtualMachine machine) {
+    private static void handleLegacyGuestEvent(ITmfEvent event, VirtualMachine machine) {
         // Set the machine as guest and add its uid
-        Long uid = event.getContent().getFieldValue(Long.class, QemuKvmStrings.VM_UID_PAYLOAD);
+        String uid = event.getContent().getFieldValue(String.class, QemuKvmStrings.VM_UID_PAYLOAD);
         if (uid != null) {
-            machine.setGuest(uid);
+            machine.setGuest();
+            machine.setProductUuid(uid);
         }
     }
 

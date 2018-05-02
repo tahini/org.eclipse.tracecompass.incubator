@@ -74,7 +74,7 @@ public class OverheadAnalysisTest {
     @Parameters(name = "{index}: {0}")
     public static Iterable<Object[]> getParameters() {
         return Arrays.asList(new Object[][] {
-                { VmTestExperiment.ONE_QEMUKVM.name(), new OneQemuKvmTestCase() },
+                { VmTestExperiment.ONE_QEMUKVM_LEGACY.name(), new OneQemuKvmLegacyTestCase() },
         });
     }
 

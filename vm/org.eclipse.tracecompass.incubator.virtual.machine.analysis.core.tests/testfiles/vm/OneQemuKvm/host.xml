@@ -16,6 +16,11 @@
 <field name="cpu" value="0" type="int" />
 <field name="vcpu_id" value="0" type="long" />
 </event>
+<event timestamp="10" name="lttng_sessiond_statedump:kvm_guest">
+<field name="cpu" value="1" type="int" />
+<field name="pid" value="31" type="int" />
+<field name="guest_uuid" value="guest.xml product" type="string" />
+</event>
 <event timestamp="45" name="kvm_exit">
 <field name="cpu" value="0" type="int" />
 <field name="exit_reason" value="32" type="long" />
@@ -23,16 +28,6 @@
 <field name="isa" value="1" type="int" />
 <field name="info1" value="654654" type="long" />
 <field name="info2" value="456789" type="long" />
-</event>
-<event timestamp="50" name="vmsync_gh_host">
-<field name="cpu" value="0" type="int" />
-<field name="cnt" value="1" type="int" />
-<field name="vm_uid" value="123456" type="long" />
-</event>
-<event timestamp="55" name="vmsync_hg_host">
-<field name="cpu" value="0" type="int" />
-<field name="cnt" value="2" type="int" />
-<field name="vm_uid" value="123456" type="long" />
 </event>
 <event timestamp="60" name="kvm_entry">
 <field name="cpu" value="0" type="int" />
@@ -78,16 +73,6 @@
 <field name="info1" value="654654" type="long" />
 <field name="info2" value="456789" type="long" />
 </event>
-<event timestamp="200" name="vmsync_gh_host">
-<field name="cpu" value="0" type="int" />
-<field name="cnt" value="3" type="int" />
-<field name="vm_uid" value="123456" type="long" />
-</event>
-<event timestamp="205" name="vmsync_hg_host">
-<field name="cpu" value="0" type="int" />
-<field name="cnt" value="4" type="int" />
-<field name="vm_uid" value="123456" type="long" />
-</event>
 <event timestamp="210" name="kvm_entry">
 <field name="cpu" value="0" type="int" />
 <field name="vcpu_id" value="0" type="long" />
@@ -99,16 +84,6 @@
 <field name="isa" value="1" type="int" />
 <field name="info1" value="654654" type="long" />
 <field name="info2" value="456789" type="long" />
-</event>
-<event timestamp="250" name="vmsync_gh_host">
-<field name="cpu" value="0" type="int" />
-<field name="cnt" value="5" type="int" />
-<field name="vm_uid" value="123456" type="long" />
-</event>
-<event timestamp="255" name="vmsync_hg_host">
-<field name="cpu" value="0" type="int" />
-<field name="cnt" value="6" type="int" />
-<field name="vm_uid" value="123456" type="long" />
 </event>
 <event timestamp="260" name="kvm_entry">
 <field name="cpu" value="0" type="int" />

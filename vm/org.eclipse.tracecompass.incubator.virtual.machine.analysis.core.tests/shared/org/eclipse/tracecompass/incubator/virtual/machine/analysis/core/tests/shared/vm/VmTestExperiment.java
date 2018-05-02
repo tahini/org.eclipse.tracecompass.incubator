@@ -36,6 +36,11 @@ public enum VmTestExperiment {
      */
     ONE_QEMUKVM(VmTraces.HOST_ONE_QEMUKVM, VmTraces.GUEST_ONE_QEMUKVM),
     /**
+     * Virtual machine experiment: 1 guest, 1 host, using QEMU/KVM model, with
+     * legacy addons module method
+     */
+    ONE_QEMUKVM_LEGACY(VmTraces.HOST_ONE_QEMUKVM_LEGACY, VmTraces.GUEST_ONE_QEMUKVM_LEGACY),
+    /**
      * Virtual machine experiment: 1 trace, with multiple container data
      */
     ONE_CONTAINER(VmTraces.ONE_CONTAINER),
@@ -46,7 +51,7 @@ public enum VmTestExperiment {
     /**
      * Virtual machine experiment: 1 guest, 1 host, guest has a container
      */
-    TWO_HOSTS(VmTraces.HOST_ONE_QEMUKVM, VmTraces.GUEST_ONE_QEMUKVM, VmTraces.ONE_CONTAINER);
+    TWO_HOSTS(VmTraces.HOST_ONE_QEMUKVM_LEGACY, VmTraces.GUEST_ONE_QEMUKVM_LEGACY, VmTraces.ONE_CONTAINER);
 
     private @NonNull Set<VmTraces> fTraces = new HashSet<>();
 

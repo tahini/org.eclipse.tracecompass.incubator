@@ -28,13 +28,13 @@ import com.google.common.collect.ImmutableList;
  *
  * @author Geneviève Bastien
  */
-public class OneQemuKvmTestCase extends VmTestCase {
+public class OneQemuKvmLegacyTestCase extends VmTestCase {
 
     /**
      * Constructor
      */
-    public OneQemuKvmTestCase() {
-        super(VmTestExperiment.ONE_QEMUKVM);
+    public OneQemuKvmLegacyTestCase() {
+        super(VmTestExperiment.ONE_QEMUKVM_LEGACY);
     }
 
     @Override
@@ -49,7 +49,7 @@ public class OneQemuKvmTestCase extends VmTestCase {
                 new StateIntervalStub(225, 274, TmfStateValue.nullValue()),
                 new StateIntervalStub(275, 374, TmfStateValue.newValueString("RUN")),
                 new StateIntervalStub(375, 375, TmfStateValue.nullValue()));
-        info.add(new IntervalInfo(intervals, VmOverheadStateProvider.TRACES, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), VmOverheadStateProvider.THREADS, "130", "CallStack", "1"));
+        info.add(new IntervalInfo(intervals, VmOverheadStateProvider.TRACES, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), VmOverheadStateProvider.THREADS, "130", "CallStack", "1"));
 
         /* Verify the second level of overhead */
         intervals = ImmutableList.of(new StateIntervalStub(1, 44, TmfStateValue.nullValue()),
@@ -61,7 +61,7 @@ public class OneQemuKvmTestCase extends VmTestCase {
                 new StateIntervalStub(300, 349, TmfStateValue.newValueString("VCPU Preempted")),
                 new StateIntervalStub(350, 354, TmfStateValue.newValueString("VMM")),
                 new StateIntervalStub(355, 375, TmfStateValue.nullValue()));
-        info.add(new IntervalInfo(intervals, VmOverheadStateProvider.TRACES, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), VmOverheadStateProvider.THREADS, "130", "CallStack", "2"));
+        info.add(new IntervalInfo(intervals, VmOverheadStateProvider.TRACES, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), VmOverheadStateProvider.THREADS, "130", "CallStack", "2"));
 
         /* Verify the third level of overhead */
         intervals = ImmutableList.of(new StateIntervalStub(1, 44, TmfStateValue.nullValue()),
@@ -73,7 +73,7 @@ public class OneQemuKvmTestCase extends VmTestCase {
                 new StateIntervalStub(300, 349, TmfStateValue.newValueString("0")),
                 new StateIntervalStub(350, 354, TmfStateValue.newValueString("32")),
                 new StateIntervalStub(355, 375, TmfStateValue.nullValue()));
-        info.add(new IntervalInfo(intervals, VmOverheadStateProvider.TRACES, VmTraces.GUEST_ONE_QEMUKVM.getHostId(), VmOverheadStateProvider.THREADS, "130", "CallStack", "3"));
+        info.add(new IntervalInfo(intervals, VmOverheadStateProvider.TRACES, VmTraces.GUEST_ONE_QEMUKVM_LEGACY.getHostId(), VmOverheadStateProvider.THREADS, "130", "CallStack", "3"));
 
         return info;
     }

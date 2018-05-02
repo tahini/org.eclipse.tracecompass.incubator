@@ -16,6 +16,7 @@ import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualMachine;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
+import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 
 /**
  * The virtual environment model implementation based on a state system
@@ -81,23 +82,22 @@ public class VirtualEnvironmentBuilder extends VirtualEnvironment {
         return super.getGuestMachine(event, ht);
     }
 
-    //---------------------------------------
+    // ---------------------------------------
     // Methods for building the model, non-blocking
-    //---------------------------------------
+    // ---------------------------------------
 
     /**
      * Get the machine this event is for
      *
-     * @param event The event to get the machine for
+     * @param event
+     *            The event to get the machine for
      * @return The machine for this event
      */
     public VirtualMachine getCurrentMachineBuild(ITmfEvent event) {
         VirtualMachine machine = innerGetCurrentMachine(event);
         if (machine == null) {
             synchronized (fStateSystem) {
-                String hostId = event.getTrace().getHostId();
-                machine = createMachine(fStateSystem, event.getTimestamp().toNanos(), hostId, String.valueOf(event.getTrace().getName()));
-                fKnownMachines.put(hostId, machine);
+                machine = createMachine(fStateSystem, event.getTimestamp().toNanos(), event.getTrace());
             }
 
         }
@@ -135,10 +135,19 @@ public class VirtualEnvironmentBuilder extends VirtualEnvironment {
         return super.getGuestMachine(event, ht);
     }
 
-    private static VirtualMachine createMachine(ITmfStateSystemBuilder ss, long ts, String hostId, String traceName) {
+    private VirtualMachine createMachine(ITmfStateSystemBuilder ss, long ts, ITmfTrace trace) {
+        String hostId = trace.getHostId();
+        String traceName = String.valueOf(trace.getName());
+        return createMachine(ss, ts, hostId, traceName);
+    }
+
+    private VirtualMachine createMachine(ITmfStateSystemBuilder ss, long ts, String hostId, String traceName) {
         int quark = ss.getQuarkAbsoluteAndAdd(hostId);
         ss.modifyAttribute(ts, traceName, quark);
-        return VirtualMachine.newUnknownMachine(hostId, traceName);
+        VirtualMachine unknownMachine = VirtualMachine.newUnknownMachine(hostId, traceName);
+        fKnownMachines.put(hostId, unknownMachine);
+
+        return unknownMachine;
     }
 
     /**
@@ -163,6 +172,57 @@ public class VirtualEnvironmentBuilder extends VirtualEnvironment {
      */
     public void setGuestCpu(VirtualCPU virtualCPU, HostThread ht) {
         fTidToVcpu.put(ht, virtualCPU);
+    }
+
+    /**
+     * Get the virtual machine for this trace's host and product UUID. Create it if
+     * it does not exist. If a machine already exists for this host, its product
+     * UUID will be set to the one received in argument
+     *
+     * @param productUuid
+     *            The unique ID of the machine to craete
+     * @param trace
+     *            The trace of the machine
+     * @return The machine, of type unknown, with the productUuid
+     */
+    public VirtualMachine getOrCreateMachine(String productUuid, ITmfTrace trace) {
+        String hostId = trace.getHostId();
+        VirtualMachine virtualMachine = fKnownMachines.get(hostId);
+        if (virtualMachine == null) {
+            synchronized (fStateSystem) {
+                virtualMachine = createMachine(fStateSystem, trace.getStartTime().toNanos(), trace);
+            }
+        }
+        // Make a symlink in the state system to this product UUID
+        int vmQuark = fStateSystem.getQuarkAbsoluteAndAdd(hostId);
+        int vmByProduct = fStateSystem.getQuarkAbsoluteAndAdd(productUuid);
+        fStateSystem.modifyAttribute(trace.getStartTime().toNanos(), vmQuark, vmByProduct);
+        fKnownMachines.put(productUuid, virtualMachine);
+        virtualMachine.setProductUuid(productUuid);
+        return virtualMachine;
+
+    }
+
+    /**
+     * Get a guest machine by product UUID. If the machine does not exist, it means
+     * there is no trace for this product UUID. This will create the machine, using
+     * the product UUID as the host ID.
+     *
+     * @param ts The timestamp at which to create the guest machine if necessary
+     * @param guestProductUUID
+     *            The product UUID
+     * @return The machine
+     */
+    public VirtualMachine getMachineByUuid(long ts, String guestProductUUID) {
+        // Machines have been populated by product uuid and host ID at the beginning. If
+        // it does not exist, then we have no trace for this machine. Create a shadow
+        // machine with the product UUID as host ID to still populate its data.
+        VirtualMachine virtualMachine = fKnownMachines.get(guestProductUUID);
+        if (virtualMachine != null) {
+            return virtualMachine;
+        }
+        virtualMachine = createMachine(fStateSystem, ts, guestProductUUID, guestProductUUID);
+        return virtualMachine;
     }
 
 }

@@ -39,6 +39,10 @@ public enum VmTraces {
     HOST_ONE_QEMUKVM("vm/OneQemuKvm/host.xml"),
     /** Guest from simple QEMU/KVM experiment */
     GUEST_ONE_QEMUKVM("vm/OneQemuKvm/guest.xml"),
+    /** Host from simple QEMU/KVM experiment for legacy method */
+    HOST_ONE_QEMUKVM_LEGACY("vm/OneQemuKvmLegacy/host.xml"),
+    /** Guest from simple QEMU/KVM experiment for legacy method */
+    GUEST_ONE_QEMUKVM_LEGACY("vm/OneQemuKvmLegacy/guest.xml"),
     /** Guest from simple QEMU/KVM experiment */
     ONE_CONTAINER("vm/Containers/withContainers.xml"),
     /** Host from simple QEMU/KVM experiment */

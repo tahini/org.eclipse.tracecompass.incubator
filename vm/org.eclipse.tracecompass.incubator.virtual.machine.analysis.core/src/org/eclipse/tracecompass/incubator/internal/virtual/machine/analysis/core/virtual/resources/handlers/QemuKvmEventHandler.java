@@ -23,7 +23,9 @@ import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualEnvironmentModel;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualCPU;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualMachine;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.qemukvm.QemuKvmStrings;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.virtual.resources.VmAttributes;
+import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 
@@ -50,6 +52,7 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
             events = new HashSet<>();
             events.addAll(layout.eventsKVMEntry());
             events.addAll(layout.eventsKVMExit());
+            events.add(QemuKvmStrings.KVM_GUEST_DESTROYED);
             fRequiredEvents.put(layout, events);
         }
         return events;
@@ -73,6 +76,28 @@ public class QemuKvmEventHandler implements IVirtualMachineEventHandler {
         } else if (layout.eventsKVMExit().contains(eventName)) {
             // The vcpu is entering hypervisor mode
             handleKvmEvent(ss, ts, event, virtEnv, i -> i | VcpuStateValues.VCPU_VMM);
+        } else if (eventName.equals(QemuKvmStrings.KVM_GUEST_DESTROYED)) {
+            handleKvmEnd(ss, ts, event, virtEnv);
+        }
+    }
+
+    private static void handleKvmEnd(ITmfStateSystemBuilder ss, long ts, ITmfEvent event, IVirtualEnvironmentModel virtEnv) {
+        Integer guestPid = event.getContent().getFieldValue(Integer.class, "pid"); //$NON-NLS-1$
+        if (guestPid == null) {
+            return;
+        }
+        HostThread ht = new HostThread(event.getTrace().getHostId(), guestPid);
+        VirtualMachine guestMachine = virtEnv.getGuestMachine(event, ht);
+        if (guestMachine == null) {
+            return;
+        }
+        // Set all VCPUs to null
+        int guestVmQuark = ss.getQuarkAbsoluteAndAdd(VmAttributes.VIRTUAL_MACHINES, guestMachine.getHostId());
+        for (Integer vcpuQuark : ss.getSubAttributes(guestVmQuark, false)) {
+            int statusQuark = ss.optQuarkRelative(vcpuQuark, VmAttributes.STATUS);
+            if (statusQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+                ss.removeAttribute(ts, statusQuark);
+            }
         }
     }
 

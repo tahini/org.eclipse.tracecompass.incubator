@@ -136,10 +136,11 @@ public class QemuKvmVmModel implements IVirtualMachineModel {
             if (data != null) {
                 Long uid = (Long) data.getValue();
                 if (machine != null) {
-                    machine.setGuest(uid);
+                    machine.setGuest();
+                    machine.setProductUuid(String.valueOf(uid));
                     return machine;
                 }
-                machine = VirtualMachine.newGuestMachine(uid, hostId, String.valueOf(event.getTrace().getName()));
+                machine = VirtualMachine.newGuestMachine(String.valueOf(uid), hostId, String.valueOf(event.getTrace().getName()));
             }
         }
         if (machine != null) {
@@ -291,14 +292,13 @@ public class QemuKvmVmModel implements IVirtualMachineModel {
             }
 
             /* Find a virtual machine with the vm uid payload value */
-            ITmfEventField data = content.getField(QemuKvmStrings.VM_UID_PAYLOAD);
-            if (data == null) {
+            String vmUid = content.getFieldValue(String.class, QemuKvmStrings.VM_UID_PAYLOAD);
+            if (vmUid == null) {
                 return;
             }
 
-            long vmUid = (Long) data.getValue();
             for (VirtualMachine machine : fKnownMachines.values()) {
-                if (machine.getVmUid() == vmUid) {
+                if (machine.getVmUid().equals(vmUid)) {
                     /*
                      * We found the VM being run, let's associate it with the
                      * thread ID

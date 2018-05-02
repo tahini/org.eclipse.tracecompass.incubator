@@ -45,6 +45,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+
 /**
  * Test the {@link VirtualMachineModelAnalysis} analysis
  *
@@ -120,6 +123,7 @@ public class VmModelAnalysisTest {
     @Parameters(name = "{index}: {0}")
     public static Iterable<Object[]> getParameters() {
         return Arrays.asList(new Object[][] {
+                { VmTestExperiment.ONE_QEMUKVM_LEGACY.name(), new OneQemuKvmLegacyModelTestCase() },
                 { VmTestExperiment.ONE_QEMUKVM.name(), new OneQemuKvmModelTestCase() },
                 // { VmTestExperiment.ONE_CONTAINER.name(), new SimpleContainersTestCase() },
                 // { VmTestExperiment.QEMU_CONTAINER.name(), new QemuContainerTestCase() },
@@ -188,7 +192,7 @@ public class VmModelAnalysisTest {
         assertTrue(model instanceof VirtualEnvironmentBuilder);
         Collection<VirtualMachine> actual = model.getMachines();
         Collection<VirtualMachine> expected = fTestCase.getMachines();
-        assertEquals(expected.size(), actual.size());
+        compareMachines(expected, actual);
 
         // Create a new instance of the module, it should use the non-builder instance
         module = new VirtualMachineModelAnalysis();
@@ -201,9 +205,25 @@ public class VmModelAnalysisTest {
             model = module.getVirtualEnvironmentModel();
             assertTrue(model instanceof VirtualEnvironment);
             actual = model.getMachines();
-            assertEquals(expected.size(), actual.size());
+            compareMachines(expected, actual);
         } finally {
             module.dispose();
+        }
+
+    }
+
+    private static void compareMachines(Collection<VirtualMachine> expected, Collection<VirtualMachine> actual) {
+        assertEquals(expected.size(), actual.size());
+        ImmutableMap<String, VirtualMachine> expectedMap = Maps.uniqueIndex(expected, VirtualMachine::getHostId);
+
+        for (VirtualMachine machine : actual) {
+            VirtualMachine expMachine = expectedMap.get(machine.getHostId());
+            assertNotNull(expMachine);
+            if (!expMachine.getVmUid().isEmpty()) {
+                assertEquals(expMachine.getVmUid(), machine.getVmUid());
+            }
+            assertEquals(expMachine.isGuest(), machine.isGuest());
+            assertEquals(expMachine.isHost(), machine.isHost());
         }
 
     }
