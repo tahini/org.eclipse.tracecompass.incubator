@@ -17,11 +17,13 @@ import java.util.Set;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.tracecompass.common.core.NonNullUtils;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.fused.handlers.FusedVirtualMachineStateProvider;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualMachineModelAnalysis;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.virtual.resources.Messages;
 import org.eclipse.tracecompass.tmf.core.analysis.requirements.TmfAbstractAnalysisRequirement;
 import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.TmfStateSystemAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
+import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
 
 /**
@@ -90,8 +92,15 @@ public class FusedVirtualMachineAnalysis extends TmfStateSystemAnalysisModule {
         if (!(trace instanceof TmfExperiment)) {
             throw new IllegalStateException();
         }
-
-        return new FusedVirtualMachineStateProvider((TmfExperiment) trace);
+        VirtualMachineModelAnalysis model = TmfTraceUtils.getAnalysisModuleOfClass(trace, VirtualMachineModelAnalysis.class, VirtualMachineModelAnalysis.ID);
+        if (model == null) {
+            throw new IllegalStateException("There should be a model analysis for this class"); //$NON-NLS-1$
+        }
+        model.schedule();
+        if (!model.waitForInitialization()) {
+            throw new IllegalStateException("Problem initializing the model analysis"); //$NON-NLS-1$
+        }
+        return new FusedVirtualMachineStateProvider((TmfExperiment) trace, model.getVirtualEnvironmentModel());
     }
 
     @Override

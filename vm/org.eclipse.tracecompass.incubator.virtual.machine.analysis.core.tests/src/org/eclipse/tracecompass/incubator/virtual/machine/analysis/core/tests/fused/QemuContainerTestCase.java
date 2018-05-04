@@ -50,8 +50,9 @@ public class QemuContainerTestCase extends VmTestCase {
         Set<IntervalInfo> info = new LinkedHashSet<>();
 
         /* Verify the 'CPUs/0' attributes: first the machine */
-        ImmutableList<ITmfStateInterval> intervals = ImmutableList.of(new StateIntervalStub(1, 49, TmfStateValue.nullValue()),
-                new StateIntervalStub(50, 154, HOST_SV_STRING),
+        ImmutableList<ITmfStateInterval> intervals = ImmutableList.of(new StateIntervalStub(1, 4, HOST_SV_STRING),
+                new StateIntervalStub(5, 44, GUEST_SV_STRING),
+                new StateIntervalStub(45, 154, HOST_SV_STRING),
                 new StateIntervalStub(155, 194, GUEST_SV_STRING),
                 new StateIntervalStub(195, 209, HOST_SV_STRING),
                 new StateIntervalStub(210, 244, GUEST_SV_STRING),
@@ -62,7 +63,14 @@ public class QemuContainerTestCase extends VmTestCase {
         info.add(new IntervalInfo(intervals, FusedAttributes.CPUS, "0", FusedAttributes.MACHINE_NAME));
 
         /* Verify the current thread */
-        intervals = ImmutableList.of(new StateIntervalStub(1, 99, TmfStateValue.nullValue()),
+        intervals = ImmutableList.of(new StateIntervalStub(1, 4, TmfStateValue.newValueInt(31)),
+                new StateIntervalStub(5, 9, TmfStateValue.newValueInt(-1)),
+                new StateIntervalStub(10, 34, TmfStateValue.newValueInt(131)),
+                new StateIntervalStub(35, 44, TmfStateValue.newValueInt(130)),
+                new StateIntervalStub(45, 59, TmfStateValue.newValueInt(31)),
+                new StateIntervalStub(60, 74, TmfStateValue.newValueInt(130)),
+                new StateIntervalStub(75, 94, TmfStateValue.newValueInt(131)),
+                new StateIntervalStub(95, 99, TmfStateValue.newValueInt(31)),
                 new StateIntervalStub(100, 149, TmfStateValue.newValueInt(30)),
                 new StateIntervalStub(150, 154, TmfStateValue.newValueInt(31)),
                 new StateIntervalStub(155, 174, TmfStateValue.newValueInt(131)),

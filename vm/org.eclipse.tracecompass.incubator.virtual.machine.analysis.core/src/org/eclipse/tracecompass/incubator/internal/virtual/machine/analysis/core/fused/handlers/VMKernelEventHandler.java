@@ -10,6 +10,7 @@
 package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.fused.handlers;
 
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualEnvironmentModel;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 
@@ -27,8 +28,8 @@ public abstract class VMKernelEventHandler {
      * Constructor
      *
      * @param layout
-     *            The event layout that corresponds to the trace being analysed
-     *            by this handler
+     *            The event layout that corresponds to the trace being analysed by
+     *            this handler
      * @param sp
      *            The state provider
      */
@@ -62,7 +63,9 @@ public abstract class VMKernelEventHandler {
      *            the state system to write to
      * @param event
      *            the event
+     * @param virtEnv
+     *            The virtual environment model for this analysis
      */
-    public abstract void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event);
+    public abstract void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event, IVirtualEnvironmentModel virtEnv);
 
 }

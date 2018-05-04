@@ -14,19 +14,20 @@ package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.cor
 
 import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelTrace;
+import org.eclipse.tracecompass.common.core.NonNullUtils;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.fused.FusedAttributes;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualEnvironmentModel;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualCPU;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualMachine;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.lxc.LxcModel;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.qemukvm.QemuKvmStrings;
-import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.qemukvm.QemuKvmVmModel;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.virtual.resources.StateValues;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
@@ -38,7 +39,9 @@ import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.core.trace.experiment.TmfExperiment;
 
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Table;
 
 /**
  * State provider for the Fused Virtual Machine analysis. It is based on the
@@ -63,10 +66,14 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
 
     private final Map<String, VMKernelEventHandler> fEventNames;
     private final Map<ITmfTrace, LayoutHandler> fLayouts = new HashMap<>();
-    private QemuKvmVmModel fKvmModel;
+    private IVirtualEnvironmentModel fKvmModel;
     private LxcModel fContainerModel;
     private int fCurrentThreadNode; // quark to current thread node
     private boolean fAllRolesFound = false;
+
+    /* Associate a VM and a VCPU to a PCPU */
+    private final Table<VirtualMachine, VirtualCPU, Integer> fVirtualToPhysicalCpu = NonNullUtils.checkNotNull(HashBasedTable.create());
+
 
     // ------------------------------------------------------------------------
     // Layout handling class and methods
@@ -113,8 +120,9 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
      *
      * @param experiment
      *            The experiment that will be analyzed.
+     * @param virtEnv
      */
-    public FusedVirtualMachineStateProvider(TmfExperiment experiment) {
+    public FusedVirtualMachineStateProvider(TmfExperiment experiment, IVirtualEnvironmentModel virtEnv) {
         super(experiment, "Virtual Machine State Provider"); //$NON-NLS-1$
 
         Map<String, VMKernelEventHandler> builder = new HashMap<>();
@@ -126,7 +134,7 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
             }
         }
         fEventNames = ImmutableMap.copyOf(builder);
-        fKvmModel = QemuKvmVmModel.get(experiment);
+        fKvmModel = virtEnv;
         fContainerModel = new LxcModel();
     }
 
@@ -177,7 +185,7 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
 
     @Override
     public FusedVirtualMachineStateProvider getNewInstance() {
-        return new FusedVirtualMachineStateProvider(getTrace());
+        return new FusedVirtualMachineStateProvider(getTrace(), fKvmModel);
     }
 
     @Override
@@ -205,10 +213,6 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
         if (layoutHandler == null) {
             return;
         }
-        /*
-         * Have the hypervisor models handle the event first.
-         */
-        fKvmModel.handleEvent(event, layoutHandler.fLayout);
 
         /*
          * Continue even if host is unknown if the event is required for
@@ -344,7 +348,7 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
             }
         }
         if (handler != null) {
-            handler.handleEvent(ss, event);
+            handler.handleEvent(ss, event, fKvmModel);
         }
 
     }
@@ -389,15 +393,14 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
         return fCurrentThreadNode;
     }
 
+    void putPhysicalCpu(VirtualMachine host, VirtualCPU vcpu, int cpu) {
+        fVirtualToPhysicalCpu.put(host, vcpu, cpu);
+    }
+
     @Nullable
     Integer getPhysicalCPU(VirtualMachine host, Integer cpu) {
         VirtualCPU vcpu = VirtualCPU.getVirtualCPU(host, cpu.longValue());
-        Long physCpu = fKvmModel.getPhysicalCpuFromVcpu(host, vcpu);
-        if (physCpu == null) {
-            return null;
-        }
-        /* Replace the vcpu value by the physical one. */
-        return physCpu.intValue();
+        return fVirtualToPhysicalCpu.get(host, vcpu);
     }
 
     @Nullable
@@ -407,32 +410,12 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
 
     @Nullable
     VirtualMachine getCurrentMachine(ITmfEvent event) {
-        return getKnownMachines().get(event.getTrace().getHostId());
+        return fKvmModel.getCurrentMachine(event);
     }
 
     @Nullable
     VirtualMachine getCurrentContainer(ITmfEvent event) {
         return fContainerModel.getCurrentMachine(event);
-    }
-
-    @Nullable
-    VirtualMachine getVmFromHostThread(HostThread ht) {
-        return fKvmModel.getVmFromHostThread(ht);
-    }
-
-    @Nullable
-    HostThread getHostThreadFromVCpu(VirtualCPU virtualCPU) {
-        return fKvmModel.getHostThreadFromVCpu(virtualCPU);
-    }
-
-    @Nullable
-    VirtualCPU getVirtualCpu(HostThread ht) {
-        return fKvmModel.getVirtualCpu(ht);
-    }
-
-    @Nullable
-    VirtualCPU getVCpuEnteringHypervisorMode(ITmfEvent event, HostThread ht, IKernelAnalysisEventLayout layout) {
-        return fKvmModel.getVCpuEnteringHypervisorMode(event, ht, layout);
     }
 
     private static boolean isKvmEntry(String eventName) {
@@ -456,8 +439,8 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
      *
      * @return The known machines
      */
-    public Map<String, VirtualMachine> getKnownMachines() {
-        return fKvmModel.getKnownMachines();
+    public Collection<VirtualMachine> getKnownMachines() {
+        return fKvmModel.getMachines();
     }
 
     /**
@@ -479,7 +462,7 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
 
     private int numberOfIdentifiedMachines() {
         int numberOfMachines = 0;
-        for (VirtualMachine machine : getKnownMachines().values()) {
+        for (VirtualMachine machine : getKnownMachines()) {
             if (machine.isHost() && !machine.isGuest()) {
                 numberOfMachines++;
                 numberOfMachines += numberOfIdentifiedMachinesRec(machine);
@@ -499,9 +482,7 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
     }
 
     private void setMachinesRoles(ITmfStateSystemBuilder ss) {
-        Map<String, VirtualMachine> knownMachines = getKnownMachines();
-
-        for (VirtualMachine machine : knownMachines.values()) {
+        for (VirtualMachine machine : getKnownMachines()) {
             String machineHost = machine.getHostId();
             int machineQuark = ss.getQuarkAbsoluteAndAdd(FusedAttributes.HOSTS, machineHost);
             // Update the trace name for this machine
@@ -520,8 +501,7 @@ public class FusedVirtualMachineStateProvider extends AbstractTmfStateProvider {
     }
 
     private void setMachinesParents(ITmfStateSystemBuilder ss) {
-        Map<String, VirtualMachine> knownMachines = getKnownMachines();
-        for (VirtualMachine machine : knownMachines.values()) {
+        for (VirtualMachine machine : getKnownMachines()) {
             String machineName = machine.getHostId();
             int parentQuark = ss.getQuarkAbsoluteAndAdd(FusedAttributes.HOSTS, machineName, FusedAttributes.PARENT);
             Object parent = ss.queryOngoing(parentQuark);

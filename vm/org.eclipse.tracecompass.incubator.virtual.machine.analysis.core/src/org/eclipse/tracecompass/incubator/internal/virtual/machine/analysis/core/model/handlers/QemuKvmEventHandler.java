@@ -120,7 +120,7 @@ public class QemuKvmEventHandler implements IVirtualMachineModelBuilderEventHand
             return;
         }
         guestUuid = '"' + guestUuid + '"';
-        setGuestMachine(ss, ts, virtEnv, machine, guestPid, guestUuid.toUpperCase());
+        setGuestMachine(ss, ts, virtEnv, machine, guestPid, guestUuid);
     }
 
     private static void setGuestMachine(ITmfStateSystemBuilder ss, long ts, VirtualEnvironmentBuilder virtEnv, VirtualMachine hostMachine, Integer guestPid, String guestUuid) {
@@ -149,7 +149,7 @@ public class QemuKvmEventHandler implements IVirtualMachineModelBuilderEventHand
             return;
         }
         guestProductUUID = '"' + guestProductUUID + '"';
-        setGuestMachine(ss, ts, virtEnv, hostMachine, guestPid, guestProductUUID.toUpperCase());
+        setGuestMachine(ss, ts, virtEnv, hostMachine, guestPid, guestProductUUID);
     }
 
     private static void handleLegacyHostEvent(ITmfStateSystemBuilder ss, long ts, ITmfEvent event, VirtualEnvironmentBuilder virtEnv, VirtualMachine hostMachine) {

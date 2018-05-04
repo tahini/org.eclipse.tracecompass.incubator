@@ -11,7 +11,10 @@ package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.cor
 
 import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
+import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
+import org.eclipse.tracecompass.incubator.analysis.core.model.ModelManager;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.fused.FusedAttributes;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualEnvironmentModel;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualCPU;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualMachine;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.virtual.resources.StateValues;
@@ -30,17 +33,13 @@ public class KvmEntryHandler extends VMKernelEventHandler {
     }
 
     @Override
-    public void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event) {
+    public void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event, IVirtualEnvironmentModel virtEnv) {
 
         Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
         if (cpu == null) {
             return;
         }
-        FusedVirtualMachineStateProvider sp = getStateProvider();
-        VirtualMachine host = sp.getCurrentMachine(event);
-        if (host == null) {
-            return;
-        }
+        VirtualMachine currentHost = virtEnv.getCurrentMachine(event);
 
         int currentCPUNode = FusedVMEventHandlerUtils.getCurrentCPUNode(cpu, ss);
         /*
@@ -52,24 +51,24 @@ public class KvmEntryHandler extends VMKernelEventHandler {
         Object value = ss.queryOngoing(quark);
         int thread = (value instanceof Integer) ? (int) value : -1;
 
-        thread = VirtualCPU.getVirtualCPU(host, cpu.longValue()).getCurrentThread();
+        thread = VirtualCPU.getVirtualCPU(currentHost, cpu.longValue()).getCurrentThread();
         if (thread == -1) {
             return;
         }
 
         /* Special case where host is also a guest. */
-        if (host.isHost() && host.isGuest()) {
+        if (currentHost.isHost() && currentHost.isGuest()) {
             /*
              * We are in L1. We are going to look for the vcpu of L2 we want to
              * launch and keep it for later.
              */
             /* We need our actual VM's vcpu. */
-            VirtualCPU hostCpu = VirtualCPU.getVirtualCPU(host, cpu.longValue());
+            VirtualCPU hostCpu = VirtualCPU.getVirtualCPU(currentHost, cpu.longValue());
 
             /* The corresponding thread object. */
             HostThread ht = new HostThread(event.getTrace().getHostId(), thread);
             /* To get the vcpu of L2. */
-            VirtualCPU nextLayerVCPU = sp.getVirtualCpu(ht);
+            VirtualCPU nextLayerVCPU = virtEnv.getVirtualCpu(event, ht);
             /* And keep it in the vcpu of L1. L0 will use it later. */
             hostCpu.setNextLayerVCPU(nextLayerVCPU);
             if (nextLayerVCPU != null) {
@@ -86,7 +85,7 @@ public class KvmEntryHandler extends VMKernelEventHandler {
                 int quarkVCPUs = FusedVMEventHandlerUtils.getMachineCPUsNode(ss, nextLayerVM.getHostId());
                 int quarkVCPU = ss.getQuarkRelativeAndAdd(quarkVCPUs, nextLayerVCPU.getCpuId().toString());
                 if (ss.queryOngoingState(quarkVCPU).isNull()) {
-                    ss.modifyAttribute(sp.getStartTime(), thread, quarkVCPU);
+                    ss.modifyAttribute(ss.getStartTime(), thread, quarkVCPU);
                 }
             }
 
@@ -94,13 +93,13 @@ public class KvmEntryHandler extends VMKernelEventHandler {
              * We also need to tell L0 that its thread running this vcpu of L1
              * wants to run L2, so that we are waiting for a kvm_mmu_get_page.
              */
-            VirtualMachine parent = host.getParent();
+            VirtualMachine parent = currentHost.getParent();
             if (parent == null) {
                 /* This should not happen. */
                 System.err.println("Parent not found in KvmEntryHandler. This should never happen."); //$NON-NLS-1$
                 return;
             }
-            HostThread parentThread = sp.getHostThreadFromVCpu(hostCpu);
+            HostThread parentThread = virtEnv.getVirtualCpuTid(hostCpu);
             parent.addThreadWaitingForNextLayer(parentThread);
 
             /* Nothing else to do, get out of here. */
@@ -116,7 +115,7 @@ public class KvmEntryHandler extends VMKernelEventHandler {
 
 
         /* Get the host CPU doing the kvm_entry. */
-        VirtualCPU hostCpu = VirtualCPU.getVirtualCPU(host, cpu.longValue());
+        VirtualCPU hostCpu = VirtualCPU.getVirtualCPU(currentHost, cpu.longValue());
         /*
          * Saves the state. Will be restored after a kvm_exit.
          */
@@ -130,18 +129,18 @@ public class KvmEntryHandler extends VMKernelEventHandler {
          * Get the host thread to get the right virtual machine.
          */
         HostThread ht = new HostThread(event.getTrace().getHostId(), thread);
-        VirtualMachine virtualMachine = sp.getVmFromHostThread(ht);
+        VirtualMachine virtualMachine = virtEnv.getGuestMachine(event, ht);
         if (virtualMachine == null) {
             return;
         }
 
-        VirtualCPU vcpu = sp.getVirtualCpu(ht);
+        VirtualCPU vcpu = virtEnv.getVirtualCpu(event, ht);
         if (vcpu == null) {
             return;
         }
 
         /* Check if we need to jump to the next layer. */
-        if (host.isThreadReadyForNextLayer(ht)) {
+        if (currentHost.isThreadReadyForNextLayer(ht)) {
             /*
              * Then we need to go to the next layer by replacing the vcpu and
              * the vm by the one in the next layer.
@@ -198,5 +197,29 @@ public class KvmEntryHandler extends VMKernelEventHandler {
         /* Restore the thread of the VM that was running. */
         value = vcpu.getCurrentThread();
         ss.modifyAttribute(timestamp, value, quark);
+
+
+        /*
+         * TODO: Copy pasted from previous model, there probably is a lot of things
+         * already present
+         */
+        String hostId = event.getTrace().getHostId();
+        long ts = event.getTimestamp().getValue();
+        IHostModel model = ModelManager.getModelFor(hostId);
+        int tid = model.getThreadOnCpu(cpu, ts);
+        if (tid < 0) {
+            /*
+             * We do not know which process is running at this point. It may
+             * happen at the beginning of the trace.
+             */
+            return;
+        }
+        ht = new HostThread(hostId, tid);
+        vcpu = virtEnv.getVirtualCpu(event, ht);
+        virtualMachine = virtEnv.getGuestMachine(event, ht);
+        if (virtualMachine == null || vcpu == null) {
+            return;
+        }
+        getStateProvider().putPhysicalCpu(virtualMachine, vcpu, cpu);
     }
 }

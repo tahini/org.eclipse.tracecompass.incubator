@@ -182,7 +182,7 @@ public class VirtualMachineModelStateProvider extends AbstractTmfStateProvider {
                 if (productUuid == null) {
                     continue;
                 }
-                virtEnv.getOrCreateMachine(productUuid.toUpperCase(), trace);
+                virtEnv.getOrCreateMachine(productUuid, trace);
             }
         }
         for (IVirtualMachineEventHandler handler : handlers) {

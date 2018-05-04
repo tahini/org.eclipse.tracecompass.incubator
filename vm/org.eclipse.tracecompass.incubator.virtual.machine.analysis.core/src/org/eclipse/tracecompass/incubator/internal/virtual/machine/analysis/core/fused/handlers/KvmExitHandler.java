@@ -12,6 +12,7 @@ package org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.cor
 import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.fused.FusedAttributes;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualEnvironmentModel;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualCPU;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualMachine;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.virtual.resources.StateValues;
@@ -30,7 +31,7 @@ public class KvmExitHandler extends VMKernelEventHandler {
     }
 
     @Override
-    public void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event) {
+    public void handleEvent(ITmfStateSystemBuilder ss, ITmfEvent event, IVirtualEnvironmentModel virtEnv) {
         Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
         if (cpu == null) {
             return;
@@ -60,7 +61,7 @@ public class KvmExitHandler extends VMKernelEventHandler {
         long timestamp = FusedVMEventHandlerUtils.getTimestamp(event);
         Integer currentThread = hostCpu.getCurrentThread();
         HostThread ht = new HostThread(host.getHostId(), currentThread);
-        VirtualCPU vcpu = sp.getVirtualCpu(ht);
+        VirtualCPU vcpu = virtEnv.getVirtualCpu(event, ht);
         if (vcpu == null) {
             return;
         }

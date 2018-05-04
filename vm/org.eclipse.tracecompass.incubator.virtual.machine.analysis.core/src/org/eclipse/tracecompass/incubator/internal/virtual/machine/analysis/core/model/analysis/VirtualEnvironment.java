@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
@@ -47,7 +48,7 @@ public class VirtualEnvironment implements IVirtualEnvironmentModel {
      * Maps a virtual machine host ID or product UUID to a virtual machine. A same
      * machine may be linked by both its UUID and host ID
      */
-    protected final Map<String, VirtualMachine> fKnownMachines = new HashMap<>();
+    protected final Map<String, VirtualMachine> fKnownMachines = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     /**
      * Constructor
