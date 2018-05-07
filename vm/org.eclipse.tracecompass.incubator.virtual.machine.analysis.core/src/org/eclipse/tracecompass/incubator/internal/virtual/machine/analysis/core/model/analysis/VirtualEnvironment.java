@@ -159,6 +159,7 @@ public class VirtualEnvironment implements IVirtualEnvironmentModel {
     public VirtualMachine getCurrentMachine(ITmfEvent event) {
         VirtualMachine machine = innerGetCurrentMachine(event);
         if (machine == null) {
+            // FIXME: It could be null if the product_uuid is not present in the metadata...
             throw new NullPointerException("Machine should not be null"); //$NON-NLS-1$
         }
         return machine;

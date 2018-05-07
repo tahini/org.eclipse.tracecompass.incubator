@@ -23,6 +23,9 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelAnalysisModule;
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelThreadInformationProvider;
 import org.eclipse.tracecompass.common.core.NonNullUtils;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.IVirtualEnvironmentModel;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.VirtualMachine;
+import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualMachineModelAnalysis;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.trace.VirtualMachineExperiment;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.virtual.resources.VirtualResourcesAnalysis;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.virtual.resources.VmAttributes;
@@ -195,17 +198,28 @@ public class VirtualMachineView extends AbstractTimeGraphView {
     private void buildEntries(ITmfStateSystem ssq, long startTime, long endTime, VirtualMachineViewEntry groupEntry,
             Map<@NonNull String, @NonNull VirtualMachineViewEntry> entryMap, VirtualMachineExperiment vmExperiment) {
         try {
+            VirtualMachineModelAnalysis model = TmfTraceUtils.getAnalysisModuleOfClass(vmExperiment, VirtualMachineModelAnalysis.class, VirtualMachineModelAnalysis.ID);
+            if (model == null) {
+                throw new NullPointerException("There should be a model analysis for this class"); //$NON-NLS-1$
+            }
+            IVirtualEnvironmentModel vmModel = model.getVirtualEnvironmentModel();
             List<Integer> vmQuarks = ssq.getQuarks(VmAttributes.VIRTUAL_MACHINES, "*"); //$NON-NLS-1$
             /* For each virtual machine in the analysis */
             for (Integer vmQuark : vmQuarks) {
 
                 /* Display an entry for the virtual machine */
                 String vmHostId = ssq.getAttributeName(vmQuark);
-                ITmfStateInterval vmNameInterval = StateSystemUtils.queryUntilNonNullValue(ssq, vmQuark, startTime, endTime);
                 String vmName = vmHostId;
-                if (vmNameInterval != null) {
-                    vmName = vmNameInterval.getStateValue().unboxStr();
+                Collection<VirtualMachine> machines = vmModel.getMachines();
+                for (VirtualMachine machine : machines) {
+                    if (machine.getHostId().equals(vmHostId)) {
+                        vmName = machine.getTraceName();
+                    }
                 }
+//                ITmfStateInterval vmNameInterval = StateSystemUtils.queryUntilNonNullValue(ssq, vmQuark, startTime, endTime);
+//                if (vmNameInterval != null) {
+//                    vmName = vmNameInterval.getStateValue().unboxStr();
+//                }
 
                 VirtualMachineViewEntry vmEntry = entryMap.get(vmHostId);
                 if (vmEntry == null) {

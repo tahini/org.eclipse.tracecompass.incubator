@@ -220,6 +220,7 @@ public final class VirtualMachine {
     public void addChild(VirtualMachine child) {
         fChildren.add(child);
         child.setGuest();
+        child.setParent(this);
     }
 
     /**

@@ -19,6 +19,7 @@ import org.eclipse.tracecompass.common.core.NonNullUtils;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.fused.handlers.FusedVirtualMachineStateProvider;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.model.analysis.VirtualMachineModelAnalysis;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.virtual.resources.Messages;
+import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.analysis.requirements.TmfAbstractAnalysisRequirement;
 import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.TmfStateSystemAnalysisModule;
@@ -111,5 +112,19 @@ public class FusedVirtualMachineAnalysis extends TmfStateSystemAnalysisModule {
     @Override
     public Iterable<TmfAbstractAnalysisRequirement> getAnalysisRequirements() {
         return REQUIREMENTS;
+    }
+
+    @Override
+    protected Iterable<IAnalysisModule> getDependentAnalyses() {
+        ITmfTrace exp = getTrace();
+        if (exp instanceof TmfExperiment) {
+            VirtualMachineModelAnalysis model = TmfTraceUtils.getAnalysisModuleOfClass(exp, VirtualMachineModelAnalysis.class, VirtualMachineModelAnalysis.ID);
+            if (model == null) {
+                throw new IllegalStateException("There should be a model analysis for this class"); //$NON-NLS-1$
+            }
+            return Collections.singleton(model);
+        }
+
+        return Collections.emptySet();
     }
 }
