@@ -234,6 +234,15 @@ public class FlameGraphView extends TmfView {
     }
 
     /**
+     * Get the trace this view is for
+     *
+     * @return The trace, or <code>null</code> if no trace is set
+     */
+    protected @Nullable ITmfTrace getTrace() {
+        return fTrace;
+    }
+
+    /**
      * Get the callgraph modules used to build the view
      *
      * @return The call graph provider modules

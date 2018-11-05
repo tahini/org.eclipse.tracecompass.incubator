@@ -12,7 +12,6 @@ package org.eclipse.tracecompass.incubator.callstack.core.callgraph;
 import java.util.Collection;
 
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
 import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
 
@@ -62,10 +61,10 @@ public interface ICallGraphProvider {
     /**
      * Factory method to create an aggregated callsite for a symbol
      *
-     * @param symbol
+     * @param object
      *            The symbol
      * @return A new aggregated callsite
      */
-    AggregatedCallSite createCallSite(ICallStackSymbol symbol);
+    AggregatedCallSite createCallSite(Object object);
 
 }

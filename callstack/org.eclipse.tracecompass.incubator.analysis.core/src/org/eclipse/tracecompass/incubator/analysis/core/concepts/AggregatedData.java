@@ -25,11 +25,11 @@ import com.google.common.collect.ImmutableMap;
  *
  * @author Geneviève Bastien
  */
-public class AggregatedCallSite {
+public class AggregatedData {
 
     private final Object fObject;
-    private final Map<Object, AggregatedCallSite> fCallees = new HashMap<>();
-    private final @Nullable AggregatedCallSite fCaller;
+    private final Map<Object, AggregatedData> fCallees = new HashMap<>();
+    private final @Nullable AggregatedData fCaller;
     private long fLength = 0;
 
     /**
@@ -40,7 +40,7 @@ public class AggregatedCallSite {
      *            a string using the symbol providers
      * @param initialLength The initial length of this object
      */
-    public AggregatedCallSite(Object symbol, long initialLength) {
+    public AggregatedData(Object symbol, long initialLength) {
         fObject = symbol;
         fCaller = null;
         fLength = initialLength;
@@ -52,9 +52,9 @@ public class AggregatedCallSite {
      * @param copy
      *            The call site to copy
      */
-    protected AggregatedCallSite(AggregatedCallSite copy) {
+    protected AggregatedData(AggregatedData copy) {
         fObject = copy.fObject;
-        for (Entry<Object, AggregatedCallSite> entry : copy.fCallees.entrySet()) {
+        for (Entry<Object, AggregatedData> entry : copy.fCallees.entrySet()) {
             fCallees.put(entry.getKey(), entry.getValue().copyOf());
         }
         fCaller = copy.fCaller;
@@ -80,8 +80,8 @@ public class AggregatedCallSite {
      *
      * @return A copy of this aggregated call site
      */
-    public AggregatedCallSite copyOf() {
-        return new AggregatedCallSite(this);
+    public AggregatedData copyOf() {
+        return new AggregatedData(this);
     }
 
     /**
@@ -98,7 +98,7 @@ public class AggregatedCallSite {
      *
      * @return The caller of this callsite
      */
-    protected @Nullable AggregatedCallSite getCaller() {
+    protected @Nullable AggregatedData getCaller() {
         return fCaller;
     }
 
@@ -107,18 +107,8 @@ public class AggregatedCallSite {
      *
      * @return A collection of callees' callsites
      */
-    public Collection<AggregatedCallSite> getCallees() {
+    public Collection<AggregatedData> getCallees() {
         return fCallees.values();
-    }
-
-    /**
-     * Add value to the length of this callsite
-     *
-     * @param length
-     *            the amount to add to the length
-     */
-    public void addToLength(long length) {
-        fLength += length;
     }
 
     /**
@@ -127,8 +117,8 @@ public class AggregatedCallSite {
      * @param callee
      *            the call site of the callee
      */
-    public void addCallee(AggregatedCallSite callee) {
-        AggregatedCallSite callsite = fCallees.get(callee.getObject());
+    public void addCallee(AggregatedData callee) {
+        AggregatedData callsite = fCallees.get(callee.getObject());
         if (callsite == null) {
             fCallees.put(callee.getObject(), callee);
             return;
@@ -151,11 +141,10 @@ public class AggregatedCallSite {
      *            current callsite otherwise it will throw an
      *            {@link IllegalArgumentException}
      */
-    public final void merge(AggregatedCallSite other) {
+    public final void merge(AggregatedData other) {
         if (!other.getObject().equals(getObject())) {
             throw new IllegalArgumentException("AggregatedStackTraces: trying to merge stack traces of different symbols"); //$NON-NLS-1$
         }
-        fLength += other.fLength;
         mergeData(other);
         mergeCallees(other);
     }
@@ -163,14 +152,14 @@ public class AggregatedCallSite {
     /**
      * Merge the data of two callsites. This should modify the current
      * callsite's specific data. It is called by
-     * {@link #merge(AggregatedCallSite)} and this method MUST NOT touch the
+     * {@link #merge(AggregatedData)} and this method MUST NOT touch the
      * callees of the callsites.
      *
      * @param other
      *            The call site to merge to this one
      */
-    protected void mergeData(AggregatedCallSite other) {
-        // Nothing to do in main class
+    protected void mergeData(AggregatedData other) {
+        fLength += other.fLength;
     }
 
     /**
@@ -179,10 +168,10 @@ public class AggregatedCallSite {
      * @param other
      *            The call site to merge to this one
      */
-    private void mergeCallees(AggregatedCallSite other) {
-        for (AggregatedCallSite otherChildSite : other.fCallees.values()) {
+    private void mergeCallees(AggregatedData other) {
+        for (AggregatedData otherChildSite : other.fCallees.values()) {
             Object childSymbol = otherChildSite.getObject();
-            AggregatedCallSite childSite = fCallees.get(childSymbol);
+            AggregatedData childSite = fCallees.get(childSymbol);
             if (childSite == null) {
                 fCallees.put(childSymbol, otherChildSite.copyOf());
             } else {
@@ -201,7 +190,7 @@ public class AggregatedCallSite {
      */
     public int getMaxDepth() {
         int maxDepth = 0;
-        for (AggregatedCallSite callsite : fCallees.values()) {
+        for (AggregatedData callsite : fCallees.values()) {
             maxDepth = Math.max(maxDepth, callsite.getMaxDepth());
         }
         return maxDepth + 1;

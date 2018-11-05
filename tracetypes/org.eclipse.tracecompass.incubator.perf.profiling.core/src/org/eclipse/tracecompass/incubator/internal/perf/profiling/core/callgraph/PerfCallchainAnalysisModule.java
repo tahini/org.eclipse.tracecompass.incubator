@@ -251,7 +251,7 @@ public class PerfCallchainAnalysisModule extends ProfilingCallGraphAnalysisModul
             }
             AggregatedCallSite perfCallSite = stackTrace.getSecond();
             for (AggregatedCallSite site : fSites) {
-                if (site.getSymbol().equals(perfCallSite.getSymbol())) {
+                if (site.getObject().equals(perfCallSite.getObject())) {
                     site.merge(perfCallSite);
                     return;
                 }

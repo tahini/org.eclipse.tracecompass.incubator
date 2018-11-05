@@ -286,11 +286,11 @@ public class CallGraphGroupByInstrumentedTest extends CallStackTestBase {
         for (AggregatedCallSite callsite : callingContextTree) {
             assertTrue(callsite instanceof AggregatedCalledFunction);
             AggregatedCalledFunction function = (AggregatedCalledFunction) callsite;
-            CallGraphExpected cgExpected = expected.get(callsite.getSymbol().resolve(Collections.emptySet()));
+            CallGraphExpected cgExpected = expected.get(getCallSiteSymbol(callsite).resolve(Collections.emptySet()));
             assertNotNull(cgExpected);
-            assertEquals("Callsite " + callsite.getSymbol(), cgExpected.duration, function.getDuration());
-            assertEquals("Callsite " + callsite.getSymbol(), cgExpected.selfTime, function.getSelfTime());
-            compareCcts(prefix + callsite.getSymbol() + ", ", cgExpected.children, function.getCallees());
+            assertEquals("Callsite " + getCallSiteSymbol(callsite), cgExpected.duration, function.getDuration());
+            assertEquals("Callsite " + getCallSiteSymbol(callsite), cgExpected.selfTime, function.getSelfTime());
+            compareCcts(prefix + getCallSiteSymbol(callsite) + ", ", cgExpected.children, function.getCallees());
         }
     }
 

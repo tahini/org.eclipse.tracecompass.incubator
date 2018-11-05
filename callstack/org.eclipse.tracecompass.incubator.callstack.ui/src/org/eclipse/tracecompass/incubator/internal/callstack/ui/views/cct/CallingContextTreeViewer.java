@@ -37,6 +37,7 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.SubSecondTimeWithUnitFormat;
 import org.eclipse.tracecompass.common.core.StreamUtils;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
+import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.CallGraph;
@@ -498,7 +499,7 @@ public class CallingContextTreeViewer extends AbstractTmfTreeViewer {
          *            The parent element
          */
         public CCTCallSiteEntry(AggregatedCallSite callsite, CallGraph callGraph, TmfTreeViewerEntry parent) {
-            super(callsite.getSymbol().resolve(fSymbolProviders));
+            super(resolveSymbol(callsite));
             fCallSite = callsite;
             fCallGraph = callGraph;
             this.setParent(parent);
@@ -534,6 +535,14 @@ public class CallingContextTreeViewer extends AbstractTmfTreeViewer {
             return children;
         }
 
+    }
+
+    private String resolveSymbol(AggregatedCallSite callsite) {
+        Object object = callsite.getObject();
+        if (object instanceof ICallStackSymbol) {
+            return ((ICallStackSymbol) object).resolve(fSymbolProviders);
+        }
+        return String.valueOf(object);
     }
 
     @Override

@@ -298,8 +298,8 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
     }
 
     @Override
-    public AggregatedCalledFunction createCallSite(ICallStackSymbol symbol) {
-        return new AggregatedCalledFunction(symbol);
+    public AggregatedCalledFunction createCallSite(Object symbol) {
+        return new AggregatedCalledFunction((ICallStackSymbol) symbol);
     }
 
 }

@@ -86,8 +86,8 @@ public abstract class ProfilingCallGraphAnalysisModule extends TmfAbstractAnalys
     }
 
     @Override
-    public AggregatedCallSite createCallSite(ICallStackSymbol symbol) {
-        return new AggregatedStackTraces(symbol);
+    public AggregatedCallSite createCallSite(Object symbol) {
+        return new AggregatedStackTraces((ICallStackSymbol) symbol);
     }
 
     /**

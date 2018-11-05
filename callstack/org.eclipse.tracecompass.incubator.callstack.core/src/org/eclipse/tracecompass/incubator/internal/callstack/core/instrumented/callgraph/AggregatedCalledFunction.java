@@ -59,7 +59,7 @@ public class AggregatedCalledFunction extends AggregatedCallSite {
      *            The symbol of the function
      */
     public AggregatedCalledFunction(ICallStackSymbol symbol) {
-        super(symbol);
+        super(symbol, 0);
         fStatistics = new AggregatedCalledFunctionStatistics();
         fProcessId = -1;
     }
@@ -316,7 +316,7 @@ public class AggregatedCalledFunction extends AggregatedCallSite {
 
     @Override
     public String toString() {
-        return "Aggregate Function: " + getSymbol() + ", Duration: " + getDuration() + ", Self Time: " + fSelfTime + " on " + getNbCalls() + " calls"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
+        return "Aggregate Function: " + getObject() + ", Duration: " + getDuration() + ", Self Time: " + fSelfTime + " on " + getNbCalls() + " calls"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
     }
 
 }
