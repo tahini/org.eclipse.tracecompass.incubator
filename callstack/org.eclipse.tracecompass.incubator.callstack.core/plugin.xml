@@ -20,6 +20,14 @@
                class="org.eclipse.tracecompass.lttng2.ust.core.trace.LttngUstTrace">
          </tracetype>
       </module>
+      <module
+            analysis_module="org.eclipse.tracecompass.incubator.internal.callstack.core.criticalpath.CriticalPathAggregated"
+            id="org.eclipse.tracecompass.incubator.callstack.core.criticalpath.aggregated"
+            name="Critical Path Aggregated">
+         <tracetype
+               class="org.eclipse.tracecompass.tmf.core.trace.TmfTrace">
+         </tracetype>
+      </module>
    </extension>
    <extension
          point="org.eclipse.tracecompass.tmf.core.dataprovider">
