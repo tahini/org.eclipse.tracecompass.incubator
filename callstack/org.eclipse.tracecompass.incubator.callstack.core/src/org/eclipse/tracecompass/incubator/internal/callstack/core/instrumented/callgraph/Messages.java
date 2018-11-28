@@ -49,6 +49,8 @@ public class Messages extends NLS {
     public static @Nullable String CallGraphStats_SelfTime;
     /** Cpu time statistics title */
     public static @Nullable String CallGraphStats_CpuTime;
+    /** Number of calls statistics title */
+    public static @Nullable String CallGraphStats_NbCalls;
     static {
         // initialize resource bundle
         NLS.initializeMessages(BUNDLE_NAME, Messages.class);

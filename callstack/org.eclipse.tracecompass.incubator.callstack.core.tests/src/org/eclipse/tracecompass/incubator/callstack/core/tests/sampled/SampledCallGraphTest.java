@@ -113,16 +113,16 @@ public class SampledCallGraphTest {
             for (AggregatedCallSite callsite : aggregatedData) {
                 switch (CallStackTestBase.getCallSiteSymbol(callsite).resolve(Collections.emptySet())) {
                 case "0x1": {
-                    assertEquals(8, callsite.getLength());
+                    assertEquals(8, callsite.getWeight());
                     assertEquals(2, callsite.getCallees().size());
                     for (AggregatedCallSite childCallsite : callsite.getCallees()) {
                         switch (CallStackTestBase.getCallSiteSymbol(childCallsite).resolve(Collections.emptySet())) {
                         case "0x2":
-                            assertEquals(7, childCallsite.getLength());
+                            assertEquals(7, childCallsite.getWeight());
                             assertEquals(3, childCallsite.getCallees().size());
                             break;
                         case "0x3":
-                            assertEquals(1, childCallsite.getLength());
+                            assertEquals(1, childCallsite.getWeight());
                             assertEquals(1, childCallsite.getCallees().size());
                             break;
                         default:
@@ -132,10 +132,10 @@ public class SampledCallGraphTest {
                 }
                     break;
                 case "0xa": {
-                    assertEquals(2, callsite.getLength());
+                    assertEquals(2, callsite.getWeight());
                     assertEquals(1, callsite.getCallees().size());
                     AggregatedCallSite childCallsite = callsite.getCallees().iterator().next();
-                    assertEquals(2, childCallsite.getLength());
+                    assertEquals(2, childCallsite.getWeight());
                     assertEquals(1, callsite.getCallees().size());
                 }
                     break;

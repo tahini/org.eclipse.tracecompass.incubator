@@ -11,10 +11,7 @@
  *******************************************************************************/
 package org.eclipse.tracecompass.incubator.internal.callstack.ui.criticalpath;
 
-import java.util.Collections;
-
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.criticalpath.CriticalPathAggregated;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.criticalpath.CriticalPathToCallGraph;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.criticalpath.ICriticalPathListener;
@@ -57,7 +54,7 @@ public class FlameGraphCriticalPathView extends FlameGraphView implements ICriti
 
     @Override
     public void update(@NonNull CriticalPathToCallGraph module) {
-        Display.getDefault().asyncExec(() -> buildFlameGraph(Collections.singleton(module), null, null));
+        //Display.getDefault().asyncExec(() -> buildFlameGraph(Collections.singleton(module), null, null));
     }
 
 }

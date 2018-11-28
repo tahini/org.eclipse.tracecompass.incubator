@@ -10,13 +10,7 @@
 package org.eclipse.tracecompass.incubator.internal.callstack.core.criticalpath;
 
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.graph.core.base.IGraphWorker;
 import org.eclipse.tracecompass.analysis.graph.core.base.ITmfGraphVisitor;
@@ -24,43 +18,32 @@ import org.eclipse.tracecompass.analysis.graph.core.base.TmfEdge;
 import org.eclipse.tracecompass.analysis.graph.core.base.TmfEdge.EdgeType;
 import org.eclipse.tracecompass.analysis.graph.core.base.TmfGraph;
 import org.eclipse.tracecompass.analysis.graph.core.base.TmfVertex;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
-import org.eclipse.tracecompass.incubator.callstack.core.base.CallStackElement;
-import org.eclipse.tracecompass.incubator.callstack.core.base.CallStackGroupDescriptor;
-import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
-import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
-import org.eclipse.tracecompass.incubator.callstack.core.callgraph.CallGraph;
-import org.eclipse.tracecompass.incubator.callstack.core.callgraph.ICallGraphProvider;
-import org.eclipse.tracecompass.tmf.core.statistics.ITmfStatistics;
+import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.IWeightedTreeProvider;
 import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  *
  *
  * @author Geneviève Bastien
  */
-public class CriticalPathToCallGraph implements ICallGraphProvider, ITmfStatistics {
+public class CriticalPathToCallGraph implements IWeightedTreeProvider<Object, WeightedTree<Object>> {
 
-    private static final CallGraph EMPTY_CALLGRAPH = new CallGraph();
-
-    private static final ICallStackGroupDescriptor DESCRIPTOR = new CallStackGroupDescriptor("Worker", null, false);
-    private static final Collection<ICallStackGroupDescriptor> DESCRIPTORS = Collections.singleton(DESCRIPTOR);
     private static final String ALL_SUFFIX = "_all"; //$NON-NLS-1$
 
-    private final CallGraph fCallGraph = new CallGraph();
+    private WeightedTree<Object> fAggregatedTree;
+    private WeightedTree<Object> fTree;
 
     private class graphToCallGraphConverter implements ITmfGraphVisitor {
 
         private final TmfGraph fGraph;
         private final IGraphWorker fMainWorker;
-        private final ICallStackElement fElement;
-        private final ICallStackElement fElementAggregated;
 
-        public graphToCallGraphConverter(ICallStackElement descriptor, ICallStackElement elementAggregated, IGraphWorker mainWorker, TmfGraph graph) {
+        public graphToCallGraphConverter(IGraphWorker mainWorker, TmfGraph graph) {
             fGraph = graph;
             fMainWorker = mainWorker;
-            fElement = descriptor;
-            fElementAggregated = elementAggregated;
         }
 
         @Override
@@ -90,16 +73,16 @@ public class CriticalPathToCallGraph implements ICallGraphProvider, ITmfStatisti
 
             // If it's another worker that is running, add a other process running state
             if (worker != fMainWorker && edge.getType().equals(EdgeType.RUNNING)) {
-                AggregatedCallSite callSite = createCallSite("Other process"); //$NON-NLS-1$
-                callSite.addToLength(edge.getDuration());
-                fCallGraph.addAggregatedCallSite(fElementAggregated, callSite);
+                WeightedTree<Object> callSite = new WeightedTree<>("Other process"); //$NON-NLS-1$
+                callSite.addToWeight(edge.getDuration());
+                fAggregatedTree.addChild(callSite);
                 return;
             }
 
             // Otherwise, add a first level call that corresponds to the worker
-            AggregatedCallSite callSite = createCallSite(edge.getType());
-            callSite.addToLength(edge.getDuration());
-            fCallGraph.addAggregatedCallSite(fElementAggregated, callSite);
+            WeightedTree<Object> callSite = new WeightedTree<>(edge.getType());
+            callSite.addToWeight(edge.getDuration());
+            fAggregatedTree.addChild(callSite);
 
         }
 
@@ -114,23 +97,23 @@ public class CriticalPathToCallGraph implements ICallGraphProvider, ITmfStatisti
             // If it is the main worker, just add a 1st level call of the edge
             // type
             if (worker == fMainWorker) {
-                AggregatedCallSite callSite = createCallSite(edge.getType());
-                callSite.addToLength(edge.getDuration());
-                fCallGraph.addAggregatedCallSite(fElement, callSite);
+                WeightedTree<Object> callSite = new WeightedTree<>(edge.getType());
+                callSite.addToWeight(edge.getDuration());
+                fTree.addChild(callSite);
                 return;
             }
 
             // Otherwise, add a first level call that corresponds to the worker
-            AggregatedCallSite callSite = createCallSite(worker.toString());
-            callSite.addToLength(edge.getDuration());
+            WeightedTree<Object> callSite = new WeightedTree<>(String.valueOf(worker));
+            callSite.addToWeight(edge.getDuration());
 
             // Then, add a second level for the edge type if it is not running
             if (!edge.getType().equals(EdgeType.RUNNING)) {
-                AggregatedCallSite childType = createCallSite(edge.getType());
-                childType.addToLength(edge.getDuration());
-                callSite.addCallee(childType);
+                WeightedTree<Object> childType = new WeightedTree<>(edge.getType());
+                childType.addToWeight(edge.getDuration());
+                callSite.addChild(childType);
             }
-            fCallGraph.addAggregatedCallSite(fElement, callSite);
+            fTree.addChild(callSite);
         }
 
     }
@@ -140,106 +123,139 @@ public class CriticalPathToCallGraph implements ICallGraphProvider, ITmfStatisti
      */
     public CriticalPathToCallGraph(@Nullable TmfGraph graph) {
         if (graph == null) {
-            return;
+            throw new NullPointerException("Bad graph"); //$NON-NLS-1$
         }
         TmfVertex head = graph.getHead();
         if (head == null) {
-            return;
+            throw new NullPointerException("Empty graph"); //$NON-NLS-1$
         }
 
         IGraphWorker worker = graph.getParentOf(head);
-        ICallStackElement element = new CallStackElement(String.valueOf(worker), DESCRIPTOR);
-        ICallStackElement elementAggregated = new CallStackElement(String.valueOf(worker) + ALL_SUFFIX, DESCRIPTOR);
-        graphToCallGraphConverter converter = new graphToCallGraphConverter(element, elementAggregated, worker, graph);
+        if (worker == null) {
+            throw new NullPointerException("head vertex has no parent"); //$NON-NLS-1$
+        }
+        fTree = new WeightedTree<>(String.valueOf(worker));
+        fAggregatedTree = new WeightedTree<>(String.valueOf(worker) + ALL_SUFFIX);
+        graphToCallGraphConverter converter = new graphToCallGraphConverter(worker, graph);
         graph.scanLineTraverse(worker, converter);
     }
 
     @Override
-    public Collection<ICallStackGroupDescriptor> getGroupDescriptors() {
-        return DESCRIPTORS;
+    public Collection<WeightedTree<Object>> getTrees() {
+        return ImmutableList.of(fTree, fAggregatedTree);
     }
 
     @Override
-    public CallGraph getCallGraph(ITmfTimestamp start, ITmfTimestamp end) {
-        return EMPTY_CALLGRAPH;
+    public Collection<WeightedTree<Object>> getTrees(ITmfTimestamp fromNanos, ITmfTimestamp fromNanos2) {
+        return ImmutableList.of(fTree, fAggregatedTree);
     }
 
-    @Override
-    public CallGraph getCallGraph() {
-        return fCallGraph;
-    }
+//    @Override
+//    public Collection<ICallStackGroupDescriptor> getGroupDescriptors() {
+//        return DESCRIPTORS;
+//    }
+//
+//    @Override
+//    public CallGraph getCallGraph(ITmfTimestamp start, ITmfTimestamp end) {
+//        return EMPTY_CALLGRAPH;
+//    }
+//
+//    @Override
+//    public CallGraph getCallGraph() {
+//        return fCallGraph;
+//    }
 
-    @Override
-    public @NonNull AggregatedCallSite createCallSite(Object symbol) {
-        return new AggregatedCallSite(symbol, 0);
-    }
 
-    @Override
-    public List<@NonNull Long> histogramQuery(long @Nullable [] timeRequested) {
-        return Collections.emptyList();
-    }
+//    @Override
+//    public List<@NonNull Long> histogramQuery(long @Nullable [] timeRequested) {
+//        return Collections.emptyList();
+//    }
+//
+//    @Override
+//    public long getEventsTotal() {
+//        // TODO Auto-generated method stub
+//        return 0;
+//    }
+//
+//    public @Nullable Collection<AggregatedCallSite> getRootSites(boolean aggregated) {
+//        CallGraph callGraph = fCallGraph;
+//        Collection<ICallStackElement> elements = fCallGraph.getElements();
+//        if (elements.isEmpty()) {
+//            return null;
+//        }
+//        Iterator<ICallStackElement> iterator = elements.iterator();
+//        ICallStackElement element = iterator.next();
+//        if (aggregated && !element.getName().endsWith(ALL_SUFFIX) && iterator.hasNext()) {
+//            element = iterator.next();
+//        } else if (!aggregated && element.getName().endsWith(ALL_SUFFIX) && iterator.hasNext()) {
+//            element = iterator.next();
+//        }
+//
+//        return callGraph.getCallingContextTree(element).getChildren();
+//    }
+//
+//    @Override
+//    public Map<String, Long> getEventTypesTotal() {
+//        Collection<AggregatedCallSite> rootSites = getRootSites(false);
+//        if (rootSites == null) {
+//            return Collections.emptyMap();
+//        }
+//        Map<String, Long> map = new HashMap<>();
+//        for (AggregatedCallSite callsite : rootSites) {
+//            map.put(String.valueOf(callsite.getObject()), callsite.getWeight());
+//        }
+//        return map;
+//    }
+//
+//    @Override
+//    public long getEventsInRange(long start, long end) {
+//        return 0;
+//    }
+//
+//    @Override
+//    public @NonNull Map<@NonNull String, @NonNull Long> getEventTypesInRange(long start, long end) {
+//        boolean aggregated = true;
+//        if (start == Long.MIN_VALUE) {
+//            aggregated = false;
+//        }
+//        Collection<AggregatedCallSite> rootSites = getRootSites(aggregated);
+//        if (rootSites == null) {
+//            return Collections.emptyMap();
+//        }
+//        Map<String, Long> map = new HashMap<>();
+//        for (AggregatedCallSite callsite : rootSites) {
+//            map.put(String.valueOf(callsite.getObject()), callsite.getWeight());
+//        }
+//        return map;
+//    }
 
-    @Override
-    public long getEventsTotal() {
-        // TODO Auto-generated method stub
-        return 0;
-    }
+//    @Override
+//    public void dispose() {
+//
+//    }
+//
+//    @Override
+//    public long getEventsTotal() {
+//        // TODO Auto-generated method stub
+//        return 0;
+//    }
 
-    public @Nullable Collection<AggregatedCallSite> getRootSites(boolean aggregated) {
-        CallGraph callGraph = fCallGraph;
-        Collection<ICallStackElement> elements = fCallGraph.getElements();
-        if (elements.isEmpty()) {
-            return null;
-        }
-        Iterator<ICallStackElement> iterator = elements.iterator();
-        ICallStackElement element = iterator.next();
-        if (aggregated && !element.getName().endsWith(ALL_SUFFIX) && iterator.hasNext()) {
-            element = iterator.next();
-        } else if (!aggregated && element.getName().endsWith(ALL_SUFFIX) && iterator.hasNext()) {
-            element = iterator.next();
-        }
-
-        return callGraph.getCallingContextTree(element);
-    }
-
-    @Override
-    public Map<String, Long> getEventTypesTotal() {
-        Collection<AggregatedCallSite> rootSites = getRootSites(false);
-        if (rootSites == null) {
-            return Collections.emptyMap();
-        }
-        Map<String, Long> map = new HashMap<>();
-        for (AggregatedCallSite callsite : rootSites) {
-            map.put(String.valueOf(callsite.getObject()), callsite.getLength());
-        }
-        return map;
-    }
-
-    @Override
-    public long getEventsInRange(long start, long end) {
-        return 0;
-    }
-
-    @Override
-    public @NonNull Map<@NonNull String, @NonNull Long> getEventTypesInRange(long start, long end) {
-        boolean aggregated = true;
-        if (start == Long.MIN_VALUE) {
-            aggregated = false;
-        }
-        Collection<AggregatedCallSite> rootSites = getRootSites(aggregated);
-        if (rootSites == null) {
-            return Collections.emptyMap();
-        }
-        Map<String, Long> map = new HashMap<>();
-        for (AggregatedCallSite callsite : rootSites) {
-            map.put(String.valueOf(callsite.getObject()), callsite.getLength());
-        }
-        return map;
-    }
-
-    @Override
-    public void dispose() {
-
-    }
+//    @Override
+//    public Map<String, Long> getEventTypesTotal() {
+//        // TODO Auto-generated method stub
+//        return null;
+//    }
+//
+//    @Override
+//    public long getEventsInRange(long start, long end) {
+//        // TODO Auto-generated method stub
+//        return 0;
+//    }
+//
+//    @Override
+//    public Map<String, Long> getEventTypesInRange(long start, long end) {
+//        // TODO Auto-generated method stub
+//        return null;
+//    }
 
 }

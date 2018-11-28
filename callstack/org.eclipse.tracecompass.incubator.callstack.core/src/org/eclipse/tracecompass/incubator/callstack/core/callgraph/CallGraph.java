@@ -61,6 +61,13 @@ public class CallGraph {
     }
 
     /**
+     * @return The collection of weighted trees for this callgraph
+     */
+    public Collection<AggregatedCallSite> getTrees() {
+        return fCcts.values();
+    }
+
+    /**
      * Add an aggregated callsite toa callstack element.
      * @param dstGroup the destination group
      * @param callsite the callsite to add

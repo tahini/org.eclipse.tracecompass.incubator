@@ -11,7 +11,9 @@ package org.eclipse.tracecompass.incubator.callstack.core.callgraph;
 
 import java.util.Collection;
 
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
+import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
 import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
 
@@ -21,7 +23,7 @@ import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
  *
  * @author Geneviève Bastien
  */
-public interface ICallGraphProvider {
+public interface ICallGraphProvider extends IWeightedTreeProvider<@NonNull ICallStackSymbol, @NonNull AggregatedCallSite> {
 
     /**
      * Get the group descriptors that describe how the elements are grouped in this
@@ -57,6 +59,18 @@ public interface ICallGraphProvider {
      *         range.
      */
     CallGraph getCallGraph();
+
+    @Override
+    default Collection<AggregatedCallSite> getTrees() {
+        CallGraph callGraph = getCallGraph();
+        return callGraph.getTrees();
+    }
+
+    @Override
+    default Collection<AggregatedCallSite> getTrees(ITmfTimestamp start, ITmfTimestamp end) {
+       CallGraph callGraph = getCallGraph(start, end);
+       return callGraph.getTrees();
+    }
 
     /**
      * Factory method to create an aggregated callsite for a symbol

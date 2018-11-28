@@ -70,7 +70,7 @@ public class CallingContextTreeViewer extends AbstractTmfTreeViewer {
     private static final Format TIME_FORMATTER = new SubSecondTimeWithUnitFormat();
     private static final Format DECIMAL_FORMATTER = new DecimalFormat("###,###.##"); //$NON-NLS-1$
     // Order CCT children by decreasing length
-    private static final Comparator<CCTCallSiteEntry> COMPARATOR = (o1, o2) -> Long.compare(o2.getCallSite().getLength(), o1.getCallSite().getLength());
+    private static final Comparator<CCTCallSiteEntry> COMPARATOR = (o1, o2) -> Long.compare(o2.getCallSite().getWeight(), o1.getCallSite().getWeight());
 
     private MenuManager fTablePopupMenuManager;
     private String fAnalysisId;
@@ -147,7 +147,7 @@ public class CallingContextTreeViewer extends AbstractTmfTreeViewer {
 
         private static String getStringForColumn(AggregatedStackTraces callsite, int columnIndex) {
             if (columnIndex == 1) {
-                return String.format("%s", DECIMAL_FORMATTER.format(callsite.getLength())); //$NON-NLS-1$
+                return String.format("%s", DECIMAL_FORMATTER.format(callsite.getWeight())); //$NON-NLS-1$
             }
             return StringUtils.EMPTY;
         }
@@ -185,7 +185,7 @@ public class CallingContextTreeViewer extends AbstractTmfTreeViewer {
                     parentEntry = parentEntry.getParent();
                 }
                 if (parentEntry != null) {
-                    value = (double) callSite.getLength() / ((CCTElementEntry) parentEntry).getTotalLength();
+                    value = (double) callSite.getWeight() / ((CCTElementEntry) parentEntry).getTotalLength();
                 }
             }
             return value;
@@ -235,7 +235,7 @@ public class CallingContextTreeViewer extends AbstractTmfTreeViewer {
                             return Long.compare(((AggregatedCalledFunction) callsite1).getNbCalls(), ((AggregatedCalledFunction) callsite2).getNbCalls());
                         }
                         if ((callsite1 instanceof AggregatedStackTraces) && (callsite2 instanceof AggregatedStackTraces)) {
-                            return Long.compare(((AggregatedStackTraces) callsite1).getLength(), ((AggregatedStackTraces) callsite2).getLength());
+                            return Long.compare(((AggregatedStackTraces) callsite1).getWeight(), ((AggregatedStackTraces) callsite2).getWeight());
                         }
                         if ((callsite1 instanceof AggregatedCalledFunction) && (callsite2 instanceof AggregatedStackTraces)) {
                             return 1;
@@ -454,7 +454,7 @@ public class CallingContextTreeViewer extends AbstractTmfTreeViewer {
             List<ITmfTreeViewerEntry> childrenCallSites = getChildrenCallSites();
             long length = 0L;
             for (ITmfTreeViewerEntry callsiteEntry : childrenCallSites) {
-                length += ((CCTCallSiteEntry) callsiteEntry).getCallSite().getLength();
+                length += ((CCTCallSiteEntry) callsiteEntry).getCallSite().getWeight();
             }
             return length;
         }

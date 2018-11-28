@@ -47,7 +47,7 @@ public class FlamegraphEvent extends TimeEvent {
      *            The function the event's presenting
      */
     public FlamegraphEvent(ITimeGraphEntry source, long beginTime, AggregatedCallSite aggregatedFunction) {
-        super(source, beginTime, aggregatedFunction.getLength(), aggregatedFunction.getObject().hashCode());
+        super(source, beginTime, aggregatedFunction.getWeight(), aggregatedFunction.getObject().hashCode());
         fSymbol = aggregatedFunction.getObject();
         fCallSite = aggregatedFunction;
     }
@@ -101,7 +101,7 @@ public class FlamegraphEvent extends TimeEvent {
         if (callSite instanceof AggregatedCalledFunction) {
             return ((AggregatedCalledFunction) callSite).getNbCalls();
         }
-        return callSite.getLength();
+        return callSite.getWeight();
     }
 
     /**

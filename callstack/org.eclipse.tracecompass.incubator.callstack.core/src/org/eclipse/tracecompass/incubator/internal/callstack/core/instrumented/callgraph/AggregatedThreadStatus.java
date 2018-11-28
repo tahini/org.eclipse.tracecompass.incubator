@@ -52,7 +52,7 @@ public class AggregatedThreadStatus extends AggregatedCallSite {
      *            the interval
      */
     public void update(ProcessStatusInterval interval) {
-        addToLength(interval.getLength());
+        addToWeight(interval.getLength());
     }
 
     /**
@@ -66,7 +66,7 @@ public class AggregatedThreadStatus extends AggregatedCallSite {
 
     @Override
     public String toString() {
-        return "Aggregated Thread status for " + fStatus + ": " + getLength(); //$NON-NLS-1$ //$NON-NLS-2$
+        return "Aggregated Thread status for " + fStatus + ": " + getWeight(); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     @Override

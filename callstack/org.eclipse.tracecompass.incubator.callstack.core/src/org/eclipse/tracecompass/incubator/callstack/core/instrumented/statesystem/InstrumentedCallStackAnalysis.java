@@ -340,4 +340,24 @@ public abstract class InstrumentedCallStackAnalysis extends TmfStateSystemAnalys
         return stateSystem.waitUntilBuilt(0);
     }
 
+    @Override
+    public MetricType getWeightType() {
+        return fCallGraph.getWeightType();
+    }
+
+    @Override
+    public List<MetricType> getAdditionalMetrics() {
+        return fCallGraph.getAdditionalMetrics();
+    }
+
+    @Override
+    public String toDisplayString(AggregatedCallSite object) {
+        return fCallGraph.toDisplayString(object);
+    }
+
+    @Override
+    public Object getAdditionalMetric(AggregatedCallSite object, int metricIndex) {
+        return fCallGraph.getAdditionalMetric(object, metricIndex);
+    }
+
 }
