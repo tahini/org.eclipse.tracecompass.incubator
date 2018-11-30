@@ -140,6 +140,9 @@ public class InstrumentedCallStackElement extends CallStackElement {
                 if (nextGroup.isSymbolKeyGroup()) {
                     element.setSymbolKeyElement(element);
                 }
+                if (parent != null) {
+                    parent.addChild(element);
+                }
                 cache.put(quark, element);
             }
             elements.add(element);
@@ -195,11 +198,6 @@ public class InstrumentedCallStackElement extends CallStackElement {
             }
         }
         return processId;
-    }
-
-    @Override
-    public String toString() {
-        return this.getClass().getName() + ": [" + fQuark + ']'; //$NON-NLS-1$
     }
 
     /**

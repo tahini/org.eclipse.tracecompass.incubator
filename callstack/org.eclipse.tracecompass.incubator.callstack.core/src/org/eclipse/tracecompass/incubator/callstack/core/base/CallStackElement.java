@@ -145,7 +145,7 @@ public class CallStackElement implements ICallStackElement {
 
     @Override
     public String toString() {
-        return "Element: " + getName() + '[' + fDescriptor + ']'; //$NON-NLS-1$
+        return getName();
     }
 
     @Override

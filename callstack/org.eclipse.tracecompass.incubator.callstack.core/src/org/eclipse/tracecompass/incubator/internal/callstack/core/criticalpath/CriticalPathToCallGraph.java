@@ -10,6 +10,7 @@
 package org.eclipse.tracecompass.incubator.internal.callstack.core.criticalpath;
 
 import java.util.Collection;
+import java.util.List;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.graph.core.base.IGraphWorker;
@@ -29,10 +30,11 @@ import com.google.common.collect.ImmutableList;
  *
  * @author Geneviève Bastien
  */
-public class CriticalPathToCallGraph implements IWeightedTreeProvider<Object, WeightedTree<Object>> {
+public class CriticalPathToCallGraph implements IWeightedTreeProvider<Object, String, WeightedTree<Object>> {
 
     private static final String ALL_SUFFIX = "_all"; //$NON-NLS-1$
 
+    private final List<String> fElements;
     private WeightedTree<Object> fAggregatedTree;
     private WeightedTree<Object> fTree;
 
@@ -134,6 +136,7 @@ public class CriticalPathToCallGraph implements IWeightedTreeProvider<Object, We
         if (worker == null) {
             throw new NullPointerException("head vertex has no parent"); //$NON-NLS-1$
         }
+        fElements = ImmutableList.of(String.valueOf(worker), String.valueOf(worker) + ALL_SUFFIX);
         fTree = new WeightedTree<>(String.valueOf(worker));
         fAggregatedTree = new WeightedTree<>(String.valueOf(worker) + ALL_SUFFIX);
         graphToCallGraphConverter converter = new graphToCallGraphConverter(worker, graph);
@@ -141,13 +144,21 @@ public class CriticalPathToCallGraph implements IWeightedTreeProvider<Object, We
     }
 
     @Override
-    public Collection<WeightedTree<Object>> getTrees() {
+    public Collection<WeightedTree<Object>> getTreesFor(String element) {
+        if (element.endsWith(ALL_SUFFIX)) {
+            return fAggregatedTree.getChildren();
+        }
+        return fTree.getChildren();
+    }
+
+    @Override
+    public Collection<WeightedTree<Object>> getTrees(String elements, ITmfTimestamp fromNanos, ITmfTimestamp fromNanos2) {
         return ImmutableList.of(fTree, fAggregatedTree);
     }
 
     @Override
-    public Collection<WeightedTree<Object>> getTrees(ITmfTimestamp fromNanos, ITmfTimestamp fromNanos2) {
-        return ImmutableList.of(fTree, fAggregatedTree);
+    public Collection<String> getElements() {
+        return fElements;
     }
 
 //    @Override

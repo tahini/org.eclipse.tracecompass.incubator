@@ -26,6 +26,7 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
@@ -42,15 +43,14 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.SubSecondTimeWithUnitFormat;
 import org.eclipse.tracecompass.common.core.format.DataSizeWithUnitFormat;
 import org.eclipse.tracecompass.common.core.format.DataSpeedWithUnitFormat;
+import org.eclipse.tracecompass.incubator.analysis.core.concepts.ITree;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
-import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.IWeightedTreeProvider;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.IWeightedTreeProvider.DataType;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.IWeightedTreeProvider.MetricType;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSignalHandler;
 import org.eclipse.tracecompass.tmf.core.signal.TmfWindowRangeUpdatedSignal;
-import org.eclipse.tracecompass.tmf.core.timestamp.TmfTimestamp;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.ui.viewers.tree.AbstractTmfTreeViewer;
@@ -95,7 +95,8 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
     private boolean fInitialized = false;
 
     private static final String[] DEFAULT_COLUMN_NAMES = new String[] {
-            Objects.requireNonNull(Messages.WeightedTreeViewer_Element)
+            Objects.requireNonNull(Messages.WeightedTreeViewer_Element),
+            Objects.requireNonNull(Messages.WeightedTreeViewer_Weight)
     };
 
     /**
@@ -236,7 +237,7 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
      * null if there are no additional columns, so nothing to change from
      * default
      */
-    private static ITmfTreeColumnDataProvider getColumnDataProvider(IWeightedTreeProvider<?, WeightedTree<?>> treeProvider) {
+    private static ITmfTreeColumnDataProvider getColumnDataProvider(IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider) {
         List<MetricType> additionalMetrics = treeProvider.getAdditionalMetrics();
         return new ITmfTreeColumnDataProvider() {
 
@@ -337,7 +338,7 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
                         break;
 
                     }
-                    columns.add(columns.size() - 1, column);
+                    columns.add(column);
                     metricIndex++;
                 }
                 // Add a column for filler at the end
@@ -349,13 +350,13 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
         };
     }
 
-    private Set<IWeightedTreeProvider<?, WeightedTree<?>>> getCallGraphs() {
+    private Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> getCallGraphs() {
         ITmfTrace trace = getTrace();
         if (trace != null) {
             Iterable<IWeightedTreeProvider> callgraphModules = TmfTraceUtils.getAnalysisModulesOfClass(trace, IWeightedTreeProvider.class);
 
-            Set<IWeightedTreeProvider<?, WeightedTree<?>>> set = new HashSet<>();
-            for (IWeightedTreeProvider<?, WeightedTree<?>> treeProvider : callgraphModules) {
+            Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> set = new HashSet<>();
+            for (IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider : callgraphModules) {
                 if (treeProvider instanceof IAnalysisModule) {
                     if (((IAnalysisModule) treeProvider).getId().equals(fAnalysisId)) {
                         set.add(treeProvider);
@@ -369,7 +370,7 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
 
     @Override
     public void initializeDataSource(ITmfTrace trace) {
-        Set<IWeightedTreeProvider<?, WeightedTree<?>>> modules = getCallGraphs();
+        Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> modules = getCallGraphs();
 
         modules.forEach(m -> {
             if (m instanceof IAnalysisModule) {
@@ -386,7 +387,7 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
      * From a tree provider, initialize the viewer data/columns/label providers,
      * etc
      */
-    private void initializeViewer(IWeightedTreeProvider<?, WeightedTree<?>> treeProvider) {
+    private void initializeViewer(IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider) {
         MetricType weightType = treeProvider.getWeightType();
         fWeightFormatter = getFormatterForType(weightType.getDataType());
         ITmfTreeColumnDataProvider columns = getColumnDataProvider(treeProvider);
@@ -422,43 +423,25 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
 
     /**
      * Class for defining an entry in the statistics tree.
+     * @param <E> The type of entry element
      */
-    protected class ElementEntry extends TmfTreeViewerEntry {
+    protected class ElementEntry<@NonNull E> extends TmfTreeViewerEntry {
 
-        private final WeightedTree<?> fTree;
-        private final Object fThisElement;
-        private final IWeightedTreeProvider<?, WeightedTree<?>> fTreeProvider;
+        private final E fThisElement;
+        private final IWeightedTreeProvider<?, E, WeightedTree<?>> fTreeProvider;
         private @Nullable List<ITmfTreeViewerEntry> fChildren;
 
         /**
          * Constructor
          *
-         * @param tree
+         * @param element
          *            The tree to display under this element
          * @param provider
          *            The tree provider for this entry
          */
-        public ElementEntry(WeightedTree<?> tree, IWeightedTreeProvider<?, WeightedTree<?>> provider) {
-            super(String.valueOf(tree.getObject()));
-            fThisElement = tree.getObject();
-            fTree = tree;
-            fTreeProvider = provider;
-        }
-
-        /**
-         * Constructor
-         *
-         * @param child
-         *            The child element
-         * @param tree
-         *            The tree
-         * @param provider
-         *            The tree provider for this entry
-         */
-        public ElementEntry(ICallStackElement child, WeightedTree<?> tree, IWeightedTreeProvider<?, WeightedTree<?>> provider) {
-            super(String.valueOf(tree.getObject()));
-            fThisElement = child;
-            fTree = tree;
+        public ElementEntry(E element, IWeightedTreeProvider<?, E, WeightedTree<?>> provider) {
+            super(String.valueOf(element));
+            fThisElement = element;
             fTreeProvider = provider;
         }
 
@@ -467,8 +450,8 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
          *
          * @return statistics object
          */
-        public Object getElement() {
-            return fTree.getObject();
+        public E getElement() {
+            return fThisElement;
         }
 
         @Override
@@ -480,13 +463,13 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
         public List<ITmfTreeViewerEntry> getChildren() {
             List<ITmfTreeViewerEntry> children = fChildren;
             if (children == null) {
+                children = new ArrayList<>();
                 Object thisNode = fThisElement;
-                if (thisNode instanceof ICallStackElement && !((ICallStackElement) thisNode).isLeaf()) {
-                    children = getChildrenElements((ICallStackElement) thisNode);
-                } else {
-                    // TODO Plan for a hierarchy of elements
-                    children = getChildrenTreeNodes();
+                // Does this element have children?
+                if (thisNode instanceof ITree<?>) {
+                    children.addAll(getChildrenElements((ITree<?>) thisNode));
                 }
+                children.addAll(getChildrenTreeNodes());
                 fChildren = children;
             }
             return children;
@@ -509,16 +492,16 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
 
         private List<ITmfTreeViewerEntry> getChildrenTreeNodes() {
             List<ITmfTreeViewerEntry> list = new ArrayList<>();
-            for (WeightedTree<?> callsite : fTree.getChildren()) {
+            for (WeightedTree<?> callsite : fTreeProvider.getTreesFor(fThisElement)) {
                 list.add(new TreeNodeEntry(callsite, this, fTreeProvider));
             }
             return list;
         }
 
-        private List<ITmfTreeViewerEntry> getChildrenElements(ICallStackElement element) {
+        private List<ITmfTreeViewerEntry> getChildrenElements(ITree<?> thisNode) {
             List<ITmfTreeViewerEntry> list = new ArrayList<>();
-            for (ICallStackElement child : element.getChildrenElements()) {
-                list.add(new ElementEntry(child, fTree, fTreeProvider));
+            for (ITree<@NonNull ?> elChild : ((ITree<?>) thisNode).getChildren()) {
+                list.add(new ElementEntry<>((E) elChild, fTreeProvider));
             }
             return list;
         }
@@ -531,7 +514,7 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
     protected class TreeNodeEntry extends TmfTreeViewerEntry {
 
         private final WeightedTree<?> fTreeNode;
-        private final IWeightedTreeProvider<?, WeightedTree<?>> fTreeProvider;
+        private final IWeightedTreeProvider<?, ?, WeightedTree<?>> fTreeProvider;
         private @Nullable List<ITmfTreeViewerEntry> fChildren = null;
 
         /**
@@ -544,7 +527,7 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
          * @param treeProvider
          *            The tree provider
          */
-        public TreeNodeEntry(WeightedTree<?> callsite, TmfTreeViewerEntry parent, IWeightedTreeProvider<?, WeightedTree<?>> treeProvider) {
+        public TreeNodeEntry(WeightedTree<?> callsite, TmfTreeViewerEntry parent, IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider) {
             super(treeProvider.toDisplayString(callsite));
             fTreeNode = callsite;
             this.setParent(parent);
@@ -597,7 +580,7 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
     @Override
     protected @Nullable ITmfTreeViewerEntry updateElements(ITmfTrace trace, long start, long end, boolean isSelection) {
 
-        Set<IWeightedTreeProvider<?, WeightedTree<?>>> modules = getCallGraphs();
+        Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> modules = getCallGraphs();
 
         if (modules.isEmpty()) {
             return null;
@@ -611,7 +594,7 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
         TmfTreeViewerEntry root = new TmfTreeViewerEntry(""); //$NON-NLS-1$
         List<ITmfTreeViewerEntry> entryList = root.getChildren();
 
-        for (IWeightedTreeProvider<?, WeightedTree<?>> module : modules) {
+        for (IWeightedTreeProvider<?, ?, WeightedTree<?>> module : modules) {
             if (isSelection) {
                 setStats(start, end, entryList, module, true, new NullProgressMonitor());
             }
@@ -629,19 +612,15 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
      * @param isSelection
      * @param monitor
      */
-    private void setStats(long start, long end, List<ITmfTreeViewerEntry> entryList, IWeightedTreeProvider<?, WeightedTree<?>> module, boolean isSelection, IProgressMonitor monitor) {
+    private <@NonNull E> void setStats(long start, long end, List<ITmfTreeViewerEntry> entryList, IWeightedTreeProvider<?, E, WeightedTree<?>> module, boolean isSelection, IProgressMonitor monitor) {
 
-        Collection<WeightedTree<?>> trees = null;
-        if (start != end) {
-            trees = module.getTrees(TmfTimestamp.fromNanos(start), TmfTimestamp.fromNanos(end));
-        } else {
-            trees = module.getTrees();
-        }
+        Collection<E> elements = module.getElements();
 
-        for (WeightedTree<?> tree : trees) {
-            ElementEntry entry = new ElementEntry(tree, module);
+        for (E element : elements) {
+            ElementEntry<E> entry = new ElementEntry<>(element, module);
             entryList.add(entry);
         }
+
     }
 
     @Override

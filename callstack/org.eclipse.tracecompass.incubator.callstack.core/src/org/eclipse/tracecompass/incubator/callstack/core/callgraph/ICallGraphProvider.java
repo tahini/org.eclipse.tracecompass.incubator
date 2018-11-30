@@ -14,6 +14,7 @@ import java.util.Collection;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
+import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
 import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
 
@@ -23,7 +24,7 @@ import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
  *
  * @author Geneviève Bastien
  */
-public interface ICallGraphProvider extends IWeightedTreeProvider<@NonNull ICallStackSymbol, @NonNull AggregatedCallSite> {
+public interface ICallGraphProvider extends IWeightedTreeProvider<@NonNull ICallStackSymbol, ICallStackElement, @NonNull AggregatedCallSite> {
 
     /**
      * Get the group descriptors that describe how the elements are grouped in this
@@ -61,15 +62,23 @@ public interface ICallGraphProvider extends IWeightedTreeProvider<@NonNull ICall
     CallGraph getCallGraph();
 
     @Override
-    default Collection<AggregatedCallSite> getTrees() {
+    default Collection<AggregatedCallSite> getTreesFor(ICallStackElement element) {
         CallGraph callGraph = getCallGraph();
-        return callGraph.getTrees();
+        return callGraph.getCallingContextTree(element);
     }
 
     @Override
-    default Collection<AggregatedCallSite> getTrees(ITmfTimestamp start, ITmfTimestamp end) {
+    default Collection<AggregatedCallSite> getTrees(ICallStackElement element, ITmfTimestamp start, ITmfTimestamp end) {
        CallGraph callGraph = getCallGraph(start, end);
-       return callGraph.getTrees();
+       return callGraph.getCallingContextTree(element);
+    }
+
+
+
+    @Override
+    default Collection<ICallStackElement> getElements() {
+        CallGraph callGraph = getCallGraph();
+        return callGraph.getElements();
     }
 
     /**

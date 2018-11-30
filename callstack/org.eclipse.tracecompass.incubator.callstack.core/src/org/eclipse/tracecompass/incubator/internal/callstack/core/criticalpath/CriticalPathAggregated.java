@@ -35,7 +35,7 @@ import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
  *
  * @author Geneviève Bastien
  */
-public class CriticalPathAggregated extends TmfAbstractAnalysisModule implements IWeightedTreeProvider<Object, WeightedTree<Object>> {
+public class CriticalPathAggregated extends TmfAbstractAnalysisModule implements IWeightedTreeProvider<Object, String, WeightedTree<Object>> {
 
     public static final String ID = "org.eclipse.tracecompass.incubator.callstack.core.criticalpath.aggregated"; //$NON-NLS-1$
     private static final MetricType DURATION_METRIC = new MetricType(Objects.requireNonNull(Messages.CallGraphStats_Duration), DataType.NANOSECONDS);
@@ -105,28 +105,35 @@ public class CriticalPathAggregated extends TmfAbstractAnalysisModule implements
 //    }
 
     @Override
-    public Collection<WeightedTree<Object>> getTrees() {
+    public Collection<WeightedTree<Object>> getTreesFor(String element) {
         CriticalPathToCallGraph critPathCg = fCritPathCg;
         if (critPathCg == null) {
             return Collections.emptyList();
         }
-        return critPathCg.getTrees();
+        return critPathCg.getTreesFor(element);
     }
 
     @Override
-    public Collection<WeightedTree<Object>> getTrees(ITmfTimestamp start, ITmfTimestamp end) {
+    public Collection<WeightedTree<Object>> getTrees(String element, ITmfTimestamp start, ITmfTimestamp end) {
         CriticalPathToCallGraph critPathCg = fCritPathCg;
         if (critPathCg == null) {
             return Collections.emptyList();
         }
-        return critPathCg.getTrees(start, end);
+        return critPathCg.getTrees(element, start, end);
+    }
+
+    @Override
+    public Collection<String> getElements() {
+        CriticalPathToCallGraph critPathCg = fCritPathCg;
+        if (critPathCg == null) {
+            return Collections.emptyList();
+        }
+        return critPathCg.getElements();
     }
 
     @Override
     public MetricType getWeightType() {
         return DURATION_METRIC;
     }
-
-
 
 }

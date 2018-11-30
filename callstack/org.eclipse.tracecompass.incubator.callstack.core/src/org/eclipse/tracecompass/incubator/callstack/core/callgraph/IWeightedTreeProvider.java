@@ -26,10 +26,11 @@ import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
  *
  * @param <N>
  *            The type of objects represented by each node in the tree
+ * @param <E>
  * @param <T>
  *            The type of the tree provided
  */
-public interface IWeightedTreeProvider<@NonNull N, @NonNull T extends WeightedTree<N>> {
+public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends WeightedTree<N>> {
 
     /**
      * The type of data that a value represents. Mostly for numeric value, as
@@ -110,11 +111,12 @@ public interface IWeightedTreeProvider<@NonNull N, @NonNull T extends WeightedTr
      *
      * @return A collection of trees provided by this class
      */
-    Collection<T> getTrees();
+    Collection<T> getTreesFor(E element);
 
     /**
      * Get the trees for a certain time range. If a provider does not support
      * ranged trees, this method can just return an empty collection
+     * @param element
      *
      * @param start
      *            The timestamp of the start of the range
@@ -122,9 +124,11 @@ public interface IWeightedTreeProvider<@NonNull N, @NonNull T extends WeightedTr
      *            The timestamp of the end of the range
      * @return A collection of trees whose values span from start to end
      */
-    default Collection<T> getTrees(ITmfTimestamp start, ITmfTimestamp end) {
+    default Collection<T> getTrees(E element, ITmfTimestamp start, ITmfTimestamp end) {
         return Collections.emptySet();
     }
+
+    Collection<E> getElements();
 
     /**
      * Get the formatter for the weight value. By default, it returns a decimal
