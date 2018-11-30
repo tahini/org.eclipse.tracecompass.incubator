@@ -164,14 +164,14 @@ public class CallGraphGroupByInstrumentedTest extends CallStackTestBase {
         for (ICallStackElement element : elements) {
             switch (element.getName()) {
             case "1": {
-                Collection<ICallStackElement> children = element.getChildren();
+                Collection<ICallStackElement> children = element.getChildrenElements();
                 assertEquals(0, children.size());
                 Collection<AggregatedCallSite> callingContextTree = callGraph.getCallingContextTree(element);
                 compareCcts("", getExpectedProcess1(), callingContextTree);
             }
                 break;
             case "5": {
-                Collection<ICallStackElement> children = element.getChildren();
+                Collection<ICallStackElement> children = element.getChildrenElements();
                 assertEquals(0, children.size());
                 Collection<AggregatedCallSite> callingContextTree = callGraph.getCallingContextTree(element);
                 compareCcts("", getExpectedProcess5(), callingContextTree);
@@ -208,7 +208,7 @@ public class CallGraphGroupByInstrumentedTest extends CallStackTestBase {
         for (ICallStackElement element : elements) {
             switch (element.getName()) {
             case "1": {
-                Collection<ICallStackElement> children = element.getChildren();
+                Collection<ICallStackElement> children = element.getChildrenElements();
                 assertEquals(2, children.size());
                 for (ICallStackElement thread : children) {
                     switch (thread.getName()) {
@@ -229,7 +229,7 @@ public class CallGraphGroupByInstrumentedTest extends CallStackTestBase {
             }
                 break;
             case "5": {
-                Collection<ICallStackElement> children = element.getChildren();
+                Collection<ICallStackElement> children = element.getChildrenElements();
                 assertEquals(2, children.size());
                 for (ICallStackElement thread : children) {
                     switch (thread.getName()) {

@@ -19,21 +19,25 @@ import org.eclipse.jdt.annotation.Nullable;
 /**
  * A Weighted Tree class to describe hierarchical data with a weight. This class
  * is a concrete class to describe a simple weighted tree, but it is also meant
- * to be extended to support other metrics associated with each node.
+ * to be extended to support other metrics associated with each tree, apart from
+ * the weight.
  *
  * Note that the weight is such that the sum of the weight of the children is
  * smaller or equal to the weight of the parent. Failure to comply to this will
  * result in undefined behaviors when viewing the results.
  *
+ * Also, if a child is added to the weighted tree for an object that is already
+ * present in the children of this tree, their data will be merged.
+ *
  * @author Geneviève Bastien
  * @param <T>
- *            The type of objects this node is for
+ *            The type of objects in this tree
  */
 public class WeightedTree<@NonNull T> {
 
     private final T fObject;
     private final Map<Object, WeightedTree<T>> fChildren = new HashMap<>();
-    private final @Nullable WeightedTree<T> fParent;
+    private @Nullable WeightedTree<T> fParent;
     private long fWeight = 0;
 
     /**
@@ -119,6 +123,16 @@ public class WeightedTree<@NonNull T> {
     }
 
     /**
+     * Sets the parent of this tree
+     *
+     * @param parent
+     *            The parent tree
+     */
+    protected void setParent(WeightedTree<T> parent) {
+        fParent = parent;
+    }
+
+    /**
      * Get the callees of this callsite, ie the functions called by this one
      *
      * @return A collection of callees' callsites
@@ -138,7 +152,8 @@ public class WeightedTree<@NonNull T> {
     }
 
     /**
-     * Add a callee to this callsite
+     * Add a callee to this callsite. If a callee for the same object already
+     * exists, the data for both callees will be merged.
      *
      * @param callee
      *            the call site of the callee
@@ -146,6 +161,7 @@ public class WeightedTree<@NonNull T> {
     public void addChild(WeightedTree<T> callee) {
         WeightedTree<T> callsite = fChildren.get(callee.getObject());
         if (callsite == null) {
+            callee.setParent(this);
             fChildren.put(callee.getObject(), callee);
             return;
         }
@@ -178,9 +194,8 @@ public class WeightedTree<@NonNull T> {
 
     /**
      * Merge the data of two callsites. This should modify the current
-     * callsite's specific data. It is called by
-     * {@link #merge(WeightedTree)} and this method MUST NOT touch the
-     * callees of the callsites.
+     * callsite's specific data. It is called by {@link #merge(WeightedTree)}
+     * and this method MUST NOT touch the callees of the callsites.
      *
      * @param other
      *            The call site to merge to this one

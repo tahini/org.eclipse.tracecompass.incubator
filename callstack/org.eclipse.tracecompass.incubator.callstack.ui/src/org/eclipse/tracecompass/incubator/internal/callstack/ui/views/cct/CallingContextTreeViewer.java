@@ -461,7 +461,7 @@ public class CallingContextTreeViewer extends AbstractTmfTreeViewer {
 
         private List<ITmfTreeViewerEntry> getChildrenElements() {
             List<ITmfTreeViewerEntry> list = new ArrayList<>();
-            Collection<ICallStackElement> children = fElement.getChildren();
+            Collection<ICallStackElement> children = fElement.getChildrenElements();
             for (ICallStackElement elem : children) {
                 list.add(new CCTElementEntry(elem, fCallGraph));
             }

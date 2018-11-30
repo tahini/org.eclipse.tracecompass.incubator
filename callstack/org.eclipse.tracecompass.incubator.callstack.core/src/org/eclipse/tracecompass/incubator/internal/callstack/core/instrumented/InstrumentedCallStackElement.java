@@ -85,7 +85,7 @@ public class InstrumentedCallStackElement extends CallStackElement {
     }
 
     @Override
-    public Collection<ICallStackElement> getChildren() {
+    public Collection<ICallStackElement> getChildrenElements() {
         // Get the elements from the next group in the hierarchy
         @Nullable ICallStackGroupDescriptor nextGroup = getNextGroup();
         if (!(nextGroup instanceof InstrumentedGroupDescriptor)) {

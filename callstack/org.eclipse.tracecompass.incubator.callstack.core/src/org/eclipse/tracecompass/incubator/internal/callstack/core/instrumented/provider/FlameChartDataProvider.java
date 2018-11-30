@@ -476,7 +476,7 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
             return needsKernel;
         }
         // Intermediate element, process children
-        for (ICallStackElement child : element.getChildren()) {
+        for (ICallStackElement child : element.getChildrenElements()) {
             needsKernel |= processCallStackElement(child, builder, entry);
         }
         return needsKernel;

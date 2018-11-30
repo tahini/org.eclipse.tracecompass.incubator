@@ -181,7 +181,7 @@ public class FlameGraphContentProvider implements ITimeGraphContentProvider {
         }
 
         // Create the children entries
-        for (ICallStackElement child : element.getChildren()) {
+        for (ICallStackElement child : element.getChildrenElements()) {
             buildChildrenEntries(child, object, currentEntry);
         }
 

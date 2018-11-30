@@ -517,7 +517,7 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
 
         private List<ITmfTreeViewerEntry> getChildrenElements(ICallStackElement element) {
             List<ITmfTreeViewerEntry> list = new ArrayList<>();
-            for (ICallStackElement child : element.getChildren()) {
+            for (ICallStackElement child : element.getChildrenElements()) {
                 list.add(new ElementEntry(child, fTree, fTreeProvider));
             }
             return list;

@@ -82,7 +82,7 @@ public class CallGraphWithCallStackAnalysisTest extends CallStackTestBase {
     }
 
     private static void verifyProcess1(CallGraph cg, ICallStackElement element) {
-        Collection<ICallStackElement> secondLevels = element.getChildren();
+        Collection<ICallStackElement> secondLevels = element.getChildrenElements();
         assertEquals(2, secondLevels.size());
         for (ICallStackElement secondLevel : secondLevels) {
             assertTrue(secondLevel instanceof InstrumentedCallStackElement);
@@ -179,7 +179,7 @@ public class CallGraphWithCallStackAnalysisTest extends CallStackTestBase {
     }
 
     private static void verifyProcess5(CallGraph cg, ICallStackElement element) {
-        Collection<ICallStackElement> secondLevels = element.getChildren();
+        Collection<ICallStackElement> secondLevels = element.getChildrenElements();
         assertEquals(2, secondLevels.size());
         for (ICallStackElement secondLevel : secondLevels) {
             assertTrue(secondLevel instanceof InstrumentedCallStackElement);
@@ -393,7 +393,7 @@ public class CallGraphWithCallStackAnalysisTest extends CallStackTestBase {
     }
 
     private static void verifyProcess1CpuTime(CallGraph callGraph, ICallStackElement element) {
-        Collection<ICallStackElement> secondLevels = element.getChildren();
+        Collection<ICallStackElement> secondLevels = element.getChildrenElements();
         assertEquals(2, secondLevels.size());
         for (ICallStackElement secondLevel : secondLevels) {
             assertTrue(secondLevel instanceof InstrumentedCallStackElement);
@@ -490,7 +490,7 @@ public class CallGraphWithCallStackAnalysisTest extends CallStackTestBase {
     }
 
     private static void verifyProcess5CpuTime(CallGraph callGraph, ICallStackElement element) {
-        Collection<ICallStackElement> secondLevels = element.getChildren();
+        Collection<ICallStackElement> secondLevels = element.getChildrenElements();
         assertEquals(2, secondLevels.size());
         for (ICallStackElement secondLevel : secondLevels) {
             assertTrue(secondLevel instanceof InstrumentedCallStackElement);

@@ -206,7 +206,7 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
             iterateOverLeafElement(element, model, callgraph, start, end, monitor);
             return;
         }
-        for (ICallStackElement child : element.getChildren()) {
+        for (ICallStackElement child : element.getChildrenElements()) {
             iterateOverElement(child, model, callgraph, start, end, monitor);
         }
     }

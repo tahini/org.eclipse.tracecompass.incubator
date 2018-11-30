@@ -61,7 +61,7 @@ public class AggregatedCalledFunctionStatisticsTest {
             return Collections.singletonList(group);
         }
         List<ICallStackElement> leafGroups = new ArrayList<>();
-        group.getChildren().forEach(g -> leafGroups.addAll(getLeafElements(g)));
+        group.getChildrenElements().forEach(g -> leafGroups.addAll(getLeafElements(g)));
         return leafGroups;
     }
 
