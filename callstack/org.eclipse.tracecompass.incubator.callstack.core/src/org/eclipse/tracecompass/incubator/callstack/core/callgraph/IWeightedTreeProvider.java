@@ -14,19 +14,25 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.tracecompass.incubator.analysis.core.concepts.ITree;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
 import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
 
 /**
  * An interface that classes and analyses providing weighted trees can
  * implement. This interface allows to add extra information about the specific
- * trees that it provides
+ * trees that it provides.
+ *
+ * The trees are associated with elements that are used to group them. The
+ * elements can implement the {@link ITree} class if there is a hierarchy in the
+ * groupings.
  *
  * @author Geneviève Bastien
  *
  * @param <N>
  *            The type of objects represented by each node in the tree
  * @param <E>
+ *            The type of elements used to group the trees
  * @param <T>
  *            The type of the tree provided
  */
@@ -109,6 +115,8 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
      * Get the trees provided by this analysis. This should return all the trees
      * for the whole trace
      *
+     * @param element
+     *            The element for which to get the trees
      * @return A collection of trees provided by this class
      */
     Collection<T> getTreesFor(E element);
@@ -116,8 +124,9 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
     /**
      * Get the trees for a certain time range. If a provider does not support
      * ranged trees, this method can just return an empty collection
-     * @param element
      *
+     * @param element
+     *            The element for which to get the trees
      * @param start
      *            The timestamp of the start of the range
      * @param end
@@ -128,6 +137,12 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
         return Collections.emptySet();
     }
 
+    /**
+     * Get the elements under which are the trees. It can be a constant element
+     * if this provider does not have the concept of grouping the trees.
+     *
+     * @return The elements used to group the trees
+     */
     Collection<E> getElements();
 
     /**
@@ -170,12 +185,12 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
      * Get a user-facing text to identify a node object. By default, it is the
      * string representation of the object.
      *
-     * @param object
+     * @param tree
      *            The tree whose value to display
      * @return A user-facing string to identify this node
      */
-    default String toDisplayString(T object) {
-        return String.valueOf(object);
+    default String toDisplayString(T tree) {
+        return String.valueOf(tree.getObject());
     }
 
 }

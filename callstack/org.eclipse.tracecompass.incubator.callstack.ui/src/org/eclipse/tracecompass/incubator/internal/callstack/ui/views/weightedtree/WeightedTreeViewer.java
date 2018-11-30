@@ -31,7 +31,9 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerComparator;
@@ -90,9 +92,10 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
     private static final Comparator<TreeNodeEntry> COMPARATOR = (o1, o2) -> Long.compare(o2.getTreeNode().getWeight(), o1.getTreeNode().getWeight());
 
     private MenuManager fTablePopupMenuManager;
-    private String fAnalysisId;
+    private final String fAnalysisId;
     private Format fWeightFormatter = DECIMAL_FORMATTER;
     private boolean fInitialized = false;
+    private final WeightedTreeView fView;
 
     private static final String[] DEFAULT_COLUMN_NAMES = new String[] {
             Objects.requireNonNull(Messages.WeightedTreeViewer_Element),
@@ -106,11 +109,13 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
      *            the parent composite
      * @param analysisId
      *            The ID of the analysis to use to fill this CCT
+     * @param weightedTreeView
      */
-    public WeightedTreeViewer(@Nullable Composite parent, String analysisId) {
+    public WeightedTreeViewer(@Nullable Composite parent, String analysisId, WeightedTreeView view) {
         super(parent, false);
         fAnalysisId = analysisId;
         setLabelProvider(new WeightedTreeLabelProvider(Collections.emptyList()));
+        fView = view;
         fTablePopupMenuManager = new MenuManager();
         fTablePopupMenuManager.setRemoveAllWhenShown(true);
         fTablePopupMenuManager.addMenuListener(manager -> {
@@ -126,6 +131,20 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
         Menu tablePopup = fTablePopupMenuManager.createContextMenu(getTreeViewer().getTree());
         Tree tree = getTreeViewer().getTree();
         tree.setMenu(tablePopup);
+        addSelectionChangeListener(new ISelectionChangedListener() {
+            @Override
+            public void selectionChanged(@Nullable SelectionChangedEvent event) {
+                if (event == null) {
+                    return;
+                }
+                if (event.getSelection() instanceof IStructuredSelection) {
+                    Object selection = ((IStructuredSelection) event.getSelection()).getFirstElement();
+                    if (selection instanceof ElementEntry) {
+                        fView.elementSelected(((ElementEntry<?>) selection).getElement());
+                    }
+                }
+            }
+        });
     }
 
     /** Provides label for the Segment Store tree viewer cells */
