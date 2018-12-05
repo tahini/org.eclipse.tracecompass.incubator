@@ -8,10 +8,7 @@
  *******************************************************************************/
 package org.eclipse.tracecompass.incubator.internal.callstack.ui.views.weightedtree;
 
-import java.text.DecimalFormat;
-import java.text.FieldPosition;
 import java.text.Format;
-import java.text.ParsePosition;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -42,19 +39,15 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
-import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.SubSecondTimeWithUnitFormat;
-import org.eclipse.tracecompass.common.core.format.DataSizeWithUnitFormat;
-import org.eclipse.tracecompass.common.core.format.DataSpeedWithUnitFormat;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ITree;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.IWeightedTreeProvider;
-import org.eclipse.tracecompass.incubator.callstack.core.callgraph.IWeightedTreeProvider.DataType;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.IWeightedTreeProvider.MetricType;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSignalHandler;
+import org.eclipse.tracecompass.tmf.core.signal.TmfStartAnalysisSignal;
 import org.eclipse.tracecompass.tmf.core.signal.TmfWindowRangeUpdatedSignal;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
-import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.ui.viewers.tree.AbstractTmfTreeViewer;
 import org.eclipse.tracecompass.tmf.ui.viewers.tree.ITmfTreeColumnDataProvider;
 import org.eclipse.tracecompass.tmf.ui.viewers.tree.ITmfTreeViewerEntry;
@@ -69,31 +62,12 @@ import org.eclipse.tracecompass.tmf.ui.viewers.tree.TmfTreeViewerEntry;
  */
 public class WeightedTreeViewer extends AbstractTmfTreeViewer {
 
-    private static final Format TIME_FORMATTER = new SubSecondTimeWithUnitFormat();
-    private static final Format DECIMAL_FORMATTER = new DecimalFormat("###,###.##"); //$NON-NLS-1$
-    private static final Format DEFAULT_FORMATTER = new Format() {
-
-        /** generated UID */
-        private static final long serialVersionUID = -6004790434917065780L;
-
-        @Override
-        public @Nullable StringBuffer format(@Nullable Object obj, @Nullable StringBuffer toAppendTo, @Nullable FieldPosition pos) {
-            return Objects.requireNonNull(toAppendTo).append(String.valueOf(obj));
-        }
-
-        @Override
-        public @Nullable Object parseObject(@Nullable String source, @Nullable ParsePosition pos) {
-            return source;
-        }
-
-    };
-
     // Order CCT children by decreasing length
     private static final Comparator<TreeNodeEntry> COMPARATOR = (o1, o2) -> Long.compare(o2.getTreeNode().getWeight(), o1.getTreeNode().getWeight());
+    private static final IProgressMonitor NULL_MONITOR = new NullProgressMonitor();
 
     private MenuManager fTablePopupMenuManager;
-    private final String fAnalysisId;
-    private Format fWeightFormatter = DECIMAL_FORMATTER;
+    private Format fWeightFormatter = WeightedTreeView.DECIMAL_FORMATTER;
     private boolean fInitialized = false;
     private final WeightedTreeView fView;
 
@@ -107,13 +81,11 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
      *
      * @param parent
      *            the parent composite
-     * @param analysisId
-     *            The ID of the analysis to use to fill this CCT
-     * @param weightedTreeView
+     * @param view
+     *            The parent view
      */
-    public WeightedTreeViewer(@Nullable Composite parent, String analysisId, WeightedTreeView view) {
+    public WeightedTreeViewer(@Nullable Composite parent, WeightedTreeView view) {
         super(parent, false);
-        fAnalysisId = analysisId;
         setLabelProvider(new WeightedTreeLabelProvider(Collections.emptyList()));
         fView = view;
         fTablePopupMenuManager = new MenuManager();
@@ -139,8 +111,21 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
                 }
                 if (event.getSelection() instanceof IStructuredSelection) {
                     Object selection = ((IStructuredSelection) event.getSelection()).getFirstElement();
-                    if (selection instanceof ElementEntry) {
-                        fView.elementSelected(((ElementEntry<?>) selection).getElement());
+                    if (selection instanceof TmfTreeViewerEntry) {
+                        Set<WeightedTree<?>> trees = new HashSet<>();
+                        IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider = null;
+                        for (ITmfTreeViewerEntry entry : ((TmfTreeViewerEntry) selection).getChildren()) {
+                            // FIXME: Should we aggregate all children trees of all children elements?
+                            if (!(entry instanceof TreeNodeEntry)) {
+                                continue;
+                            }
+                            trees.add(((TreeNodeEntry) entry).getTreeNode());
+                            treeProvider = ((TreeNodeEntry) entry).fTreeProvider;
+                        }
+                        // If there are no children, don't update current selection
+                        if (treeProvider != null) {
+                            fView.elementSelected(trees, treeProvider);
+                        }
                     }
                 }
             }
@@ -157,7 +142,7 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
             int metricIndex = DEFAULT_COLUMN_NAMES.length;
             fFormatMap = new HashMap<>();
             for (MetricType metric : list) {
-                fFormatMap.put(metricIndex, WeightedTreeViewer.getFormatterForType(metric.getDataType()));
+                fFormatMap.put(metricIndex, WeightedTreeView.getFormatterForType(metric.getDataType()));
                 metricIndex++;
             }
         }
@@ -215,25 +200,6 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
             }
             return value;
         }
-    }
-
-    private static Format getFormatterForType(DataType type) {
-        switch (type) {
-        case BINARY_SPEED:
-            return DataSpeedWithUnitFormat.getInstance();
-        case BYTES:
-            return DataSizeWithUnitFormat.getInstance();
-        case NANOSECONDS:
-            return TIME_FORMATTER;
-        case NUMBER:
-            return DECIMAL_FORMATTER;
-        case OTHER:
-            return DEFAULT_FORMATTER;
-        default:
-            // Fall back to default
-            break;
-        }
-        return DEFAULT_FORMATTER;
     }
 
     @Override
@@ -369,27 +335,9 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
         };
     }
 
-    private Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> getCallGraphs() {
-        ITmfTrace trace = getTrace();
-        if (trace != null) {
-            Iterable<IWeightedTreeProvider> callgraphModules = TmfTraceUtils.getAnalysisModulesOfClass(trace, IWeightedTreeProvider.class);
-
-            Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> set = new HashSet<>();
-            for (IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider : callgraphModules) {
-                if (treeProvider instanceof IAnalysisModule) {
-                    if (((IAnalysisModule) treeProvider).getId().equals(fAnalysisId)) {
-                        set.add(treeProvider);
-                    }
-                }
-            }
-            return set;
-        }
-        return Collections.emptySet();
-    }
-
     @Override
     public void initializeDataSource(ITmfTrace trace) {
-        Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> modules = getCallGraphs();
+        Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> modules = fView.getWeightedTrees(trace);
 
         modules.forEach(m -> {
             if (m instanceof IAnalysisModule) {
@@ -402,13 +350,26 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
         }
     }
 
+    @TmfSignalHandler
+    public void analysisStart(TmfStartAnalysisSignal signal) {
+        ITmfTrace trace = getTrace();
+        if (trace == null) {
+            return;
+        }
+        Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> modules = fView.getWeightedTrees(trace);
+        if (modules.contains(signal.getAnalysisModule())) {
+            this.updateContent(trace.getStartTime().toNanos(), trace.getEndTime().toNanos(), false);
+        }
+
+    }
+
     /**
      * From a tree provider, initialize the viewer data/columns/label providers,
      * etc
      */
     private void initializeViewer(IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider) {
         MetricType weightType = treeProvider.getWeightType();
-        fWeightFormatter = getFormatterForType(weightType.getDataType());
+        fWeightFormatter = WeightedTreeView.getFormatterForType(weightType.getDataType());
         ITmfTreeColumnDataProvider columns = getColumnDataProvider(treeProvider);
         Display.getDefault().asyncExec(() -> {
             setTreeColumns(columns.getColumnData());
@@ -430,19 +391,10 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
     }
 
     /**
-     * Formats a double value string
-     *
-     * @param value
-     *            a value to format
-     * @return formatted value
-     */
-    protected static String toFormattedString(double value) {
-        return String.format("%s", TIME_FORMATTER.format(value)); //$NON-NLS-1$
-    }
-
-    /**
      * Class for defining an entry in the statistics tree.
-     * @param <E> The type of entry element
+     *
+     * @param <E>
+     *            The type of entry element
      */
     protected class ElementEntry<@NonNull E> extends TmfTreeViewerEntry {
 
@@ -599,7 +551,7 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
     @Override
     protected @Nullable ITmfTreeViewerEntry updateElements(ITmfTrace trace, long start, long end, boolean isSelection) {
 
-        Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> modules = getCallGraphs();
+        Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> modules = fView.getWeightedTrees(trace);
 
         if (modules.isEmpty()) {
             return null;
@@ -612,26 +564,19 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
 
         TmfTreeViewerEntry root = new TmfTreeViewerEntry(""); //$NON-NLS-1$
         List<ITmfTreeViewerEntry> entryList = root.getChildren();
+        System.out.println("redoing entries: " + isSelection);
 
         for (IWeightedTreeProvider<?, ?, WeightedTree<?>> module : modules) {
             if (isSelection) {
-                setStats(start, end, entryList, module, true, new NullProgressMonitor());
+                setSelection(start, end, entryList, module, true, NULL_MONITOR);
+            } else {
+                setGlobalData(entryList, module);
             }
-            // Start, start to ensure the full callgraph will be returned
-            setStats(start, start, entryList, module, false, new NullProgressMonitor());
         }
         return root;
     }
 
-    /**
-     * TODO: Implement this if necessary
-     *
-     * @param start
-     * @param end
-     * @param isSelection
-     * @param monitor
-     */
-    private <@NonNull E> void setStats(long start, long end, List<ITmfTreeViewerEntry> entryList, IWeightedTreeProvider<?, E, WeightedTree<?>> module, boolean isSelection, IProgressMonitor monitor) {
+    private <@NonNull E> void setGlobalData(List<ITmfTreeViewerEntry> entryList, IWeightedTreeProvider<?, E, WeightedTree<?>> module) {
 
         Collection<E> elements = module.getElements();
 
@@ -639,6 +584,17 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
             ElementEntry<E> entry = new ElementEntry<>(element, module);
             entryList.add(entry);
         }
+    }
+
+    /**
+     * @param start
+     * @param end
+     * @param entryList
+     * @param module
+     * @param isSelection
+     * @param monitor
+     */
+    private <@NonNull E> void setSelection(long start, long end, List<ITmfTreeViewerEntry> entryList, IWeightedTreeProvider<?, E, WeightedTree<?>> module, boolean isSelection, IProgressMonitor monitor) {
 
     }
 
@@ -683,6 +639,12 @@ public class WeightedTreeViewer extends AbstractTmfTreeViewer {
         public HiddenTreeViewerEntry(String name) {
             super(name);
         }
+    }
+
+    @Override
+    protected void setSelectionRange(long selectionBeginTime, long selectionEndTime) {
+        super.setSelectionRange(selectionBeginTime, selectionEndTime);
+        updateContent(selectionBeginTime, selectionEndTime, true);
     }
 
 }

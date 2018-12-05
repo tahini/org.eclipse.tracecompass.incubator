@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.internal.callstack.core.criticalpath;
+package org.eclipse.tracecompass.incubator.internal.kernel.core.criticalpath;
 
 import java.util.Collection;
 import java.util.List;

@@ -33,7 +33,7 @@ import org.eclipse.jdt.annotation.Nullable;
  * @param <T>
  *            The type of objects in this tree
  */
-public class WeightedTree<@NonNull T> {
+public class WeightedTree<@NonNull T> implements Comparable<WeightedTree<T>> {
 
     private final T fObject;
     private final Map<Object, WeightedTree<T>> fChildren = new HashMap<>();
@@ -226,6 +226,11 @@ public class WeightedTree<@NonNull T> {
     @Override
     public String toString() {
         return "WeightedTreeNode: " + fObject; //$NON-NLS-1$
+    }
+
+    @Override
+    public int compareTo(WeightedTree<@NonNull T> o) {
+        return Long.compare(fWeight, o.fWeight);
     }
 
 }

@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.internal.callstack.core.criticalpath;
+package org.eclipse.tracecompass.incubator.internal.kernel.core.criticalpath;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,7 +20,6 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.graph.core.criticalpath.CriticalPathModule;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.IWeightedTreeProvider;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.callgraph.Messages;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.analysis.TmfAbstractAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.exceptions.TmfAnalysisException;
@@ -38,7 +37,7 @@ import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
 public class CriticalPathAggregated extends TmfAbstractAnalysisModule implements IWeightedTreeProvider<Object, String, WeightedTree<Object>> {
 
     public static final String ID = "org.eclipse.tracecompass.incubator.callstack.core.criticalpath.aggregated"; //$NON-NLS-1$
-    private static final MetricType DURATION_METRIC = new MetricType(Objects.requireNonNull(Messages.CallGraphStats_Duration), DataType.NANOSECONDS);
+    private static final MetricType DURATION_METRIC = new MetricType(Objects.requireNonNull("Duration"), DataType.NANOSECONDS);
 
     private List<ICriticalPathListener> fListeners = new ArrayList<>();
     private @Nullable CriticalPathModule fModule = null;

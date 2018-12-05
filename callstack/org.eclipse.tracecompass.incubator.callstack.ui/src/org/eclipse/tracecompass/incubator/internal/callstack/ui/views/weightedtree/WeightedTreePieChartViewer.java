@@ -13,27 +13,33 @@
 
 package org.eclipse.tracecompass.incubator.internal.callstack.ui.views.weightedtree;
 
+import java.text.Format;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Set;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.ListenerList;
-import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.linuxtools.dataviewers.piechart.PieChart;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
-import org.eclipse.tracecompass.internal.tmf.ui.viewers.piecharts.model.TmfPieChartStatisticsModel;
+import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
+import org.eclipse.tracecompass.incubator.callstack.core.callgraph.IWeightedTreeProvider;
+import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
+import org.eclipse.tracecompass.tmf.ui.viewers.TmfTimeViewer;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.TimeGraphColorScheme;
 
 /**
@@ -44,115 +50,77 @@ import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.TimeGraphColorS
  * This class is closely related with the IPieChartViewerState interface that
  * acts as a state machine for the general layout of the charts.
  *
- * @author Alexis Cabana-Loriaux
+ * @author Geneviève Bastien
  * @since 2.0
  *
  */
-public class WeightedTreePieChartViewer extends Composite {
+public class WeightedTreePieChartViewer extends TmfTimeViewer {
+
+    /**
+     * Represents the minimum percentage a slice of pie must have in order to be
+     * shown
+     */
+    private static final float MIN_PRECENTAGE_TO_SHOW_SLICE = 0.01F;// 1%
+
+    /**
+     * The name of the slice containing the too little slices
+     */
+    private static String OTHER_SLICE_NAME = "Other";
 
     /**
      * The pie chart containing global information about the trace
      */
-    private PieChart fGlobalPC;
-
-    /**
-     * The name of the piechart containing the statistics about the global trace
-     */
-    private String fGlobalPCname;
-
-    /**
-     * The pie chart containing information about the current time-range
-     * selection
-     */
-    private PieChart fTimeRangePC;
-
-    /**
-     * The name of the piechart containing the statistics about the current
-     * selection
-     */
-    private String fTimeRangePCname;
+    private @Nullable PieChart fGlobalPC = null;
 
     /**
      * The listener for the mouse movement event.
      */
-    private Listener fMouseMoveListener;
+    private final Listener fMouseMoveListener;
 
     /**
      * The listener for the mouse right click event.
      */
-    private MouseListener fMouseClickListener;
+    private final MouseListener fMouseClickListener;
 
     /**
      * The list of listener to notify when an event type is selected
      */
     private ListenerList fEventTypeSelectedListeners = new ListenerList(ListenerList.IDENTITY);
 
-    /**
-     * The name of the slice containing the too little slices
-     */
-    private String fOthersSliceName;
+    private Format fWeightFormatter = WeightedTreeView.DECIMAL_FORMATTER;
 
-    /**
-     * Implementation of the State design pattern to reorder the layout
-     * depending on the selection. This variable holds the current state of the
-     * layout.
-     */
-    private IPieChartViewerState fCurrentState;
-
-    /**
-     * Represents the minimum percentage a slice of pie must have in order to be
-     * shown
-     */
-    private static final float MIN_PRECENTAGE_TO_SHOW_SLICE = 0.025F;// 2.5%
 
     /**
      * Represents the maximum number of slices of the pie charts. WE don't want
      * to pollute the viewer with too much slice entries.
      */
-    private static final int NB_MAX_SLICES = 10;
-
-    /**
-     * The data that has to be presented by the pie charts
-     */
-    private TmfPieChartStatisticsModel fModel = null;
+    // private static final int NB_MAX_SLICES = 10;
 
     /** The color scheme for the chart */
-    private @NonNull TimeGraphColorScheme fColorScheme = new TimeGraphColorScheme();
+    private TimeGraphColorScheme fColorScheme = new TimeGraphColorScheme();
+    private final WeightedTreeView fView;
 
     /**
      * @param parent
      *            The parent composite that will hold the viewer
-     * @param analysisId
+     * @param view
+     *            The parent weighted tree view
      */
-    public WeightedTreePieChartViewer(@Nullable Composite parent, String analysisId) {
-        super(parent, SWT.NONE);
-        fGlobalPCname = Messages.TmfStatisticsView_GlobalSelectionPieChartName;
-        fTimeRangePCname = Messages.TmfStatisticsView_TimeRangeSelectionPieChartName;
-        fOthersSliceName = Messages.TmfStatisticsView_PieChartOthersSliceName;
-        parent.addDisposeListener(e -> {
-            fColorScheme.dispose();
-        });
-        initContent();
-    }
-
-    // ------------------------------------------------------------------------
-    // Class methods
-    // ------------------------------------------------------------------------
-
-    /**
-     * Called by this class' constructor. Constructs the basic viewer containing
-     * the charts, as well as their listeners
-     */
-    private synchronized void initContent() {
-        setLayout(new FillLayout());
-
-        fGlobalPC = null;
-        fTimeRangePC = null;
-
-        // Setup listeners for the tooltips
+    public WeightedTreePieChartViewer(@Nullable Composite parent, WeightedTreeView view) {
+        super(parent);
+        if (parent != null) {
+            parent.addDisposeListener(e -> {
+                fColorScheme.dispose();
+            });
+        }
+        fView = view;
+     // Setup listeners for the tooltips
         fMouseMoveListener = new Listener() {
             @Override
-            public void handleEvent(org.eclipse.swt.widgets.Event event) {
+            public void handleEvent(@Nullable Event event) {
+                if (event == null) {
+                    return;
+                }
                 PieChart pc = (PieChart) event.widget;
                 switch (event.type) {
                 /* Get tooltip information on the slice */
@@ -167,11 +135,11 @@ public class WeightedTreePieChartViewer extends Composite {
                     String percent = String.format("%.1f", percOfSlice); //$NON-NLS-1$
                     Long nbEvents = Long.valueOf((long) pc.getSeriesSet().getSeries()[sliceIndex].getXSeries()[0]);
 
-                    String text = Messages.TmfStatisticsView_PieChartToolTipTextName + " = " + //$NON-NLS-1$
+                    String text = "slide name = " + //$NON-NLS-1$
                             pc.getSeriesSet().getSeries()[sliceIndex].getId() + "\n"; //$NON-NLS-1$
 
-                    text += Messages.TmfStatisticsView_PieChartToolTipTextEventCount + " = "//$NON-NLS-1$
-                            + nbEvents.toString() + " (" + percent + "%)"; //$NON-NLS-1$ //$NON-NLS-2$
+                    text += "Slice value = "//$NON-NLS-1$
+                            + fWeightFormatter.format(nbEvents) + " (" + percent + "%)"; //$NON-NLS-1$ //$NON-NLS-2$
                     pc.setToolTipText(text);
                     return;
                 default:
@@ -182,11 +150,14 @@ public class WeightedTreePieChartViewer extends Composite {
         fMouseClickListener = new MouseListener() {
 
             @Override
-            public void mouseUp(MouseEvent e) {
+            public void mouseUp(@Nullable MouseEvent e) {
             }
 
             @Override
-            public void mouseDown(MouseEvent e) {
+            public void mouseDown(@Nullable MouseEvent e) {
+                if (e == null) {
+                    return;
+                }
                 PieChart pc = (PieChart) e.widget;
                 int slicenb = pc.getSliceIndexFromPosition(0, e.x, e.y);
                 if (slicenb < 0 || slicenb >= pc.getSeriesSet().getSeries().length) {
@@ -199,51 +170,150 @@ public class WeightedTreePieChartViewer extends Composite {
             }
 
             @Override
-            public void mouseDoubleClick(MouseEvent e) {
+            public void mouseDoubleClick(@Nullable MouseEvent e) {
             }
         };
+    }
 
-        // at creation no content is selected
-        setCurrentState(new PieChartViewerStateNoContentSelected(this));
+    // ------------------------------------------------------------------------
+    // Class methods
+    // ------------------------------------------------------------------------
+
+    @Override
+    public void loadTrace(@Nullable ITmfTrace trace) {
+        super.loadTrace(trace);
+        if (trace == null) {
+            return;
+        }
+        Thread thread = new Thread() {
+            @Override
+            public void run() {
+                initializeDataSource(trace);
+                Display.getDefault().asyncExec(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!trace.equals(getTrace())) {
+                            return;
+                        }
+                        // clearContent();
+                        updateContent(getWindowStartTime(), getWindowEndTime(), false);
+                    }
+                });
+            }
+        };
+        thread.start();
+    }
+
+    /**
+     * Called by this class' constructor. Constructs the basic viewer containing
+     * the charts, as well as their listeners
+     */
+    private synchronized void initializeDataSource(ITmfTrace trace) {
+        Set<IWeightedTreeProvider<?, ?, WeightedTree<?>>> modules = fView.getWeightedTrees(trace);
+
+        modules.forEach(m -> {
+            if (m instanceof IAnalysisModule) {
+                ((IAnalysisModule) m).schedule();
+            }
+        });
+
+        // setLayout(new FillLayout());
+        //
+        // fGlobalPC = null;
+        // fTimeRangePC = null;
+
+
+    }
+
+    /**
+     * Requests an update of the viewer's content in a given time range or
+     * selection time range. An extra parameter defines whether these times
+     * correspond to the selection or the visible range, as the viewer may
+     * update differently in those cases.
+     *
+     * @param start
+     *            The start time of the requested content
+     * @param end
+     *            The end time of the requested content
+     * @param isSelection
+     *            <code>true</code> if this time range is for a selection,
+     *            <code>false</code> for the visible time range
+     */
+    protected void updateContent(final long start, final long end, final boolean isSelection) {
+        ITmfTrace trace = getTrace();
+        if (trace == null) {
+            return;
+        }
+        Job thread = new Job("") { //$NON-NLS-1$
+            @Override
+            public IStatus run(@Nullable IProgressMonitor monitor) {
+                // final ITmfTreeViewerEntry rootEntry = updateElements(trace,
+                // start, end, isSelection);
+                // /* Set the input in main thread only if it didn't change */
+                // if (rootEntry != null) {
+                // Display.getDefault().asyncExec(new Runnable() {
+                // @Override
+                // public void run() {
+                // if (fTreeViewer.getControl().isDisposed()) {
+                // return;
+                // }
+                //
+                // if (rootEntry != fTreeViewer.getInput()) {
+                // fTreeViewer.setInput(rootEntry);
+                // contentChanged(rootEntry);
+                // } else {
+                // fTreeViewer.refresh();
+                // }
+                // // FIXME should add a bit of padding
+                // for (TreeColumn column : fTreeViewer.getTree().getColumns())
+                // {
+                // column.pack();
+                // }
+                // }
+                // });
+                // }
+                return Status.OK_STATUS;
+            }
+        };
+        thread.setSystem(true);
+        thread.schedule();
     }
 
     /**
      * Updates the data contained in the Global PieChart by using a Map.
      * Normally, this method is only called by the state machine.
+     *
+     * @param treeProvider
      */
-    synchronized void updateGlobalPieChart() {
-        if (getGlobalPC() == null) {
-            fGlobalPC = new PieChart(this, SWT.NONE);
+    synchronized void updateGlobalPieChart(Set<WeightedTree<?>> trees, IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider) {
+        PieChart pie = getGlobalPC();
+        if (pie == null) {
+            pie = new PieChart(getParent(), SWT.NONE);
             Color backgroundColor = fColorScheme.getColor(TimeGraphColorScheme.TOOL_BACKGROUND);
             Color foregroundColor = fColorScheme.getColor(TimeGraphColorScheme.TOOL_FOREGROUND);
-            getGlobalPC().getTitle().setText(fGlobalPCname);
-            getGlobalPC().getTitle().setForeground(foregroundColor);
-            getGlobalPC().setBackground(backgroundColor);
-            getGlobalPC().setForeground(foregroundColor);
-            getGlobalPC().getAxisSet().getXAxis(0).getTitle().setText(""); // Hide //$NON-NLS-1$
-                                                                           // the
-                                                                           // title
-                                                                           // over
-                                                                           // the
-                                                                           // legend
-            getGlobalPC().getAxisSet().getXAxis(0).getTitle().setForeground(foregroundColor);
-            getGlobalPC().getLegend().setVisible(true);
-            getGlobalPC().getLegend().setPosition(SWT.RIGHT);
-            getGlobalPC().getLegend().setBackground(backgroundColor);
-            getGlobalPC().getLegend().setForeground(foregroundColor);
-            getGlobalPC().addListener(SWT.MouseMove, fMouseMoveListener);
-            getGlobalPC().addMouseListener(fMouseClickListener);
-        } else if (getGlobalPC().isDisposed() || fModel == null || fModel.getPieChartGlobalModel() == null) {
-            return;
+            pie.getTitle().setText("My trees");
+            pie.getTitle().setForeground(foregroundColor);
+            pie.setBackground(backgroundColor);
+            pie.setForeground(foregroundColor);
+            pie.getAxisSet().getXAxis(0).getTitle().setText(""); // Hide //$NON-NLS-1$
+                                                                 // the
+                                                                 // title
+                                                                 // over
+                                                                 // the
+                                                                 // legend
+            pie.getAxisSet().getXAxis(0).getTitle().setForeground(foregroundColor);
+            pie.getLegend().setVisible(true);
+            pie.getLegend().setPosition(SWT.RIGHT);
+            pie.getLegend().setBackground(backgroundColor);
+            pie.getLegend().setForeground(foregroundColor);
+            pie.addListener(SWT.MouseMove, fMouseMoveListener);
+            pie.addMouseListener(fMouseClickListener);
+            fGlobalPC = pie;
+            fWeightFormatter = WeightedTreeView.getFormatterForType(treeProvider.getWeightType().getDataType());
         }
 
-        Map<String, Long> totalEventCountForChart = getTotalEventCountForChart(true);
-
-        if (totalEventCountForChart == null) {
-            return;
-        }
-
-        updatePieChartWithData(fGlobalPC, totalEventCountForChart, MIN_PRECENTAGE_TO_SHOW_SLICE, fOthersSliceName);
+        updatePieChartWithData(pie, trees, treeProvider, MIN_PRECENTAGE_TO_SHOW_SLICE, OTHER_SLICE_NAME);
+        pie.redraw();
     }
 
     /**
@@ -251,158 +321,120 @@ public class WeightedTreePieChartViewer extends Composite {
      * Normally, this method is only called by the state machine.
      */
     synchronized void updateTimeRangeSelectionPieChart() {
-        if (getTimeRangePC() == null) {
-            Color backgroundColor = fColorScheme.getColor(TimeGraphColorScheme.TOOL_BACKGROUND);
-            Color foregroundColor = fColorScheme.getColor(TimeGraphColorScheme.TOOL_FOREGROUND);
-            fTimeRangePC = new PieChart(this, SWT.NONE);
-            fTimeRangePC.setBackground(backgroundColor);
-            fTimeRangePC.setForeground(foregroundColor);
-            getTimeRangePC().getTitle().setText(fTimeRangePCname);
-            getTimeRangePC().getTitle().setForeground(foregroundColor);
-            getTimeRangePC().getAxisSet().getXAxis(0).getTitle().setText(""); // Hide //$NON-NLS-1$
-                                                                              // the
-                                                                              // title
-                                                                              // over
-                                                                              // the
-                                                                              // legend
-            getTimeRangePC().getAxisSet().getXAxis(0).getTitle().setForeground(foregroundColor);
-            getTimeRangePC().getLegend().setPosition(SWT.BOTTOM);
-            getTimeRangePC().getLegend().setVisible(true);
-            getTimeRangePC().getLegend().setBackground(backgroundColor);
-            getTimeRangePC().getLegend().setForeground(foregroundColor);
-            getTimeRangePC().addListener(SWT.MouseMove, fMouseMoveListener);
-            getTimeRangePC().addMouseListener(fMouseClickListener);
-        } else if (getTimeRangePC().isDisposed()) {
-            return;
-        }
-
-        Map<String, Long> totalEventCountForChart = getTotalEventCountForChart(false);
-
-        if (totalEventCountForChart == null) {
-            return;
-        }
-
-        updatePieChartWithData(fTimeRangePC, totalEventCountForChart, MIN_PRECENTAGE_TO_SHOW_SLICE, fOthersSliceName);
-    }
-
-    /* return the chart-friendly map given by the TmfPieChartStatisticsModel */
-    private Map<String, Long> getTotalEventCountForChart(boolean isGlobal) {
-        if (fModel == null) {
-            return null;
-        }
-        Map<ITmfTrace, Map<String, Long>> chartModel;
-        if (isGlobal) {
-            chartModel = fModel.getPieChartGlobalModel();
-        } else {
-            chartModel = fModel.getPieChartSelectionModel();
-        }
-        if (chartModel == null) {
-            return null;
-        }
-
-        Map<String, Long> totalEventCountForChart = new HashMap<>();
-        for (Entry<ITmfTrace, Map<String, Long>> entry : chartModel.entrySet()) {
-            Map<String, Long> traceEventCount = entry.getValue();
-            if (traceEventCount == null) {
-                continue;
-            }
-            for (Entry<String, Long> event : traceEventCount.entrySet()) {
-                final Long value = totalEventCountForChart.get(event.getKey());
-                if (value != null) {
-                    totalEventCountForChart.put(event.getKey(), value + event.getValue());
-                } else {
-                    totalEventCountForChart.put(event.getKey(), event.getValue());
-                }
-            }
-        }
-
-        return totalEventCountForChart;
+        // if (getTimeRangePC() == null) {
+        // Color backgroundColor =
+        // fColorScheme.getColor(TimeGraphColorScheme.TOOL_BACKGROUND);
+        // Color foregroundColor =
+        // fColorScheme.getColor(TimeGraphColorScheme.TOOL_FOREGROUND);
+        // fTimeRangePC = new PieChart(this, SWT.NONE);
+        // fTimeRangePC.setBackground(backgroundColor);
+        // fTimeRangePC.setForeground(foregroundColor);
+        // getTimeRangePC().getTitle().setText(fTimeRangePCname);
+        // getTimeRangePC().getTitle().setForeground(foregroundColor);
+        // getTimeRangePC().getAxisSet().getXAxis(0).getTitle().setText(""); //
+        // Hide //$NON-NLS-1$
+        // // the
+        // // title
+        // // over
+        // // the
+        // // legend
+        // getTimeRangePC().getAxisSet().getXAxis(0).getTitle().setForeground(foregroundColor);
+        // getTimeRangePC().getLegend().setPosition(SWT.BOTTOM);
+        // getTimeRangePC().getLegend().setVisible(true);
+        // getTimeRangePC().getLegend().setBackground(backgroundColor);
+        // getTimeRangePC().getLegend().setForeground(foregroundColor);
+        // getTimeRangePC().addListener(SWT.MouseMove, fMouseMoveListener);
+        // getTimeRangePC().addMouseListener(fMouseClickListener);
+        // } else if (getTimeRangePC().isDisposed()) {
+        // return;
+        // }
+        //
+        // Map<String, Long> totalEventCountForChart =
+        // getTotalEventCountForChart(false);
+        //
+        // if (totalEventCountForChart == null) {
+        // return;
+        // }
+        //
+        // updatePieChartWithData(fTimeRangePC, totalEventCountForChart,
+        // MIN_PRECENTAGE_TO_SHOW_SLICE, fOthersSliceName);
     }
 
     /**
      * Reinitializes the charts to their initial state, without any data
      */
     public synchronized void reinitializeCharts() {
-        if (isDisposed()) {
-            return;
-        }
-
-        if (getGlobalPC() != null && !getGlobalPC().isDisposed()) {
-            getGlobalPC().dispose();
-        }
-        fGlobalPC = new PieChart(this, SWT.NONE);
-        getGlobalPC().getTitle().setText(fGlobalPCname);
-        getGlobalPC().getAxisSet().getXAxis(0).getTitle().setText(""); // Hide //$NON-NLS-1$
-                                                                       // the
-                                                                       // title
-                                                                       // over
-                                                                       // the
-                                                                       // legend
-        if (getTimeRangePC() != null && !getTimeRangePC().isDisposed()) {
-            getTimeRangePC().dispose();
-            fTimeRangePC = null;
-        }
-        layout();
-        setCurrentState(new PieChartViewerStateNoContentSelected(this));
+        // if (isDisposed()) {
+        // return;
+        // }
+        //
+        // if (getGlobalPC() != null && !getGlobalPC().isDisposed()) {
+        // getGlobalPC().dispose();
+        // }
+        // fGlobalPC = new PieChart(this, SWT.NONE);
+        // getGlobalPC().getTitle().setText(fGlobalPCname);
+        // getGlobalPC().getAxisSet().getXAxis(0).getTitle().setText(""); //
+        // Hide //$NON-NLS-1$
+        // // the
+        // // title
+        // // over
+        // // the
+        // // legend
+        // if (getTimeRangePC() != null && !getTimeRangePC().isDisposed()) {
+        // getTimeRangePC().dispose();
+        // fTimeRangePC = null;
+        // }
+        // layout();
+        // setCurrentState(new PieChartViewerStateNoContentSelected(this));
     }
 
     /**
      * Function used to update or create the slices of a PieChart to match the
      * content of a Map passed in parameter. It also provides a facade to use
      * the PieChart API
+     *
+     * @param treeProvider
+     * @param minimumSizeOfSlice
+     * @param nameOfOthers
      */
     private static void updatePieChartWithData(
             final PieChart chart,
-            final Map<String, Long> slices,
-            final float minimumSizeOfSlice,
+            final Set<WeightedTree<?>> trees,
+            IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider, final float minimumSizeOfSlice,
             final String nameOfOthers) {
 
-        List<EventOccurrenceObject> chartValues = new ArrayList<>();
-        Long eventTotal = 0L;
-        for (Entry<String, Long> entry : slices.entrySet()) {
-            eventTotal += entry.getValue();
-            chartValues.add(new EventOccurrenceObject(entry.getKey(), entry.getValue()));
-        }
-
-        // No events in the selection
-        if (eventTotal == 0) {
-            // clear the chart and show "NO DATA"
-
+        if (trees.isEmpty()) {
             return;
         }
+        // Get the total weights
+        long totalWeight = 0;
+        for (WeightedTree<?> tree : trees) {
+            totalWeight += tree.getWeight();
+        }
 
-        /*
-         * filter out the event types taking too little space in the chart and
-         * label the whole group together. The remaining slices will be showing
-         */
-        List<EventOccurrenceObject> filteredChartValues = new ArrayList<>();
-        Long othersEntryCount = 0L;
-        int nbSlices = 0;
-        for (EventOccurrenceObject entry : chartValues) {
-            if (entry.getNbOccurence() / eventTotal.floatValue() > minimumSizeOfSlice && nbSlices <= NB_MAX_SLICES) {
-                filteredChartValues.add(entry);
-                nbSlices++;
+        long otherWeight = 0;
+        // Add to the list only the trees that would be visible (> threshold),
+        // add the rest to an "other" element
+        List<WeightedTree<?>> list = new ArrayList<>();
+        for (WeightedTree<?> tree : trees) {
+            if ((float) tree.getWeight() / (float) totalWeight > MIN_PRECENTAGE_TO_SHOW_SLICE) {
+                list.add(tree);
             } else {
-                othersEntryCount += entry.getNbOccurence();
+                otherWeight += tree.getWeight();
             }
         }
+        Collections.sort(list);
 
-        Collections.sort(filteredChartValues);
-
-        // Add the "Others" slice in the pie if its not empty
-        if (othersEntryCount != 0) {
-            filteredChartValues.add(new EventOccurrenceObject(nameOfOthers, othersEntryCount));
+        double[][] tempValues = new double[list.size() + 1][1];
+        String[] tempNames = new String[list.size() + 1];
+        int i = 0;
+        for (WeightedTree<?> tree : list) {
+            tempNames[i] = treeProvider.toDisplayString(tree);
+            tempValues[i][0] = tree.getWeight();
+            i++;
         }
-
-        // put the entries in the chart and add their percentage
-        double[][] tempValues = new double[filteredChartValues.size()][1];
-        String[] tempNames = new String[filteredChartValues.size()];
-        int index = 0;
-        for (EventOccurrenceObject entry : filteredChartValues) {
-            tempValues[index][0] = entry.getNbOccurence();
-            tempNames[index] = entry.getName();
-            index++;
-        }
+        tempNames[list.size()] = "Others";
+        tempValues[list.size()][0] = otherWeight;
 
         chart.addPieChartSeries(tempNames, tempValues);
     }
@@ -416,33 +448,33 @@ public class WeightedTreePieChartViewer extends Composite {
      *            if we have to refresh the selection piechart
      */
     public synchronized void refresh(boolean refreshGlobal, boolean refreshSelection) {
-        if (fModel == null) {
-            reinitializeCharts();
-        } else {
-            if (refreshGlobal) {
-                /* will update the global pc */
-                getCurrentState().newGlobalEntries(this);
-            }
-
-            if (refreshSelection) {
-                // Check if the selection is empty
-                int nbEventsType = 0;
-                Map<String, Long> selectionModel = getTotalEventCountForChart(false);
-                for (Long l : selectionModel.values()) {
-                    if (l != 0) {
-                        nbEventsType++;
-                    }
-                }
-
-                // Check if the selection is empty or if
-                // there is enough event types to show in the piecharts
-                if (nbEventsType < 2) {
-                    getCurrentState().newEmptySelection(this);
-                } else {
-                    getCurrentState().newSelection(this);
-                }
-            }
-        }
+        // if (fModel == null) {
+        // reinitializeCharts();
+        // } else {
+        // if (refreshGlobal) {
+        // /* will update the global pc */
+        // getCurrentState().newGlobalEntries(this);
+        // }
+        //
+        // if (refreshSelection) {
+        // // Check if the selection is empty
+        // int nbEventsType = 0;
+        // Map<String, Long> selectionModel = getTotalEventCountForChart(false);
+        // for (Long l : selectionModel.values()) {
+        // if (l != 0) {
+        // nbEventsType++;
+        // }
+        // }
+        //
+        // // Check if the selection is empty or if
+        // // there is enough event types to show in the piecharts
+        // if (nbEventsType < 2) {
+        // getCurrentState().newEmptySelection(this);
+        // } else {
+        // getCurrentState().newSelection(this);
+        // }
+        // }
+        // }
     }
 
     /**
@@ -475,104 +507,44 @@ public class WeightedTreePieChartViewer extends Composite {
     /**
      * @return the global piechart
      */
-    synchronized PieChart getGlobalPC() {
+    synchronized @Nullable PieChart getGlobalPC() {
         return fGlobalPC;
     }
 
     /**
      * @return the time-range selection piechart
      */
-    synchronized PieChart getTimeRangePC() {
-        return fTimeRangePC;
-    }
-
-    /**
-     * @return the current state of the viewer
-     */
-    synchronized IPieChartViewerState getCurrentState() {
-        return fCurrentState;
-    }
+    // synchronized @Nullable PieChart getTimeRangePC() {
+    // return fTimeRangePC;
+    // }
 
     // ------------------------------------------------------------------------
     // Setters
     // ------------------------------------------------------------------------
 
     /**
-     * @return the model
-     */
-    public TmfPieChartStatisticsModel getModel() {
-        return fModel;
-    }
-
-    /**
-     * @param model
-     *            the model to set
-     */
-    public void setInput(TmfPieChartStatisticsModel model) {
-        fModel = model;
-    }
-
-    /**
-     * Normally, this method is only called by the state machine
-     *
-     * @param newChart
-     *            the new PieChart
-     */
-    public synchronized void setTimeRangePC(PieChart newChart) {
-        fTimeRangePC = newChart;
-    }
-
-    /**
-     * Setter method for the state.
-     *
-     * @param newState
-     *            The new state of the viewer Normally only called by classes
-     *            implementing the IPieChartViewerState interface.
-     */
-    public synchronized void setCurrentState(final IPieChartViewerState newState) {
-        fCurrentState = newState;
-    }
-
-    /**
-     * Nested class used to handle and sort more easily the pair (Name, Number
-     * of occurrences)
-     *
-     * @author Alexis Cabana-Loriaux
-     */
-    private static class EventOccurrenceObject implements Comparable<EventOccurrenceObject> {
-
-        private String fName;
-
-        private Long fNbOccurrences;
-
-        EventOccurrenceObject(String name, Long nbOccurences) {
-            this.fName = name;
-            this.fNbOccurrences = nbOccurences;
-        }
-
-        @Override
-        public int compareTo(EventOccurrenceObject other) {
-            // descending order
-            return Long.compare(other.getNbOccurence(), this.getNbOccurence());
-        }
-
-        public String getName() {
-            return fName;
-        }
-
-        public Long getNbOccurence() {
-            return fNbOccurrences;
-        }
-    }
-
-    /**
      * An element has been selected
      *
-     * @param selection
-     *            The selected element
+     * @param trees
+     *            The selected elements
+     * @param treeProvider
+     *            The tree provider for the selected trees
      */
-    public <E> void elementSelected(E selection) {
-        // TODO Auto-generated method stub
+    public void elementSelected(Set<WeightedTree<?>> trees, IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider) {
+        ITmfTrace trace = getTrace();
+        if (trace == null) {
+            return;
+        }
+        updateGlobalPieChart(trees, treeProvider);
+    }
+
+    @Override
+    public @Nullable Control getControl() {
+        return getParent();
+    }
+
+    @Override
+    public void refresh() {
 
     }
 }

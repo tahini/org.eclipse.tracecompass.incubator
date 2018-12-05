@@ -9,12 +9,9 @@
 
 package org.eclipse.tracecompass.incubator.internal.callstack.ui.views.flamechart;
 
-import org.eclipse.tracecompass.analysis.graph.core.building.TmfGraphBuilderModule;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.ICallGraphProvider;
 import org.eclipse.tracecompass.incubator.callstack.core.flamechart.IEventCallStackProvider;
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.IFlameChartProvider;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.criticalpath.CriticalPathAggregated;
-import org.eclipse.tracecompass.incubator.internal.callstack.ui.criticalpath.FlameGraphCriticalPathView;
 import org.eclipse.tracecompass.incubator.internal.callstack.ui.flamegraph.FlameGraphSelView;
 import org.eclipse.tracecompass.incubator.internal.callstack.ui.flamegraph.FlameGraphView;
 import org.eclipse.tracecompass.incubator.internal.callstack.ui.views.cct.CallingContextTreeView;
@@ -48,12 +45,6 @@ public class CallStackAnalysisListener implements ITmfNewAnalysisModuleListener 
         }
         if (module instanceof IEventCallStackProvider) {
             module.registerOutput(new TmfAnalysisViewOutput(CallStackTableView.ID, module.getId()));
-        }
-        if (module instanceof TmfGraphBuilderModule) {
-            module.registerOutput(new TmfAnalysisViewOutput(FlameGraphCriticalPathView.CRITPATH_ID, module.getId()));
-        }
-        if (module instanceof CriticalPathAggregated) {
-            module.registerOutput(new TmfAnalysisViewOutput(WeightedTreeView.ID, module.getId()));
         }
     }
 
