@@ -19,6 +19,7 @@ import org.eclipse.tracecompass.analysis.graph.core.base.TmfEdge;
 import org.eclipse.tracecompass.analysis.graph.core.base.TmfEdge.EdgeType;
 import org.eclipse.tracecompass.analysis.graph.core.base.TmfGraph;
 import org.eclipse.tracecompass.analysis.graph.core.base.TmfVertex;
+import org.eclipse.tracecompass.analysis.os.linux.core.execution.graph.OsWorker;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.IWeightedTreeProvider;
 import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
@@ -33,10 +34,12 @@ import com.google.common.collect.ImmutableList;
 public class CriticalPathToCallGraph implements IWeightedTreeProvider<Object, String, WeightedTree<Object>> {
 
     private static final String ALL_SUFFIX = "_all"; //$NON-NLS-1$
+    private static final String PROCESS_SUFFIX = "_proc"; //$NON-NLS-1$
 
     private final List<String> fElements;
     private WeightedTree<Object> fAggregatedTree;
     private WeightedTree<Object> fTree;
+    private WeightedTree<Object> fProcessTree;
 
     private class graphToCallGraphConverter implements ITmfGraphVisitor {
 
@@ -63,6 +66,7 @@ public class CriticalPathToCallGraph implements IWeightedTreeProvider<Object, St
         public void visit(TmfEdge edge, boolean horizontal) {
             addEdgeToElement(edge);
             addEdgeToAggregatedElement(edge);
+            addEdgeToProcessElement(edge);
         }
 
         private void addEdgeToAggregatedElement(TmfEdge edge) {
@@ -118,6 +122,28 @@ public class CriticalPathToCallGraph implements IWeightedTreeProvider<Object, St
             fTree.addChild(callSite);
         }
 
+        private void addEdgeToProcessElement(TmfEdge edge) {
+            // Get the worker to which to attribute this edge, whether vertical
+            // or horizontal
+            IGraphWorker worker = fGraph.getParentOf(edge.getVertexTo());
+            if (worker == null) {
+                return;
+            }
+
+            // If it's another worker that is running, add a other process running state
+            if (worker != fMainWorker && edge.getType().equals(EdgeType.RUNNING)) {
+                WeightedTree<Object> callSite = new WeightedTree<>(((OsWorker) worker).getName());
+                callSite.addToWeight(edge.getDuration());
+                fProcessTree.addChild(callSite);
+                return;
+            }
+
+            // Otherwise, add a first level call that corresponds to the worker
+            WeightedTree<Object> callSite = new WeightedTree<>(edge.getType());
+            callSite.addToWeight(edge.getDuration());
+            fProcessTree.addChild(callSite);
+        }
+
     }
 
     /**
@@ -136,11 +162,17 @@ public class CriticalPathToCallGraph implements IWeightedTreeProvider<Object, St
         if (worker == null) {
             throw new NullPointerException("head vertex has no parent"); //$NON-NLS-1$
         }
-        fElements = ImmutableList.of(String.valueOf(worker), String.valueOf(worker) + ALL_SUFFIX);
+        fElements = ImmutableList.of(String.valueOf(worker), String.valueOf(worker) + ALL_SUFFIX, String.valueOf(worker) + PROCESS_SUFFIX);
         fTree = new WeightedTree<>(String.valueOf(worker));
         fAggregatedTree = new WeightedTree<>(String.valueOf(worker) + ALL_SUFFIX);
+        fProcessTree = new WeightedTree<>(String.valueOf(worker) + PROCESS_SUFFIX);
         graphToCallGraphConverter converter = new graphToCallGraphConverter(worker, graph);
         graph.scanLineTraverse(worker, converter);
+    }
+
+    @Override
+    public Collection<WeightedTree<Object>> getTrees(String elements, ITmfTimestamp fromNanos, ITmfTimestamp fromNanos2) {
+        return ImmutableList.of(fTree, fAggregatedTree, fProcessTree);
     }
 
     @Override
@@ -148,12 +180,10 @@ public class CriticalPathToCallGraph implements IWeightedTreeProvider<Object, St
         if (element.endsWith(ALL_SUFFIX)) {
             return fAggregatedTree.getChildren();
         }
+        if (element.endsWith(PROCESS_SUFFIX)) {
+            return fProcessTree.getChildren();
+        }
         return fTree.getChildren();
-    }
-
-    @Override
-    public Collection<WeightedTree<Object>> getTrees(String elements, ITmfTimestamp fromNanos, ITmfTimestamp fromNanos2) {
-        return ImmutableList.of(fTree, fAggregatedTree);
     }
 
     @Override
