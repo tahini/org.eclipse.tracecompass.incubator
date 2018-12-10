@@ -135,4 +135,9 @@ public class CriticalPathAggregated extends TmfAbstractAnalysisModule implements
         return DURATION_METRIC;
     }
 
+    @Override
+    public String getTitle() {
+        return "What the process is waiting for"; //$NON-NLS-1$
+    }
+
 }

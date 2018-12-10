@@ -98,6 +98,11 @@ public abstract class ProfilingCallGraphAnalysisModule extends TmfAbstractAnalys
     }
 
     @Override
+    public String getTitle() {
+        return "Call Graph"; //$NON-NLS-1$
+    }
+
+    @Override
     public @NonNull String toDisplayString(@NonNull AggregatedCallSite callsite) {
         Collection<ISymbolProvider> symbolProviders = fSymbolProviders;
         if (symbolProviders == null) {

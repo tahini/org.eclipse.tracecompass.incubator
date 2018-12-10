@@ -313,6 +313,11 @@ public class CallstackXmlAnalysis extends TmfAbstractAnalysisModule implements I
     }
 
     @Override
+    public String getTitle() {
+        return fCallGraph.getTitle();
+    }
+
+    @Override
     public void addListener(@NonNull IAnalysisProgressListener listener) {
         fListeners.add(listener);
     }

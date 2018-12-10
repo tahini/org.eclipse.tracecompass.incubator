@@ -236,6 +236,11 @@ public abstract class InstrumentedCallStackAnalysis extends TmfStateSystemAnalys
     }
 
     @Override
+    public String getTitle() {
+        return fCallGraph.getTitle();
+    }
+
+    @Override
     public void dispose() {
         super.dispose();
         fCallGraph.dispose();

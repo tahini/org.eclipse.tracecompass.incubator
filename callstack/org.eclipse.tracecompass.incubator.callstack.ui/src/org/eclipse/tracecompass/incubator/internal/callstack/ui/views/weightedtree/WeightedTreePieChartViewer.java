@@ -15,6 +15,7 @@ package org.eclipse.tracecompass.incubator.internal.callstack.ui.views.weightedt
 
 import java.text.Format;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -71,6 +72,7 @@ public class WeightedTreePieChartViewer extends TmfTimeViewer {
      * The pie chart containing global information about the trace
      */
     private @Nullable PieChart fGlobalPC = null;
+    private @Nullable PieChart fSecondaryPc = null;
 
     /**
      * The listener for the mouse movement event.
@@ -85,7 +87,7 @@ public class WeightedTreePieChartViewer extends TmfTimeViewer {
     /**
      * The list of listener to notify when an event type is selected
      */
-    private ListenerList fEventTypeSelectedListeners = new ListenerList(ListenerList.IDENTITY);
+    private ListenerList fSelectedListeners = new ListenerList(ListenerList.IDENTITY);
 
     private Format fWeightFormatter = WeightedTreeView.DECIMAL_FORMATTER;
 
@@ -99,6 +101,8 @@ public class WeightedTreePieChartViewer extends TmfTimeViewer {
     /** The color scheme for the chart */
     private TimeGraphColorScheme fColorScheme = new TimeGraphColorScheme();
     private final WeightedTreeView fView;
+
+
 
     /**
      * @param parent
@@ -166,7 +170,7 @@ public class WeightedTreePieChartViewer extends TmfTimeViewer {
                 }
                 Event selectionEvent = new Event();
                 selectionEvent.text = pc.getSeriesSet().getSeries()[slicenb].getId();
-                notifyEventTypeSelectionListener(selectionEvent);
+                notifySelectionListener(selectionEvent);
             }
 
             @Override
@@ -291,7 +295,38 @@ public class WeightedTreePieChartViewer extends TmfTimeViewer {
             pie = new PieChart(getParent(), SWT.NONE);
             Color backgroundColor = fColorScheme.getColor(TimeGraphColorScheme.TOOL_BACKGROUND);
             Color foregroundColor = fColorScheme.getColor(TimeGraphColorScheme.TOOL_FOREGROUND);
-            pie.getTitle().setText("My trees");
+            pie.getTitle().setText(treeProvider.getTitle());
+            pie.getTitle().setForeground(foregroundColor);
+            pie.setBackground(backgroundColor);
+            pie.setForeground(foregroundColor);
+            pie.getAxisSet().getXAxis(0).getTitle().setText(""); // Hide //$NON-NLS-1$
+                                                                 // the
+                                                                 // title
+                                                                 // over
+                                                                 // the
+                                                                 // legend
+            pie.getAxisSet().getXAxis(0).getTitle().setForeground(foregroundColor);
+            pie.getLegend().setVisible(true);
+            pie.getLegend().setPosition(SWT.RIGHT);
+            pie.getLegend().setBackground(backgroundColor);
+            pie.getLegend().setForeground(foregroundColor);
+            pie.addListener(SWT.MouseMove, fMouseMoveListener);
+            pie.addMouseListener(fMouseClickListener);
+            fGlobalPC = pie;
+            fWeightFormatter = WeightedTreeView.getFormatterForType(treeProvider.getWeightType().getDataType());
+        }
+
+        updatePieChartWithData(pie, trees, treeProvider, MIN_PRECENTAGE_TO_SHOW_SLICE, OTHER_SLICE_NAME);
+        pie.redraw();
+    }
+
+    synchronized void updateSecondaryPieChart(Collection<WeightedTree<?>> trees, IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider) {
+        PieChart pie = getSecondaryPc();
+        if (pie == null) {
+            pie = new PieChart(getParent(), SWT.NONE);
+            Color backgroundColor = fColorScheme.getColor(TimeGraphColorScheme.TOOL_BACKGROUND);
+            Color foregroundColor = fColorScheme.getColor(TimeGraphColorScheme.TOOL_FOREGROUND);
+            pie.getTitle().setText(treeProvider.getTitle());
             pie.getTitle().setForeground(foregroundColor);
             pie.setBackground(backgroundColor);
             pie.setForeground(foregroundColor);
@@ -399,7 +434,7 @@ public class WeightedTreePieChartViewer extends TmfTimeViewer {
      */
     private static void updatePieChartWithData(
             final PieChart chart,
-            final Set<WeightedTree<?>> trees,
+            final Collection<WeightedTree<?>> trees,
             IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider, final float minimumSizeOfSlice,
             final String nameOfOthers) {
 
@@ -433,7 +468,7 @@ public class WeightedTreePieChartViewer extends TmfTimeViewer {
             tempValues[i][0] = tree.getWeight();
             i++;
         }
-        tempNames[list.size()] = "Others";
+        tempNames[list.size()] = "OTHERS"; //$NON-NLS-1$
         tempValues[list.size()][0] = otherWeight;
 
         chart.addPieChartSeries(tempNames, tempValues);
@@ -481,21 +516,21 @@ public class WeightedTreePieChartViewer extends TmfTimeViewer {
      * @param l
      *            the listener to add
      */
-    public void addEventTypeSelectionListener(Listener l) {
-        fEventTypeSelectedListeners.add(l);
+    public void addSelectionListener(Listener l) {
+        fSelectedListeners.add(l);
     }
 
     /**
      * @param l
      *            the listener to remove
      */
-    public void removeEventTypeSelectionListener(Listener l) {
-        fEventTypeSelectedListeners.remove(l);
+    public void removeSelectionListener(Listener l) {
+        fSelectedListeners.remove(l);
     }
 
     /* Notify all listeners that an event type has been selected */
-    private void notifyEventTypeSelectionListener(Event e) {
-        for (Object o : fEventTypeSelectedListeners.getListeners()) {
+    private void notifySelectionListener(Event e) {
+        for (Object o : fSelectedListeners.getListeners()) {
             ((Listener) o).handleEvent(e);
         }
     }
@@ -514,9 +549,9 @@ public class WeightedTreePieChartViewer extends TmfTimeViewer {
     /**
      * @return the time-range selection piechart
      */
-    // synchronized @Nullable PieChart getTimeRangePC() {
-    // return fTimeRangePC;
-    // }
+     synchronized @Nullable PieChart getSecondaryPc() {
+     return fSecondaryPc;
+     }
 
     // ------------------------------------------------------------------------
     // Setters
@@ -531,10 +566,6 @@ public class WeightedTreePieChartViewer extends TmfTimeViewer {
      *            The tree provider for the selected trees
      */
     public void elementSelected(Set<WeightedTree<?>> trees, IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider) {
-        ITmfTrace trace = getTrace();
-        if (trace == null) {
-            return;
-        }
         updateGlobalPieChart(trees, treeProvider);
     }
 
@@ -547,4 +578,17 @@ public class WeightedTreePieChartViewer extends TmfTimeViewer {
     public void refresh() {
 
     }
+
+    /**
+     * An element has been selected
+     *
+     * @param collection
+     *            The selected elements
+     * @param treeProvider
+     *            The tree provider for the selected trees
+     */
+    public void secondarySelection(Collection<WeightedTree<?>> collection, IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider) {
+        updateSecondaryPieChart(collection, treeProvider);
+    }
+
 }

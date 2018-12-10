@@ -363,4 +363,9 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
         return StringUtils.EMPTY;
     }
 
+    @Override
+    public String getTitle() {
+        return Objects.requireNonNull(Messages.CallGraphAnalysis_Title);
+    }
+
 }

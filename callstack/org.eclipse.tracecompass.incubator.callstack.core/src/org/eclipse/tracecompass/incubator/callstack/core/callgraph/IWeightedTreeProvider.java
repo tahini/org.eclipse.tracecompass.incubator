@@ -193,4 +193,12 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
         return String.valueOf(tree.getObject());
     }
 
+    /**
+     * A title for this tree provider. This title will be visible by users and
+     * should describe what this tree provider represents
+     *
+     * @return The title of this provider
+     */
+    String getTitle();
+
 }

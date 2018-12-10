@@ -19,6 +19,9 @@ import org.eclipse.osgi.util.NLS;
 public class Messages extends NLS {
     private static final String BUNDLE_NAME = Messages.class.getPackage().getName() + ".messages"; //$NON-NLS-1$
 
+    /** Title of the callgraph */
+    public static @Nullable String CallGraphAnalysis_Title;
+
     /**
      * Name of the group by "All" descriptors
      */

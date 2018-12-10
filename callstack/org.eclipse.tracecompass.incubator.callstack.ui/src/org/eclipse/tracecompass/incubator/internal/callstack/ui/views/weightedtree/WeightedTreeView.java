@@ -21,6 +21,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.SubSecondTimeWithUnitFormat;
 import org.eclipse.tracecompass.common.core.NonNullUtils;
 import org.eclipse.tracecompass.common.core.format.DataSizeWithUnitFormat;
@@ -71,6 +73,8 @@ public class WeightedTreeView extends TmfView {
     private @Nullable String fAnalysisId = null;
 
     private @Nullable SashForm fSash = null;
+    private @Nullable Set<WeightedTree<?>> fSelection = null;
+    private @Nullable IWeightedTreeProvider<?, ?, WeightedTree<?>> fSelectedTreeProvider = null;
 
     /**
      * Constructor
@@ -98,6 +102,36 @@ public class WeightedTreeView extends TmfView {
         if (trace != null) {
             pieChartViewer.loadTrace(trace);
         }
+        pieChartViewer.addSelectionListener(new Listener() {
+
+            @Override
+            public void handleEvent(@Nullable Event event) {
+                if (event == null) {
+                    return;
+                }
+                Set<WeightedTree<?>> selection = fSelection;
+                IWeightedTreeProvider<?, ?, WeightedTree<?>> provider = fSelectedTreeProvider;
+                if (selection == null || provider == null) {
+                    return;
+                }
+                String selectedText = event.text;
+                WeightedTree<?> selectedTree = null;
+                for (WeightedTree<?> tree : selection) {
+                    if (provider.toDisplayString(tree).equals(selectedText)) {
+                        selectedTree = tree;
+                        break;
+                    }
+                }
+                if (selectedTree == null) {
+                    return;
+                }
+                if (selectedTree.getChildren().isEmpty()) {
+                    return;
+                }
+                pieChartViewer.secondarySelection(selectedTree.getChildren(), provider);
+            }
+
+        });
         fPieChartViewer = pieChartViewer;
     }
 
@@ -148,6 +182,8 @@ public class WeightedTreeView extends TmfView {
      */
     public void elementSelected(Set<WeightedTree<?>> trees, IWeightedTreeProvider<?, ?, WeightedTree<?>> treeProvider) {
         WeightedTreePieChartViewer pieChartViewer = fPieChartViewer;
+        fSelection  = trees;
+        fSelectedTreeProvider  = treeProvider;
         if (pieChartViewer != null) {
             pieChartViewer.elementSelected(trees, treeProvider);
         }
