@@ -16,7 +16,6 @@ import java.util.Map.Entry;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.timing.core.statistics.IStatistics;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.ICalledFunction;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.callgraph.AggregatedCalledFunction;
@@ -33,7 +32,7 @@ import com.google.common.collect.ImmutableMap;
  */
 public class FlamegraphEvent extends TimeEvent {
 
-    private final ICallStackSymbol fSymbol;
+    private final Object fSymbol;
 
     private final AggregatedCallSite fCallSite;
 
@@ -48,8 +47,8 @@ public class FlamegraphEvent extends TimeEvent {
      *            The function the event's presenting
      */
     public FlamegraphEvent(ITimeGraphEntry source, long beginTime, AggregatedCallSite aggregatedFunction) {
-        super(source, beginTime, aggregatedFunction.getLength(), aggregatedFunction.getSymbol().hashCode());
-        fSymbol = aggregatedFunction.getSymbol();
+        super(source, beginTime, aggregatedFunction.getWeight(), aggregatedFunction.getObject().hashCode());
+        fSymbol = aggregatedFunction.getObject();
         fCallSite = aggregatedFunction;
     }
 
@@ -58,7 +57,7 @@ public class FlamegraphEvent extends TimeEvent {
      *
      * @return The event's name or address
      */
-    public ICallStackSymbol getSymbol() {
+    public Object getSymbol() {
         return fSymbol;
     }
 
@@ -102,7 +101,7 @@ public class FlamegraphEvent extends TimeEvent {
         if (callSite instanceof AggregatedCalledFunction) {
             return ((AggregatedCalledFunction) callSite).getNbCalls();
         }
-        return callSite.getLength();
+        return callSite.getWeight();
     }
 
     /**

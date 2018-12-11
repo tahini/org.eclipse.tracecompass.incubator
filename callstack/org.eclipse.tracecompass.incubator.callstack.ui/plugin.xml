@@ -46,10 +46,10 @@
       <view
       		category="org.eclipse.linuxtools.tmf.ui.views.category"
             allowMultiple="true"
-            class="org.eclipse.tracecompass.incubator.internal.callstack.ui.views.cct.CallingContextTreeView"
+            class="org.eclipse.tracecompass.incubator.internal.callstack.ui.views.weightedtree.WeightedTreeView"
             icon="icons/obj16/stckframe_obj.gif"
-            id="org.eclipse.tracecompass.incubator.callstack.ui.views.cct"
-            name="%view.cct"
+            id="org.eclipse.tracecompass.incubator.callstack.ui.views.weightedtree"
+            name="%view.weighted"
             restorable="true">
       </view>
       <view

@@ -19,6 +19,7 @@ import org.eclipse.tracecompass.analysis.timing.core.statistics.IStatistics;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ProcessStatusInterval;
+import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
 
 import com.google.common.collect.ImmutableList;
@@ -59,7 +60,7 @@ public class AggregatedCalledFunction extends AggregatedCallSite {
      *            The symbol of the function
      */
     public AggregatedCalledFunction(ICallStackSymbol symbol) {
-        super(symbol);
+        super(symbol, 0);
         fStatistics = new AggregatedCalledFunctionStatistics();
         fProcessId = -1;
     }
@@ -81,7 +82,7 @@ public class AggregatedCalledFunction extends AggregatedCallSite {
     }
 
     @Override
-    public long getLength() {
+    public long getWeight() {
         return fDuration;
     }
 
@@ -91,7 +92,7 @@ public class AggregatedCalledFunction extends AggregatedCallSite {
     }
 
     @Override
-    protected void mergeData(@NonNull AggregatedCallSite other) {
+    protected void mergeData(@NonNull WeightedTree<ICallStackSymbol> other) {
         if (!(other instanceof AggregatedCalledFunction)) {
             return;
         }
@@ -139,7 +140,7 @@ public class AggregatedCalledFunction extends AggregatedCallSite {
         // Update the child's statistics with itself
         fSelfTime -= aggregatedChild.getDuration();
         aggregatedChild.addFunctionCall(child);
-        super.addCallee(aggregatedChild);
+        super.addChild(aggregatedChild);
     }
 
     /**
@@ -316,7 +317,7 @@ public class AggregatedCalledFunction extends AggregatedCallSite {
 
     @Override
     public String toString() {
-        return "Aggregate Function: " + getSymbol() + ", Duration: " + getDuration() + ", Self Time: " + fSelfTime + " on " + getNbCalls() + " calls"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
+        return "Aggregate Function: " + getObject() + ", Duration: " + getDuration() + ", Self Time: " + fSelfTime + " on " + getNbCalls() + " calls"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
     }
 
 }
