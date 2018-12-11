@@ -120,7 +120,7 @@ public class FlameGraphDataProvider<@NonNull N, E, @NonNull T extends WeightedTr
     private final long fTraceId = ENTRY_ID.getAndIncrement();
 
     private final ReentrantReadWriteLock fLock = new ReentrantReadWriteLock(false);
-    private @Nullable Pair<Map<String, Object>, TmfModelResponse<TmfTreeModel<FlameChartEntryModel>>> fCached;
+    private @Nullable Pair<Pair<IWeightedTreeSet<N, E, T>, Map<String, Object>>, TmfModelResponse<TmfTreeModel<FlameChartEntryModel>>> fCached;
     private final Map<Long, FlameChartEntryModel> fEntries = new HashMap<>();
     private final Map<Long, WeightedTreeEntry> fCgEntries = new HashMap<>();
     private final Map<Long, Long> fEndTimes = new HashMap<>();
@@ -175,18 +175,20 @@ public class FlameGraphDataProvider<@NonNull N, E, @NonNull T extends WeightedTr
         fLock.writeLock().lock();
         try (FlowScopeLog scope = new FlowScopeLogBuilder(LOGGER, Level.FINE, "FlameGraphDataProvider#fetchTree") //$NON-NLS-1$
                 .setCategory(getClass().getSimpleName()).build()) {
+
+            SubMonitor subMonitor = Objects.requireNonNull(SubMonitor.convert(monitor, "FlameGraphDataProvider#fetchRowModel", 2)); //$NON-NLS-1$
+            IWeightedTreeProvider<N, E, T> wtProvider = fWtProvider;
+            IWeightedTreeSet<N, E, T> callGraph = getCallGraph(fetchParameters, subMonitor);
+
             // Did we cache this tree with those parameters
-            Pair<Map<String, Object>, TmfModelResponse<TmfTreeModel<FlameChartEntryModel>>> cached = fCached;
-            if (cached != null && cached.getFirst().equals(fetchParameters)) {
+            Pair<Pair<IWeightedTreeSet<@NonNull N, E, @NonNull T>, Map<String, Object>>, TmfModelResponse<TmfTreeModel<FlameChartEntryModel>>> cached = fCached;
+            if (cached != null && cached.getFirst().getFirst().equals(callGraph) && cached.getFirst().getSecond().equals(fetchParameters)) {
                 return cached.getSecond();
             }
 
             fEntries.clear();
             fCgEntries.clear();
-            SubMonitor subMonitor = Objects.requireNonNull(SubMonitor.convert(monitor, "FlameGraphDataProvider#fetchRowModel", 2)); //$NON-NLS-1$
 
-            IWeightedTreeProvider<N, E, T> wtProvider = fWtProvider;
-            IWeightedTreeSet<N, E, T> callGraph = getCallGraph(fetchParameters, subMonitor);
             if (subMonitor.isCanceled()) {
                 return new TmfModelResponse<>(null, ITmfResponse.Status.CANCELLED, CommonStatusMessage.TASK_CANCELLED);
             }
@@ -219,7 +221,7 @@ public class FlameGraphDataProvider<@NonNull N, E, @NonNull T extends WeightedTr
 
             TmfModelResponse<TmfTreeModel<FlameChartEntryModel>> response = new TmfModelResponse<>(new TmfTreeModel<>(Collections.emptyList(), tree),
                     ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
-            fCached = new Pair<>(fetchParameters, response);
+            fCached = new Pair<>(new Pair<>(callGraph, fetchParameters), response);
             return response;
 
         } finally {
