@@ -15,34 +15,7 @@
             name="TraceCompass">
       </category>
    </extension>
-   <extension
-         point="org.eclipse.ui.commands">
-      <command
-            categoryId="org.eclipse.linuxtools.tmf.ui.commands.category"
-            description="Execute Script"
-            id="org.eclipse.tracecompass.incubator.scripting.ui.execute"
-            name="Execute script">
-      </command>
-   </extension>
-   <extension
-         point="org.eclipse.ui.handlers">
-      <handler
-            class="org.eclipse.tracecompass.incubator.internal.scripting.core.handler.ExecuteScriptHandler"
-            commandId="org.eclipse.tracecompass.incubator.scripting.ui.execute">
-      </handler>
-   </extension>
-   <extension
-         point="org.eclipse.ui.menus">
-      <menuContribution
-            locationURI="popup:org.eclipse.ui.popup.any?after=additions">
-        <command
-              commandId="org.eclipse.tracecompass.incubator.scripting.ui.execute"
-              label="%command.configure_symbols"
-              style="push"
-              tooltip="%command.configure_symbols.description">
-        </command>
-      </menuContribution>
-   </extension>
+   <!--
    <extension point="org.eclipse.ui.activities">
    	  <activity name="%activity.name.debugPerspective"     id="org.eclipse.unwantedEasePerspective"    description="%activity.description.debugPerspective" />
       <activity name="%activity.name.debugPerspective"     id="org.eclipse.wantedDebugPerspective"    description="%activity.description.debugPerspective" />
@@ -64,4 +37,5 @@
       <activityPatternBinding activityId="org.eclipse.unwantedEasePerspective"     pattern="org\.eclipse\.ease.*" />
       <activityPatternBinding activityId="org.eclipse.wantedDebugPerspective"    pattern="org\.eclipse\.debug.*" />
    </extension>
+   -->
 </plugin>

@@ -72,7 +72,6 @@ public class ExecuteScriptHandler extends AbstractHandler {
             Object element = sel.getFirstElement();
             if (element instanceof IFile) {
                 final Script script = new Script(element);
-                script.
             }
             System.out.println(element);
         }
