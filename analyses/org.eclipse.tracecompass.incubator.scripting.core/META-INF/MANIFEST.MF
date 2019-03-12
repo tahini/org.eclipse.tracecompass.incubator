@@ -16,7 +16,9 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.tracecompass.tmf.core,
  org.eclipse.core.commands,
  org.eclipse.ui.workbench,
- org.eclipse.jface
+ org.eclipse.jface,
+ org.eclipse.tracecompass.statesystem.core
 Export-Package: org.eclipse.tracecompass.incubator.internal.scripting.core;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests",
- org.eclipse.tracecompass.incubator.internal.scripting.core.trace;x-internal:=true
+ org.eclipse.tracecompass.incubator.internal.scripting.core.handler;x-internal:=true,
+ org.eclipse.tracecompass.incubator.internal.scripting.core.trace;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests"
 Automatic-Module-Name: org.eclipse.tracecompass.incubator.scripting.core
