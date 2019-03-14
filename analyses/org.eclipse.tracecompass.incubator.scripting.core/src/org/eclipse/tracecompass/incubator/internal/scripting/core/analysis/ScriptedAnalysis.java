@@ -7,13 +7,14 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.internal.scripting.core.trace;
+package org.eclipse.tracecompass.incubator.internal.scripting.core.analysis;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+import org.eclipse.ease.modules.ScriptParameter;
 import org.eclipse.ease.modules.WrapToScript;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
@@ -23,7 +24,6 @@ import org.eclipse.tracecompass.statesystem.core.StateSystemFactory;
 import org.eclipse.tracecompass.statesystem.core.backend.IStateHistoryBackend;
 import org.eclipse.tracecompass.statesystem.core.backend.StateHistoryBackendFactory;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
-import org.eclipse.tracecompass.tmf.core.event.ITmfEventField;
 import org.eclipse.tracecompass.tmf.core.event.TmfEvent;
 import org.eclipse.tracecompass.tmf.core.request.ITmfEventRequest;
 import org.eclipse.tracecompass.tmf.core.request.TmfEventRequest;
@@ -31,9 +31,15 @@ import org.eclipse.tracecompass.tmf.core.timestamp.TmfTimeRange;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfContext;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
-import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 
-public class TraceModule {
+/**
+ * Provide a class for scripted analysis. It provides an event iterator, as well
+ * as backends to store data. Scripts can thus parse events and fill the backend
+ * appropriately.
+ *
+ * @author Geneviève Bastien
+ */
+public class ScriptedAnalysis {
 
     private static final int DEFAULT_EVENTS_QUEUE_SIZE = 127;
     private static final int DEFAULT_EVENTS_CHUNK_SIZE = 127;
@@ -48,87 +54,72 @@ public class TraceModule {
     }
 
     private static final EndEvent END_EVENT = new EndEvent();
+    private static final String STATE_SYSTEM_EXTENSION = ".ht"; //$NON-NLS-1$
 
+    private final ITmfTrace fTrace;
+    private final String fName;
+    private @Nullable ITmfStateSystemBuilder fStateSystem = null;
 
-    /** Module identifier. */
-    public static final String MODULE_ID = "/TraceCompass/Trace"; //$NON-NLS-1$
-
-    /**
-     * Adapt object to target type. Try to get an adapter for an object.
-     *
-     * @return adapted object or <code>null</code>
-     */
-    @WrapToScript
-    public ITmfTrace currentTrace() {
-        return TmfTraceManager.getInstance().getActiveTrace();
+    public ScriptedAnalysis(ITmfTrace activeTrace, String name) {
+        fTrace = activeTrace;
+        fName = name;
     }
 
     @WrapToScript
-    public Iterator<ITmfEvent> getEventIterator(ITmfTrace trace) {
-        if (trace == null) {
-            return null;
-        }
-        BufferedBlockingQueue<ITmfEvent> eventsQueue = new BufferedBlockingQueue<>(DEFAULT_EVENTS_QUEUE_SIZE, DEFAULT_EVENTS_CHUNK_SIZE);
-        trace.sendRequest(new ScriptEventRequest(eventsQueue));
-        return new EventIterator(eventsQueue);
-    }
+    public @Nullable ITmfStateSystemBuilder getStateSystem(@ScriptParameter(defaultValue = "false") boolean useExisting) {
 
-    @WrapToScript
-    public Object getFieldValue(ITmfEvent event, String fieldName) {
+        ITmfStateSystemBuilder stateSystem = fStateSystem;
+        if (stateSystem == null) {
+            String directory = TmfTraceManager.getSupplementaryFileDir(fTrace);
+            File htFile = new File(directory + fName + STATE_SYSTEM_EXTENSION);
 
-        final ITmfEventField field = event.getContent().getField(fieldName);
+            /* If the target file already exists, do not rebuild it uselessly */
+            // TODO for now we assume it's complete. Might be a good idea to
+            // check
+            // at least if its range matches the trace's range.
 
-        /* If the field does not exist, see if it's a special case */
-        if (field == null) {
-            // This will allow to use any column as input
-            return TmfTraceUtils.resolveAspectOfNameForEvent(event.getTrace(), fieldName, event);
-        }
-        return field.getValue();
-
-    }
-
-    @WrapToScript
-    public @Nullable ITmfStateSystemBuilder getStateSystem(ITmfTrace trace, String fileId) {
-
-        if (trace == null) {
-            return null;
-        }
-
-        String directory = TmfTraceManager.getSupplementaryFileDir(trace);
-        File htFile = new File(directory + fileId);
-
-        /* If the target file already exists, do not rebuild it uselessly */
-        // TODO for now we assume it's complete. Might be a good idea to check
-        // at least if its range matches the trace's range.
-
-        if (htFile.exists()) {
-            try {
-                IStateHistoryBackend backend = StateHistoryBackendFactory.createHistoryTreeBackendExistingFile(
-                        fileId, htFile, 1);
-                return StateSystemFactory.newStateSystem(backend, false);
-            } catch (IOException e) {
-                /*
-                 * There was an error opening the existing file. Perhaps it was corrupted,
-                 * perhaps it's an old version? We'll just fall-through and try to build a new
-                 * one from scratch instead.
-                 */
+            if (htFile.exists() && useExisting) {
+                try {
+                    IStateHistoryBackend backend = StateHistoryBackendFactory.createHistoryTreeBackendExistingFile(
+                            fName, htFile, 1);
+                    stateSystem = StateSystemFactory.newStateSystem(backend, false);
+                    fStateSystem = stateSystem;
+                    return stateSystem;
+                } catch (IOException e) {
+                    /*
+                     * There was an error opening the existing file. Perhaps it
+                     * was corrupted, perhaps it's an old version? We'll just
+                     * fall-through and try to build a new one from scratch
+                     * instead.
+                     */
+                }
             }
-        }
 
-        /* Size of the blocking queue to use when building a state history */
-        final int QUEUE_SIZE = 10000;
+            /*
+             * Size of the blocking queue to use when building a state history
+             */
+            final int QUEUE_SIZE = 10000;
 
-        try {
-            IStateHistoryBackend backend = StateHistoryBackendFactory.createHistoryTreeBackendNewFile(
-                    fileId, htFile, 1, trace.getStartTime().toNanos(), QUEUE_SIZE);
-            return StateSystemFactory.newStateSystem(backend);
-        } catch (IOException e) {
+            try {
+                IStateHistoryBackend backend = StateHistoryBackendFactory.createHistoryTreeBackendNewFile(
+                        fName, htFile, 1, fTrace.getStartTime().toNanos(), QUEUE_SIZE);
+                stateSystem = StateSystemFactory.newStateSystem(backend);
+                fStateSystem = stateSystem;
+                return stateSystem;
+            } catch (IOException e) {
 
+            }
         }
         return null;
 
     }
 
+    @WrapToScript
+    public Iterator<ITmfEvent> getEventIterator() {
+        BufferedBlockingQueue<ITmfEvent> eventsQueue = new BufferedBlockingQueue<>(DEFAULT_EVENTS_QUEUE_SIZE, DEFAULT_EVENTS_CHUNK_SIZE);
+        fTrace.sendRequest(new ScriptEventRequest(eventsQueue));
+        return new EventIterator(eventsQueue);
+    }
 
     private static class EventIterator implements Iterator<ITmfEvent> {
 
@@ -154,7 +145,9 @@ public class TraceModule {
             if (hasNext()) {
                 ITmfEvent next = fNext;
                 fNext = null;
-                return next;
+                if (next != null) {
+                    return next;
+                }
             }
             throw new NoSuchElementException("No more elements in the queue"); //$NON-NLS-1$
         }
@@ -191,4 +184,5 @@ public class TraceModule {
         }
 
     }
+
 }

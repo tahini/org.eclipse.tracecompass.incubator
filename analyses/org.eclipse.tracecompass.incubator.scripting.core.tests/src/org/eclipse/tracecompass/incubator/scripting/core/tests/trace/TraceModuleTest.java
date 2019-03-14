@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.tracecompass.incubator.internal.scripting.core.trace.TraceModule;
+import org.eclipse.tracecompass.incubator.internal.scripting.core.analysis.AnalysisScriptingModule;
 import org.eclipse.tracecompass.incubator.scripting.core.tests.ActivatorTest;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.event.TmfEvent;
@@ -50,7 +50,7 @@ public class TraceModuleTest {
      */
     @Test
     public void testEventIterator() {
-        TraceModule scriptModule = new TraceModule();
+        AnalysisScriptingModule scriptModule = new AnalysisScriptingModule();
 
         TmfXmlTraceStub trace = new TmfXmlTraceStubNs();
         try {
