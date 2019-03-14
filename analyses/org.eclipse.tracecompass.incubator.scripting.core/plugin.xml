@@ -5,9 +5,9 @@
          point="org.eclipse.ease.modules">
       <module
             category="org.eclipse.tracecompass.incubator.scripting.core.category"
-            class="org.eclipse.tracecompass.incubator.internal.scripting.core.trace.TraceModule"
+            class="org.eclipse.tracecompass.incubator.internal.scripting.core.analysis.AnalysisScriptingModule"
             id="org.eclipse.tracecompass.incubator.scripting.core.trace"
-            name="Trace"
+            name="Analysis"
             visible="true">
       </module>
       <category
