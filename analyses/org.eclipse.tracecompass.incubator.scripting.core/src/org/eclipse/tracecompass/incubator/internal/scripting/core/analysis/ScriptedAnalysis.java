@@ -60,6 +60,14 @@ public class ScriptedAnalysis {
     private final String fName;
     private @Nullable ITmfStateSystemBuilder fStateSystem = null;
 
+    /**
+     * Constructor
+     *
+     * @param activeTrace
+     *            The trace to associate with this analysis
+     * @param name
+     *            The name of the analysis
+     */
     public ScriptedAnalysis(ITmfTrace activeTrace, String name) {
         fTrace = activeTrace;
         fName = name;
@@ -185,4 +193,16 @@ public class ScriptedAnalysis {
 
     }
 
+    /**
+     * Get the trace
+     *
+     * @return The trace
+     */
+    public ITmfTrace getTrace() {
+        return fTrace;
+    }
+
+    public String getName() {
+        return fName;
+    }
 }
