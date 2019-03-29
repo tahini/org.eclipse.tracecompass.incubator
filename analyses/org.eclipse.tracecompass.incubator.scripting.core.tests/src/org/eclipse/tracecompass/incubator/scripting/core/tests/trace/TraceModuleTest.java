@@ -18,7 +18,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.tracecompass.incubator.internal.scripting.core.analysis.AnalysisScriptingModule;
+import org.eclipse.tracecompass.incubator.internal.scripting.core.analysis.ScriptedAnalysis;
 import org.eclipse.tracecompass.incubator.scripting.core.tests.ActivatorTest;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.event.TmfEvent;
@@ -40,6 +42,7 @@ import org.junit.rules.Timeout;
 public class TraceModuleTest {
 
     private static final String CALLSTACK_FILE = "testfiles/traces/callstack.xml";
+    private static final @NonNull String ANALYSIS_NAME = "scriptAnalysisTest";
 
     /** Time-out tests after 1 minute. */
     @Rule
@@ -68,8 +71,10 @@ public class TraceModuleTest {
             TmfTraceOpenedSignal signal = new TmfTraceOpenedSignal(this, trace, null);
             trace.traceOpened(signal);
             TmfTraceManager.getInstance().traceOpened(signal);
+            ScriptedAnalysis analysis = scriptModule.getAnalysis(ANALYSIS_NAME);
+            assertNotNull(analysis);
 
-            Iterator<ITmfEvent> eventIterator = scriptModule.getEventIterator(trace);
+            Iterator<ITmfEvent> eventIterator = analysis.getEventIterator();
             assertNotNull(eventIterator);
 
             int count = 0;

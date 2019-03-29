@@ -118,7 +118,7 @@ public class ScriptedAnalysis {
 
             }
         }
-        return null;
+        return stateSystem;
 
     }
 

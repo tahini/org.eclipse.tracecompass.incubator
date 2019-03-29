@@ -16,24 +16,19 @@ import java.util.function.Function;
 
 import org.eclipse.ease.modules.ScriptParameter;
 import org.eclipse.ease.modules.WrapToScript;
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.swt.widgets.Display;
+import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.fsm.model.DataDrivenStateSystemPath;
 import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.output.DataDrivenTimeGraphEntry;
 import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.output.DataDrivenTimeGraphProviderFactory;
-import org.eclipse.tracecompass.internal.tmf.analysis.xml.ui.views.timegraph.XmlTimeGraphView;
-import org.eclipse.tracecompass.internal.tmf.ui.Activator;
+import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.output.XmlDataProviderManager;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEventField;
+import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphDataProvider;
+import org.eclipse.tracecompass.tmf.core.model.timegraph.TimeGraphEntryModel;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
-import org.eclipse.tracecompass.tmf.ui.project.model.Messages;
-import org.eclipse.tracecompass.tmf.ui.project.model.TraceUtils;
-import org.eclipse.ui.IViewPart;
-import org.eclipse.ui.PartInitException;
-import org.eclipse.ui.part.WorkbenchPart;
 
 /**
  * Provide an API to create an analysis
@@ -98,16 +93,24 @@ public class AnalysisScriptingModule {
         for (Entry<String, Object> entry : data.entrySet()) {
             System.out.println("entry: " + entry);
         }
-        String path = String.valueOf(data.get(ENTRY_PATH));
+        Object pathObj = data.get(ENTRY_PATH);
+        if (pathObj == null) {
+            return null;
+        }
+        String path = String.valueOf(pathObj);
+        Object displayObj = data.get(ENTRY_DISPLAY);
+        String display = (displayObj == null) ? null : String.valueOf(displayObj);
 
-        DataDrivenTimeGraphEntry entry = new DataDrivenTimeGraphEntry(Collections.emptyList(), path, analysis.getName(), true,
-                null, null, null, null);
+        DataDrivenTimeGraphEntry entry = new DataDrivenTimeGraphEntry(Collections.emptyList(), path, null, true,
+                new DataDrivenStateSystemPath(Collections.emptyList()), null, null, null);
         DataDrivenTimeGraphProviderFactory factory = new DataDrivenTimeGraphProviderFactory(Collections.singletonList(entry), Collections.singleton(analysis.getName()), Collections.emptyList());
         ITmfStateSystemBuilder stateSystem = analysis.getStateSystem(true);
         if (stateSystem == null) {
             return null;
         }
-        return factory.create(analysis.getTrace(), Collections.singletonList(stateSystem));
+        ITimeGraphDataProvider<TimeGraphEntryModel> provider = factory.create(analysis.getTrace(), Collections.singletonList(stateSystem), analysis.getName());
+        XmlDataProviderManager.getInstance().registerDataProvider(analysis.getTrace(), analysis.getName(), provider);
+        return provider;
 
     }
 
