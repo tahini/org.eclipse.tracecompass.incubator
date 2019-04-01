@@ -9,8 +9,6 @@
 
 package org.eclipse.tracecompass.incubator.internal.traceevent.core.analysis.callstack;
 
-import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -36,6 +34,10 @@ import org.eclipse.tracecompass.incubator.internal.traceevent.core.event.ITraceE
 import org.eclipse.tracecompass.incubator.internal.traceevent.core.event.TraceEventAspects;
 import org.eclipse.tracecompass.incubator.internal.traceevent.core.event.TraceEventPhases;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
+import org.eclipse.tracecompass.statesystem.core.StateSystemUtils;
+import org.eclipse.tracecompass.statesystem.core.exceptions.AttributeNotFoundException;
+import org.eclipse.tracecompass.statesystem.core.exceptions.StateSystemDisposedException;
+import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.event.aspect.ITmfEventAspect;
 import org.eclipse.tracecompass.tmf.core.statesystem.TmfAttributePool;
@@ -218,8 +220,7 @@ public class TraceEventCallStackProvider extends CallStackStateProvider {
             break;
 
         case TraceEventPhases.FLOW_START:
-            handleStart(event, ss, timestamp, processName);
-            updateSLinks(event);
+            updateSLinks(event, ss, timestamp, processName);
             break;
 
         case TraceEventPhases.DURATION:
@@ -234,9 +235,12 @@ public class TraceEventCallStackProvider extends CallStackStateProvider {
             handleEnd(event, ss, timestamp, processName);
             break;
 
+        case TraceEventPhases.FLOW_STEP:
+            updateTLinks(event, ss, timestamp, processName);
+            break;
+
         case TraceEventPhases.FLOW_END:
-            handleEnd(event, ss, timestamp, processName);
-            updateFLinks(event);
+            updateFLinks(event, ss, timestamp, processName);
             break;
         default:
             return;
@@ -259,12 +263,109 @@ public class TraceEventCallStackProvider extends CallStackStateProvider {
         }
     }
 
-    private void updateFLinks(ITmfEvent event) {
-        String id = event.getContent().getFieldValue(String.class, ITraceEventConstants.ID);
-        fEdgeStartTimes.putIfAbsent(id, event.getTimestamp().toNanos());
+    private void updateFLinks(ITmfEvent event, ITmfStateSystemBuilder ss, long ts, String processName) {
+        String sId = event.getContent().getFieldValue(String.class, ITraceEventConstants.ID);
+        if (sId == null) {
+            Object resolve = fIdAspect.resolve(event);
+            if (resolve == null) {
+                resolve = Integer.valueOf(0);
+            }
+            sId = String.valueOf(resolve);
+        }
+        String bindingPoint = event.getContent().getFieldValue(String.class, ITraceEventConstants.BINDING_POINT);
+        if (bindingPoint == null) {
+            bindingPoint = "n"; //$NON-NLS-1$
+        }
+
+        int tid = (int) getThreadId(event);
+
+        Long startTime = fEdgeStartTimes.get(sId);
+        if (startTime == null) {
+            // We don't have the starting point of the flow, ignore
+            return;
+        }
+
+        HostThread srcHostThread = fEdgeSrcHosts.remove(sId);
+        HostThread currHostThread = new HostThread(event.getTrace().getHostId(), tid);
+
+        // If binding point is "enclosing slice", make sure there is such a slice
+        if (bindingPoint == "e" && !validateEnclosingSlice(event, ss, ts, processName, tid)) { //$NON-NLS-1$
+            return;
+        }
+
+        if (srcHostThread != null) {
+            int edgeQuark = getAvailableEdgeQuark(ss, startTime);
+
+            Object edgeStateValue = new EdgeStateValue(fIdCache.computeIfAbsent(sId, FUNCTION), srcHostThread, currHostThread);
+            ss.modifyAttribute(startTime, edgeStateValue, edgeQuark);
+            ss.modifyAttribute(ts, (Object) null, edgeQuark);
+
+        }
     }
 
-    private void updateSLinks(ITmfEvent event) {
+    private void updateTLinks(ITmfEvent event, ITmfStateSystemBuilder ss, long ts, String processName) {
+        String sId = event.getContent().getFieldValue(String.class, ITraceEventConstants.ID);
+        if (sId == null) {
+            Object resolve = fIdAspect.resolve(event);
+            if (resolve == null) {
+                resolve = Integer.valueOf(0);
+            }
+            sId = String.valueOf(resolve);
+        }
+
+        int tid = (int) getThreadId(event);
+
+        Long startTime = fEdgeStartTimes.get(sId);
+        if (startTime == null) {
+            // We don't have the starting point of the flow, ignore
+            return;
+        }
+
+        HostThread srcHostThread = fEdgeSrcHosts.remove(sId);
+        HostThread currHostThread = new HostThread(event.getTrace().getHostId(), tid);
+
+        // Scope is "enclosing slice", make sure there is such a slice
+        if (!validateEnclosingSlice(event, ss, ts, processName, tid)) {
+            return;
+        }
+
+        if (srcHostThread != null) {
+            int edgeQuark = getAvailableEdgeQuark(ss, startTime);
+
+            Object edgeStateValue = new EdgeStateValue(fIdCache.computeIfAbsent(sId, FUNCTION), srcHostThread, currHostThread);
+            ss.modifyAttribute(startTime, edgeStateValue, edgeQuark);
+            ss.modifyAttribute(ts, (Object) null, edgeQuark);
+
+        }
+        // update data for next edge
+        fEdgeStartTimes.put(sId, ts);
+        fEdgeSrcHosts.put(sId, currHostThread);
+    }
+
+    private boolean validateEnclosingSlice(@NonNull ITmfEvent event, ITmfStateSystemBuilder ss, long ts, String processName, int tid) {
+        String threadName = getThreadName(event);
+        if (threadName == null) {
+            threadName = Long.toString(tid);
+        }
+        int callstackQuark = ss.optQuarkAbsolute(PROCESSES, processName, threadName, InstrumentedCallStackAnalysis.CALL_STACK);
+        if (callstackQuark < 0) {
+            // No callstack for this thread, no enclosing slice
+            return false;
+        }
+        try {
+            ITmfStateInterval interval = StateSystemUtils.querySingleStackTop(ss, ts, callstackQuark);
+            if (interval == null || interval.getValue() == null) {
+                // Nothing on the top of stack, so no enclosing slice
+                return false;
+            }
+        } catch (AttributeNotFoundException | StateSystemDisposedException e) {
+            // Other problem, no enclosing slice
+            return false;
+        }
+        return true;
+    }
+
+    private void updateSLinks(ITmfEvent event, ITmfStateSystemBuilder ss, long ts, String processName) {
         String sId = event.getContent().getFieldValue(String.class, ITraceEventConstants.ID);
         if (sId == null) {
             Object resolve = fIdAspect.resolve(event);
@@ -279,19 +380,13 @@ public class TraceEventCallStackProvider extends CallStackStateProvider {
             return;
         }
 
-        long ts = event.getTimestamp().toNanos();
-        long startTime = fEdgeStartTimes.getOrDefault(sId, ts);
-
-        HostThread srcHostThread = fEdgeSrcHosts.remove(sId);
         HostThread currHostThread = new HostThread(event.getTrace().getHostId(), tid);
-        if (srcHostThread != null) {
-            int edgeQuark = getAvailableEdgeQuark(ssb, startTime);
 
-            Object edgeStateValue = new EdgeStateValue(fIdCache.computeIfAbsent(sId, FUNCTION), srcHostThread, currHostThread);
-            ssb.modifyAttribute(startTime, edgeStateValue, edgeQuark);
-            ssb.modifyAttribute(ts, (Object) null, edgeQuark);
-
+        // Scope is "enclosing slice", make sure there is such a slice
+        if (!validateEnclosingSlice(event, ss, ts, processName, tid)) {
+            return;
         }
+
         fEdgeStartTimes.put(sId, ts);
         fEdgeSrcHosts.put(sId, currHostThread);
     }
@@ -316,7 +411,7 @@ public class TraceEventCallStackProvider extends CallStackStateProvider {
         for (int quark : subQuarks) {
             long start = ssb.getOngoingStartTime(quark);
             Object value = ssb.queryOngoing(quark);
-            if (value == null && start < startTime) {
+            if (value == null && start <= startTime) {
                 return quark;
             }
         }
@@ -425,7 +520,7 @@ public class TraceEventCallStackProvider extends CallStackStateProvider {
         long end = startTime;
         Number duration = event.getContent().getFieldValue(Number.class, ITraceEventConstants.DURATION);
         if (duration != null) {
-            end += Math.max(duration.longValue() - 1, 0);
+            end += Math.max(duration.longValue(), 0);
         }
         String threadName = getThreadName(event);
         long threadId = getThreadId(event);
@@ -439,18 +534,6 @@ public class TraceEventCallStackProvider extends CallStackStateProvider {
         ss.pushAttribute(startTime, event.getName(), callStackQuark);
         Deque<Long> stack = fStack.computeIfAbsent(callStackQuark, ArrayDeque::new);
         stack.push(end);
-    }
-
-    @Override
-    public void done() {
-        ITmfStateSystemBuilder ss = checkNotNull(getStateSystemBuilder());
-        for (Entry<Integer, Deque<Long>> stackEntry : fStack.entrySet()) {
-            Deque<Long> stack = stackEntry.getValue();
-            while (!stack.isEmpty()) {
-                ss.popAttribute(stack.pop(), stackEntry.getKey());
-            }
-        }
-        super.done();
     }
 
 }
