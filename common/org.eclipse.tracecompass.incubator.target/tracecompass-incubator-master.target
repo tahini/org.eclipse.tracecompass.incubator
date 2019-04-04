@@ -144,10 +144,14 @@
 <repository location="http://download.eclipse.org/nebula/releases/latest"/>
 </location>
 	<location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
-		<unit id="org.eclipse.ease.feature.feature.group" version="0.6.0.I201802271533"/>
-		<unit id="org.eclipse.ease.lang.javascript.feature.feature.group" version="0.6.0.I201802201511"/>
-		<unit id="org.eclipse.ease.lang.python.feature.feature.group" version="0.6.0.I201802190840"/>
-		<unit id="org.eclipse.ease.ui.feature.feature.group" version="0.6.0.I201804241621"/>
+		<unit id="org.eclipse.ease.feature.feature.group" version="0.0.0"/>
+		<unit id="org.eclipse.ease.lang.javascript.feature.feature.group" version="0.0.0"/>
+		<unit id="org.eclipse.ease.lang.python.feature.feature.group" version="0.0.0"/>
+		<unit id="org.eclipse.ease.ui.feature.feature.group" version="0.0.0"/>
+		<unit id="org.eclipse.ease.feature.source.feature.group" version="0.0.0"/>
+		<unit id="org.eclipse.ease.lang.javascript.feature.source.feature.group" version="0.0.0"/>
+		<unit id="org.eclipse.ease.lang.python.feature.source.feature.group" version="0.0.0"/>
+		<unit id="org.eclipse.ease.ui.feature.source.feature.group" version="0.0.0"/>
 		<repository location="http://download.eclipse.org/ease/update/release"/>
 	</location>
 </locations>
