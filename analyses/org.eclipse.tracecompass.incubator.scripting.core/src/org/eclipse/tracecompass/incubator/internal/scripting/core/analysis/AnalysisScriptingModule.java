@@ -14,14 +14,16 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Function;
 
-import org.eclipse.ease.modules.ScriptParameter;
 import org.eclipse.ease.modules.WrapToScript;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.fsm.model.DataDrivenStateSystemPath;
-import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.output.DataDrivenTimeGraphEntry;
+import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.fsm.model.values.DataDrivenValueConstant;
+import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.output.DataDrivenOutputEntry;
 import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.output.DataDrivenTimeGraphProviderFactory;
+import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.output.DataDrivenXYDataProvider.DisplayType;
 import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.output.XmlDataProviderManager;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
+import org.eclipse.tracecompass.statesystem.core.statevalue.ITmfStateValue;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEventField;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphDataProvider;
@@ -37,11 +39,11 @@ import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
  */
 public class AnalysisScriptingModule {
 
-    private static final String ENTRY_PATH = "path";
-    private static final String ENTRY_DISPLAY = "display";
-    private static final String ENTRY_NAME = "name";
-    private static final String ENTRY_PARENT = "parent";
-    private static final String ENTRY_ID = "id";
+    private static final String ENTRY_PATH = "path"; //$NON-NLS-1$
+    private static final String ENTRY_DISPLAY = "display"; //$NON-NLS-1$
+    private static final String ENTRY_NAME = "name"; //$NON-NLS-1$
+    private static final String ENTRY_PARENT = "parent"; //$NON-NLS-1$
+    private static final String ENTRY_ID = "id"; //$NON-NLS-1$
 
     /** Module identifier. */
     public static final String MODULE_ID = "/TraceCompass/Analysis"; //$NON-NLS-1$
@@ -69,24 +71,6 @@ public class AnalysisScriptingModule {
 
     }
 
-    /**
-     * @param analysis
-     * @param path
-     * @param name
-     * @param display
-     */
-    @WrapToScript
-    public void createTimeGraph(ScriptedAnalysis analysis, String path, @ScriptParameter(defaultValue = "") Map<String, Object> name, @ScriptParameter(defaultValue = "") String display) {
-        if (name.isEmpty()) {
-            System.out.println("no name");
-        }
-        String string = name.get("name");
-        String string2 = name.get("abc");
-        if (display.isEmpty()) {
-            System.out.println("no display");
-        }
-    }
-
     @SuppressWarnings("restriction")
     @WrapToScript
     public @Nullable Object createTimeGraphProvider(ScriptedAnalysis analysis, Map<String, Object> data) {
@@ -101,8 +85,21 @@ public class AnalysisScriptingModule {
         Object displayObj = data.get(ENTRY_DISPLAY);
         String display = (displayObj == null) ? null : String.valueOf(displayObj);
 
-        DataDrivenTimeGraphEntry entry = new DataDrivenTimeGraphEntry(Collections.emptyList(), path, null, true,
-                new DataDrivenStateSystemPath(Collections.emptyList()), null, null, null);
+        Object nameObj = data.get(ENTRY_NAME);
+        String name = (nameObj == null) ? null : String.valueOf(nameObj);
+
+        Object parentObj = data.get(ENTRY_PARENT);
+        String parent = (parentObj == null) ? null : String.valueOf(parentObj);
+
+        Object idObj = data.get(ENTRY_ID);
+        String id = (idObj == null) ? null : String.valueOf(idObj);
+
+        DataDrivenOutputEntry entry = new DataDrivenOutputEntry(Collections.emptyList(), path, null, true,
+                new DataDrivenStateSystemPath(display == null ? Collections.emptyList() : Collections.singletonList(new DataDrivenValueConstant(null, ITmfStateValue.Type.NULL, display))),
+                id == null ? null : new DataDrivenStateSystemPath(Collections.singletonList(new DataDrivenValueConstant(null, ITmfStateValue.Type.NULL, id))),
+                parent == null ? null : new DataDrivenStateSystemPath(Collections.singletonList(new DataDrivenValueConstant(null, ITmfStateValue.Type.NULL, parent))),
+                name == null ? null : new DataDrivenStateSystemPath(Collections.singletonList(new DataDrivenValueConstant(null, ITmfStateValue.Type.NULL, name))),
+                DisplayType.ABSOLUTE);
         DataDrivenTimeGraphProviderFactory factory = new DataDrivenTimeGraphProviderFactory(Collections.singletonList(entry), Collections.singleton(analysis.getName()), Collections.emptyList());
         ITmfStateSystemBuilder stateSystem = analysis.getStateSystem(true);
         if (stateSystem == null) {
