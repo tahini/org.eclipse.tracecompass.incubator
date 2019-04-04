@@ -16,7 +16,6 @@ import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.ease.Script;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.TreeSelection;
@@ -71,7 +70,7 @@ public class ExecuteScriptHandler extends AbstractHandler {
             TreeSelection sel = (TreeSelection) selection;
             Object element = sel.getFirstElement();
             if (element instanceof IFile) {
-                final Script script = new Script(element);
+//                final Script script = new Script(element);
             }
             System.out.println(element);
         }
