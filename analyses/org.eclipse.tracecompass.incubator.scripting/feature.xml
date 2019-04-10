@@ -19,13 +19,9 @@
       %license
    </license>
 
-   <includes
-         id="org.eclipse.ease.feature"
-         version="0.0.0"/>
-
-   <includes
-         id="org.eclipse.ease.ui.feature"
-         version="0.0.0"/>
+   <url>
+      <discovery label="EASE" url="http://download.eclipse.org/ease/update/release"/>
+   </url>
 
    <requires>
       <import plugin="org.eclipse.core.runtime"/>

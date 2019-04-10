@@ -1,4 +1,0 @@
-instructions.configure=\
-org.eclipse.equinox.p2.touchpoint.eclipse.addRepository(location:http${#58}//download.eclipse.org/ease/update/release,type:0,name:EASE,enabled:false); \
-org.eclipse.equinox.p2.touchpoint.eclipse.addRepository(location:http${#58}//download.eclipse.org/ease/update/release,type:1,name:EASE,enabled:false);
-
