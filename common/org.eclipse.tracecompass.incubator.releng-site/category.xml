@@ -57,10 +57,19 @@
    <feature url="features/org.eclipse.ease.lang.python.py4j.feature_0.6.0.I201801120620.jar" id="org.eclipse.ease.lang.python.py4j.feature" version="0.6.0.I201801120620"/>
    <feature url="features/org.eclipse.ease.lang.python.feature_0.6.0.I201802190840.jar" id="org.eclipse.ease.lang.python.feature" version="0.6.0.I201802190840"/>
    <feature url="features/org.eclipse.ease.ui.feature_0.6.0.I201804241621.jar" id="org.eclipse.ease.ui.feature" version="0.6.0.I201804241621"/>
+   <feature url="features/org.eclipse.tracecompass.incubator.scripting.javascript_0.0.1.qualifier.jar" id="org.eclipse.tracecompass.incubator.scripting.javascript" version="0.0.1.qualifier">
+      <category name="analyses"/>
+   </feature>
+   <feature url="features/org.eclipse.ease.lang.javascript.feature_0.6.0.I201802201511.jar" id="org.eclipse.ease.lang.javascript.feature" version="0.6.0.I201802201511"/>
    <bundle id="org.eclipse.tracecompass.incubator.analysis.core" version="0.0.1.qualifier">
       <category name="analyses"/>
    </bundle>
    <bundle id="javax.ws.rs"/>
+   <bundle id="org.mozilla.javascript" version="1.7.5.v201504281450"/>
+   <bundle id="org.eclipse.wst.jsdt.core" version="2.0.302.v201804042202"/>
+   <bundle id="org.eclipse.wst.jsdt.debug.core" version="3.2.200.v201610211901"/>
+   <bundle id="org.eclipse.wst.jsdt.debug.ui" version="1.0.600.v201605311817"/>
+   <bundle id="org.eclipse.wst.jsdt.ui" version="2.0.301.v201710051729"/>
    <category-def name="trace-types" label="Trace Types"/>
    <category-def name="virtualization" label="Virtualization"/>
    <category-def name="analyses" label="Analyses"/>
