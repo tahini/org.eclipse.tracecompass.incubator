@@ -70,6 +70,9 @@
    <bundle id="org.eclipse.wst.jsdt.debug.core" version="3.2.200.v201610211901"/>
    <bundle id="org.eclipse.wst.jsdt.debug.ui" version="1.0.600.v201605311817"/>
    <bundle id="org.eclipse.wst.jsdt.ui" version="2.0.301.v201710051729"/>
+   <bundle id="com.google.javascript" version="0.0.20160315.v20161124-1903"/>
+   <bundle id="com.google.protobuf" version="2.4.0.v201105131100"/>
+   <bundle id="org.eclipse.wst.jsdt.manipulation" version="1.0.601.v201602241911"/>
    <category-def name="trace-types" label="Trace Types"/>
    <category-def name="virtualization" label="Virtualization"/>
    <category-def name="analyses" label="Analyses"/>

@@ -48,6 +48,13 @@ public class AnalysisScriptingModule {
     /** Module identifier. */
     public static final String MODULE_ID = "/TraceCompass/Analysis"; //$NON-NLS-1$
 
+    /**
+     * Constructor
+     */
+    public AnalysisScriptingModule() {
+
+    }
+
     @WrapToScript
     public @Nullable ScriptedAnalysis getAnalysis(String name) {
         ITmfTrace activeTrace = TmfTraceManager.getInstance().getActiveTrace();

@@ -19,7 +19,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.jface,
  org.eclipse.tracecompass.statesystem.core,
  org.eclipse.tracecompass.tmf.analysis.xml.core
-Export-Package: org.eclipse.tracecompass.incubator.internal.scripting.core;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests",
- org.eclipse.tracecompass.incubator.internal.scripting.core.analysis;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests",
- org.eclipse.tracecompass.incubator.internal.scripting.core.handler;x-internal:=true
+Export-Package: org.eclipse.tracecompass.incubator.internal.scripting.core;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests,org.eclipse.tracecompass.incubator.scripting.ui",
+ org.eclipse.tracecompass.incubator.internal.scripting.core.analysis;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests,org.eclipse.tracecompass.incubator.scripting.ui",
+ org.eclipse.tracecompass.incubator.internal.scripting.core.handler;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests,org.eclipse.tracecompass.incubator.scripting.ui"
 Automatic-Module-Name: org.eclipse.tracecompass.incubator.scripting.core

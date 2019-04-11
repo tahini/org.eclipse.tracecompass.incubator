@@ -6,7 +6,7 @@
       <module
             category="org.eclipse.tracecompass.incubator.scripting.core.category"
             class="org.eclipse.tracecompass.incubator.internal.scripting.core.analysis.AnalysisScriptingModule"
-            id="org.eclipse.tracecompass.incubator.scripting.core.trace"
+            id="org.eclipse.tracecompass.incubator.scripting.core.analysis"
             name="Analysis"
             visible="true">
       </module>
