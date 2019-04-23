@@ -9,8 +9,6 @@
 
 package org.eclipse.tracecompass.incubator.internal.scripting.core.analysis;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -20,9 +18,6 @@ import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.common.core.collect.BufferedBlockingQueue;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
-import org.eclipse.tracecompass.statesystem.core.StateSystemFactory;
-import org.eclipse.tracecompass.statesystem.core.backend.IStateHistoryBackend;
-import org.eclipse.tracecompass.statesystem.core.backend.StateHistoryBackendFactory;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.event.TmfEvent;
 import org.eclipse.tracecompass.tmf.core.request.ITmfEventRequest;
@@ -30,7 +25,7 @@ import org.eclipse.tracecompass.tmf.core.request.TmfEventRequest;
 import org.eclipse.tracecompass.tmf.core.timestamp.TmfTimeRange;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfContext;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
-import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
+import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 
 /**
  * Provide a class for scripted analysis. It provides an event iterator, as well
@@ -54,11 +49,9 @@ public class ScriptedAnalysis {
     }
 
     private static final EndEvent END_EVENT = new EndEvent();
-    private static final String STATE_SYSTEM_EXTENSION = ".ht"; //$NON-NLS-1$
 
     private final ITmfTrace fTrace;
     private final String fName;
-    private @Nullable ITmfStateSystemBuilder fStateSystem = null;
 
     /**
      * Constructor
@@ -76,49 +69,12 @@ public class ScriptedAnalysis {
     @WrapToScript
     public @Nullable ITmfStateSystemBuilder getStateSystem(@ScriptParameter(defaultValue = "false") boolean useExisting) {
 
-        ITmfStateSystemBuilder stateSystem = fStateSystem;
-        if (stateSystem == null) {
-            String directory = TmfTraceManager.getSupplementaryFileDir(fTrace);
-            File htFile = new File(directory + fName + STATE_SYSTEM_EXTENSION);
-
-            /* If the target file already exists, do not rebuild it uselessly */
-            // TODO for now we assume it's complete. Might be a good idea to
-            // check
-            // at least if its range matches the trace's range.
-
-            if (htFile.exists() && useExisting) {
-                try {
-                    IStateHistoryBackend backend = StateHistoryBackendFactory.createHistoryTreeBackendExistingFile(
-                            fName, htFile, 1);
-                    stateSystem = StateSystemFactory.newStateSystem(backend, false);
-                    fStateSystem = stateSystem;
-                    return stateSystem;
-                } catch (IOException e) {
-                    /*
-                     * There was an error opening the existing file. Perhaps it
-                     * was corrupted, perhaps it's an old version? We'll just
-                     * fall-through and try to build a new one from scratch
-                     * instead.
-                     */
-                }
-            }
-
-            /*
-             * Size of the blocking queue to use when building a state history
-             */
-            final int QUEUE_SIZE = 10000;
-
-            try {
-                IStateHistoryBackend backend = StateHistoryBackendFactory.createHistoryTreeBackendNewFile(
-                        fName, htFile, 1, fTrace.getStartTime().toNanos(), QUEUE_SIZE);
-                stateSystem = StateSystemFactory.newStateSystem(backend);
-                fStateSystem = stateSystem;
-                return stateSystem;
-            } catch (IOException e) {
-
-            }
+        TmfScriptAnalysis analysisModule = TmfTraceUtils.getAnalysisModuleOfClass(fTrace, TmfScriptAnalysis.class, TmfScriptAnalysis.ID);
+        if (analysisModule == null) {
+            return null;
         }
-        return stateSystem;
+
+        return (ITmfStateSystemBuilder) analysisModule.getStateSystem(fName, useExisting);
 
     }
 
@@ -202,6 +158,11 @@ public class ScriptedAnalysis {
         return fTrace;
     }
 
+    /**
+     * Get the name of this analysis
+     *
+     * @return The name of the analysis
+     */
     public String getName() {
         return fName;
     }

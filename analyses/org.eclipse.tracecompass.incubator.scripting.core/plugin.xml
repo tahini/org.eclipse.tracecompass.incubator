@@ -15,6 +15,17 @@
             name="TraceCompass">
       </category>
    </extension>
+   <extension
+         point="org.eclipse.linuxtools.tmf.core.analysis">
+      <module
+            analysis_module="org.eclipse.tracecompass.incubator.internal.scripting.core.analysis.TmfScriptAnalysis"
+            id="org.eclipse.tracecompass.incubator.scripting.analysis"
+            name="%analysis.name">
+         <tracetype
+               class="org.eclipse.tracecompass.tmf.core.trace.TmfTrace">
+         </tracetype>
+      </module>
+   </extension>
    <!--
    <extension point="org.eclipse.ui.activities">
    	  <activity name="%activity.name.debugPerspective"     id="org.eclipse.unwantedEasePerspective"    description="%activity.description.debugPerspective" />
