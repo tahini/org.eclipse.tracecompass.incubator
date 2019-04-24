@@ -11,5 +11,9 @@
             visible="true">
       </module>
    </extension>
-
+   <extension point="org.eclipse.ui.activities">
+      <activity name="%activity.name.debugPerspective"     id="org.eclipse.tracecompass.scriptDebug"    description="%activity.description.debugPerspective" />
+      <activityPatternBinding activityId="org.eclipse.tracecompass.scriptDebug"    pattern="org\.eclipse\.debug.*" />
+      <defaultEnablement id="org.eclipse.tracecompass.scriptDebug" />
+   </extension>
 </plugin>
