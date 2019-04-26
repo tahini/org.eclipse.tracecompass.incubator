@@ -10,6 +10,7 @@
 package org.eclipse.tracecompass.incubator.internal.scripting.core;
 
 import org.eclipse.tracecompass.common.core.TraceCompassActivator;
+import org.eclipse.tracecompass.incubator.internal.scripting.core.data.provider.ScriptingDataProviderManager;
 
 /**
  * Activator
@@ -37,10 +38,13 @@ public class Activator extends TraceCompassActivator {
 
     @Override
     protected void startActions() {
+        /* Initialize the data provider manager */
+        ScriptingDataProviderManager.getInstance();
     }
 
     @Override
     protected void stopActions() {
+        ScriptingDataProviderManager.dispose();
     }
 
 }

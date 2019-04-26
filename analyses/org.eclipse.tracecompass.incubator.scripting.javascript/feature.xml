@@ -31,6 +31,7 @@
       <import feature="org.eclipse.ease.lang.javascript.feature" version="0.6.0.I201802201511"/>
       <import plugin="org.mozilla.javascript"/>
       <import plugin="org.eclipse.wst.jsdt.ui"/>
+      <import plugin="org.eclipse.platform"/>
    </requires>
 
 </feature>

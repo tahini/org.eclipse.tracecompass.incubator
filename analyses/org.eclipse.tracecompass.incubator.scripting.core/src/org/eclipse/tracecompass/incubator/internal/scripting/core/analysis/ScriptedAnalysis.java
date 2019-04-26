@@ -66,6 +66,15 @@ public class ScriptedAnalysis {
         fName = name;
     }
 
+    /**
+     * Get a state system to go with this analysis. If an analysis of the same
+     * name already exists, it can be re-used instead of re-created.
+     *
+     * @param useExisting
+     *            if <code>true</code>, any state system with the same name for
+     *            the trace will be reused.
+     * @return A state system builder
+     */
     @WrapToScript
     public @Nullable ITmfStateSystemBuilder getStateSystem(@ScriptParameter(defaultValue = "false") boolean useExisting) {
 
@@ -78,6 +87,27 @@ public class ScriptedAnalysis {
 
     }
 
+    /**
+     * Get an iterator to iterate chronologically through the events of the
+     * trace.
+     *
+     * Thus, to iterate through a trace in a scripted analysis, one can just do
+     * the following snippet (javascript)
+     *
+     * <pre>
+     * var iter = analysis.getEventIterator();
+     *
+     * var event = null;
+     * while (iter.hasNext()) {
+     *
+     *     event = iter.next();
+     *
+     *     // Do something with the event
+     * }
+     * </pre>
+     *
+     * @return The event iterator, starting from the first event
+     */
     @WrapToScript
     public Iterator<ITmfEvent> getEventIterator() {
         BufferedBlockingQueue<ITmfEvent> eventsQueue = new BufferedBlockingQueue<>(DEFAULT_EVENTS_QUEUE_SIZE, DEFAULT_EVENTS_CHUNK_SIZE);

@@ -33,6 +33,7 @@
       <import feature="org.eclipse.ease.lang.python.py4j.feature" version="0.6.0.I201801120620"/>
       <import feature="org.py4j.feature" version="0.10.8.1-bnd-BaEoUg"/>
       <import feature="org.python.pydev.feature" version="7.2.0.201903251948"/>
+      <import plugin="org.eclipse.platform"/>
    </requires>
 
 </feature>

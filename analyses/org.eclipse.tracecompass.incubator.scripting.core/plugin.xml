@@ -6,8 +6,15 @@
       <module
             category="org.eclipse.tracecompass.incubator.scripting.core.category"
             class="org.eclipse.tracecompass.incubator.internal.scripting.core.analysis.AnalysisScriptingModule"
-            id="org.eclipse.tracecompass.incubator.scripting.core.trace"
+            id="org.eclipse.tracecompass.incubator.scripting.core.analysis"
             name="Analysis"
+            visible="true">
+      </module>
+      <module
+            category="org.eclipse.tracecompass.incubator.scripting.core.category"
+            class="org.eclipse.tracecompass.incubator.internal.scripting.core.data.provider.DataProviderScriptingModule"
+            id="org.eclipse.tracecompass.incubator.scripting.core.dataprovider"
+            name="DataProvider"
             visible="true">
       </module>
       <category
@@ -25,6 +32,13 @@
                class="org.eclipse.tracecompass.tmf.core.trace.TmfTrace">
          </tracetype>
       </module>
+   </extension>
+    <extension
+         point="org.eclipse.tracecompass.tmf.core.dataprovider">
+      <dataProviderFactory
+            class="org.eclipse.tracecompass.incubator.internal.scripting.core.data.provider.ScriptingDataProviderFactory"
+            id="org.eclipse.tracecompass.incubator.scripting.dataprovider">
+      </dataProviderFactory>
    </extension>
    <!--
    <extension point="org.eclipse.ui.activities">

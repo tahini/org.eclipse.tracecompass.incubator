@@ -75,6 +75,9 @@
    <feature url="features/org.eclipse.ease.lang.javascript.feature_0.0.0.qualifier.jar" id="org.eclipse.ease.lang.javascript.feature" version="0.0.0">
       <category name="dependencies"/>
    </feature>
+   <feature url="features/org.eclipse.platform_4.12.0.v20190411-0900.jar" id="org.eclipse.platform" version="4.12.0.v20190411-0900">
+      <category name="dependencies"/>
+   </feature>
    <bundle id="org.eclipse.tracecompass.incubator.analysis.core" version="0.0.0">
       <category name="analyses"/>
    </bundle>

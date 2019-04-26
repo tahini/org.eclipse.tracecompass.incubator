@@ -84,7 +84,7 @@ public class TmfScriptAnalysis extends TmfAbstractAnalysisModule implements ITmf
 
                         String ssid = String.valueOf(file.getFileName());
                         IStateHistoryBackend backend = StateHistoryBackendFactory.createHistoryTreeBackendExistingFile(
-                                ssid, file.toFile(), 1);
+                                ssid, Objects.requireNonNull(file.toFile()), 1);
                         ITmfStateSystem stateSystem = StateSystemFactory.newStateSystem(backend, false);
                         fStateSystems.put(ssid, stateSystem);
                     } catch (IOException e) {
@@ -138,7 +138,7 @@ public class TmfScriptAnalysis extends TmfAbstractAnalysisModule implements ITmf
             Files.createDirectories(ssFolder);
             Path ssFile = Paths.get(ssFolder.toString(), id);
             IStateHistoryBackend backend = StateHistoryBackendFactory.createHistoryTreeBackendNewFile(
-                    id, ssFile.toFile(), 1, trace.getStartTime().toNanos(), QUEUE_SIZE);
+                    id, Objects.requireNonNull(ssFile.toFile()), 1, trace.getStartTime().toNanos(), QUEUE_SIZE);
             ITmfStateSystemBuilder stateSystem = StateSystemFactory.newStateSystem(backend);
             fStateSystems.put(id, stateSystem);
             return stateSystem;

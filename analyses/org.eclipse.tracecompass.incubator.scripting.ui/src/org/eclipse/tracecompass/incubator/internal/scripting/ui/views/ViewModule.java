@@ -12,8 +12,7 @@ package org.eclipse.tracecompass.incubator.internal.scripting.ui.views;
 import org.eclipse.ease.modules.WrapToScript;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.tracecompass.internal.tmf.analysis.xml.ui.views.timegraph.XmlTimeGraphView;
-import org.eclipse.tracecompass.tmf.analysis.xml.core.module.TmfXmlStrings;
+import org.eclipse.tracecompass.internal.provisional.tmf.ui.views.timegraph.dataprovider.DataProviderBaseView;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphDataProvider;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.TimeGraphEntryModel;
 import org.eclipse.ui.IViewPart;
@@ -21,7 +20,6 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.part.WorkbenchPart;
 
 /**
  *
@@ -44,11 +42,6 @@ public class ViewModule {
                     if (view == null) {
                         return;
                     }
-                    // Transfers the properties of this output to the view
-                    if (view instanceof WorkbenchPart) {
-                        WorkbenchPart wbPart = (WorkbenchPart) view;
-                        wbPart.setPartProperty(TmfXmlStrings.DATA_PROVIDER, dataProvider.getId());
-                    }
                 } catch (final PartInitException e) {
                     // Do nothing
                 }
@@ -61,6 +54,6 @@ public class ViewModule {
         final IWorkbench wb = PlatformUI.getWorkbench();
         final IWorkbenchPage activePage = wb.getActiveWorkbenchWindow().getActivePage();
 
-        return activePage.showView(XmlTimeGraphView.ID, name, IWorkbenchPage.VIEW_ACTIVATE);
+        return activePage.showView(DataProviderBaseView.BASE_ID, name.replace(":", DataProviderBaseView.COLON), IWorkbenchPage.VIEW_ACTIVATE); //$NON-NLS-1$
     }
 }
