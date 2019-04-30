@@ -12,6 +12,7 @@ package org.eclipse.tracecompass.incubator.internal.scripting.ui.views;
 import org.eclipse.ease.modules.WrapToScript;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.tracecompass.incubator.internal.scripting.ui.views.timegraph.ScriptedTimeGraphView;
 import org.eclipse.tracecompass.internal.provisional.tmf.ui.views.timegraph.dataprovider.DataProviderBaseView;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphDataProvider;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.TimeGraphEntryModel;
@@ -54,6 +55,6 @@ public class ViewModule {
         final IWorkbench wb = PlatformUI.getWorkbench();
         final IWorkbenchPage activePage = wb.getActiveWorkbenchWindow().getActivePage();
 
-        return activePage.showView(DataProviderBaseView.BASE_ID, name.replace(":", DataProviderBaseView.COLON), IWorkbenchPage.VIEW_ACTIVATE); //$NON-NLS-1$
+        return activePage.showView(ScriptedTimeGraphView.ID, name.replace(":", DataProviderBaseView.COLON), IWorkbenchPage.VIEW_ACTIVATE); //$NON-NLS-1$
     }
 }

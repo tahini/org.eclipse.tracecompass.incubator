@@ -9,12 +9,15 @@
 
 package org.eclipse.tracecompass.incubator.internal.scripting.core.analysis;
 
+import java.util.List;
 import java.util.function.Function;
 
 import org.eclipse.ease.modules.WrapToScript;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEventField;
+import org.eclipse.tracecompass.tmf.core.model.filters.TimeQueryFilter;
+import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphEntryModel;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
@@ -71,8 +74,13 @@ public class AnalysisScriptingModule {
     }
 
     @WrapToScript
-    public Object test(Function<String, String> bla) {
+    public Object test2(Function<String, String> bla) {
         return bla.apply("a");
+    }
+
+    @WrapToScript
+    public @Nullable Object test(Function<TimeQueryFilter, @Nullable List<ITimeGraphEntryModel>> bla) {
+        return bla.apply(new TimeQueryFilter(0L, 100L, 2));
     }
 
 }

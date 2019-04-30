@@ -17,6 +17,13 @@
             name="DataProvider"
             visible="true">
       </module>
+      <module
+            category="org.eclipse.tracecompass.incubator.scripting.core.category"
+            class="org.eclipse.tracecompass.incubator.scripting.core.utils.UtilsModule"
+            id="org.eclipse.tracecompass.incubator.scripting.core.utils"
+            name="Utils"
+            visible="true">
+      </module>
       <category
             id="org.eclipse.tracecompass.incubator.scripting.core.category"
             name="TraceCompass">

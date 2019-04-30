@@ -10,7 +10,9 @@
 package org.eclipse.tracecompass.incubator.internal.scripting.core.data.provider;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.eclipse.ease.modules.WrapToScript;
 import org.eclipse.jdt.annotation.Nullable;
@@ -20,18 +22,18 @@ import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.fsm.model.values.
 import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.output.DataDrivenOutputEntry;
 import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.output.DataDrivenTimeGraphProviderFactory;
 import org.eclipse.tracecompass.internal.tmf.analysis.xml.core.output.DataDrivenXYDataProvider.DisplayType;
+import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.statesystem.core.statevalue.ITmfStateValue;
+import org.eclipse.tracecompass.tmf.core.model.filters.TimeQueryFilter;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphDataProvider;
+import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphEntryModel;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.TimeGraphEntryModel;
+import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphRowModel;
+import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphArrow;
+import org.eclipse.tracecompass.tmf.core.model.timegraph.TimeGraphArrow;
+import org.eclipse.tracecompass.tmf.core.model.tree.ITmfTreeDataModel;
 
-/**
- * This ease module gives helpers to define various types of data provider from
- * EASE analyses.
- *
- * @author Geneviève Bastien
- */
-@SuppressWarnings("restriction")
 public class DataProviderScriptingModule {
 
     private static final String ENTRY_PATH = "path"; //$NON-NLS-1$
@@ -40,40 +42,9 @@ public class DataProviderScriptingModule {
     private static final String ENTRY_PARENT = "parent"; //$NON-NLS-1$
     private static final String ENTRY_ID = "id"; //$NON-NLS-1$
 
-    /**
-     * Create a basic data driven data provider from the attributes of the state
-     * system associated with this analysis. It is an equivalent of writing an
-     * XML file for this analysis. Ideal when the one only wishes to display the
-     * values in a state system.
-     *
-     * The data to describe the view is similar to that of an XML view:
-     *
-     * path: The path in the state system of the entries to display
-     *
-     * display: The name in the state system, relative to the path, of the
-     * attribute to display. Default is the path itself
-     *
-     * name: The name in the state system, relative to the path, of the
-     * attribute containing the name of the entry. Default is the name of the
-     * entry attribute
-     *
-     * parent: The name in the state system, relative to the path, of the
-     * attribute whose value represents the parent, to add a parent/child
-     * relationship between the entries. Default is none
-     *
-     * id: The name in the state system, relative to the path, of the attribute
-     * whose value is the ID of this entry. It can be used with a parent to
-     * arrange parent/child relationship. Default is none
-     *
-     *
-     * @param analysis
-     *            The analysis from which to create the data provider. Its state
-     *            system will be used to get the data.
-     * @param data
-     *            Additional data to describe the views.
-     * @return The time graph data provider or <code>null</code> if something
-     *         was missing
-     */
+    private static final String ENTRY_FIELD_QUARK = "quark"; //$NON-NLS-1$
+    private static final String ENTRY_FIELD_PARENT_ID = "parentId"; //$NON-NLS-1$
+
     @WrapToScript
     public @Nullable Object createTimeGraphProvider(ScriptedAnalysis analysis, Map<String, Object> data) {
         Object pathObj = data.get(ENTRY_PATH);
@@ -107,7 +78,31 @@ public class DataProviderScriptingModule {
         ITimeGraphDataProvider<TimeGraphEntryModel> provider = factory.create(analysis.getTrace(), Collections.singletonList(stateSystem), ScriptingDataProviderManager.PROVIDER_ID + ':' + analysis.getName());
         ScriptingDataProviderManager.getInstance().registerDataProvider(analysis.getTrace(), provider);
         return provider;
+    }
 
+    @WrapToScript
+    public @Nullable ITmfTreeDataModel createEntry(String name, Map<String, Object> data) {
+        Object quarkObj = data.get(ENTRY_FIELD_QUARK);
+        int quark = (!(quarkObj instanceof Number)) ? ITmfStateSystem.INVALID_ATTRIBUTE : ((Number) quarkObj).intValue();
+        Object parentObj = data.get(ENTRY_FIELD_PARENT_ID);
+        int parent = (!(parentObj instanceof Number)) ? -1 : ((Number) parentObj).intValue();
+
+        return new ScriptedEntryDataModel(name, parent, quark);
+    }
+
+    @WrapToScript
+    public @Nullable ITimeGraphArrow createArrow(long sourceId, long destinationId, long time, long duration, int value) {
+        return new TimeGraphArrow(sourceId, destinationId, time, duration, value);
+    }
+
+    @WrapToScript
+    public ITimeGraphDataProvider<ITimeGraphEntryModel> createScriptedTimeGraphProvider(ScriptedAnalysis analysis,
+            Function<TimeQueryFilter, @Nullable List<ITimeGraphEntryModel>> entryMethod,
+            @Nullable Function<TimeQueryFilter, @Nullable List<ITimeGraphRowModel>> rowModelMethod,
+            @Nullable Function<TimeQueryFilter, @Nullable List<ITimeGraphArrow>> arrowMethod) {
+        ITimeGraphDataProvider<ITimeGraphEntryModel> provider = new ScriptedTimeGraphDataProvider(analysis, entryMethod, rowModelMethod, arrowMethod);
+        ScriptingDataProviderManager.getInstance().registerDataProvider(analysis.getTrace(), provider);
+        return provider;
     }
 
 }
