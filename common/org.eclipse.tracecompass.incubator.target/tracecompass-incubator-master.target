@@ -164,8 +164,8 @@
 		<repository location="http://eclipse.py4j.org/"/>
 	</location>
 	<location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
-		<unit id="org.python.pydev.feature.feature.group" version="7.2.0.201903251948"/>
-		<unit id="org.python.pydev.feature.source.feature.group" version="7.2.0.201903251948"/>
+		<unit id="org.python.pydev.feature.feature.group" version="0.0.0"/>
+		<unit id="org.python.pydev.feature.source.feature.group" version="0.0.0"/>
 		<repository location="http://www.pydev.org/updates"/>
 	</location>
 </locations>
