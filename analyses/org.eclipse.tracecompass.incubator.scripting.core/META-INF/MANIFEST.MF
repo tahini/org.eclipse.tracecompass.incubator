@@ -18,11 +18,17 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui.workbench,
  org.eclipse.jface,
  org.eclipse.tracecompass.statesystem.core,
- org.eclipse.tracecompass.tmf.analysis.xml.core
-Export-Package: org.eclipse.tracecompass.incubator.internal.scripting.core;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests",
- org.eclipse.tracecompass.incubator.internal.scripting.core.analysis;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests",
- org.eclipse.tracecompass.incubator.internal.scripting.core.data.provider;x-internal:=true,
- org.eclipse.tracecompass.incubator.internal.scripting.core.handler;x-internal:=true,
- org.eclipse.tracecompass.incubator.scripting.core.utils
+ org.eclipse.tracecompass.tmf.analysis.xml.core,
+ org.eclipse.tracecompass.incubator.filters.core
+Export-Package: org.eclipse.tracecompass.incubator.internal.provisional.scripting.core.analysis;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests,org.eclipse.tracecompass.incubator.scripting.ui",
+ org.eclipse.tracecompass.incubator.internal.provisional.scripting.core.data.provider;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests,org.eclipse.tracecompass.incubator.scripting.ui",
+ org.eclipse.tracecompass.incubator.internal.provisional.scripting.core.filters;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests,org.eclipse.tracecompass.incubator.scripting.ui",
+ org.eclipse.tracecompass.incubator.internal.provisional.scripting.core.utils;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests,org.eclipse.tracecompass.incubator.scripting.ui",
+ org.eclipse.tracecompass.incubator.internal.scripting.core;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests",
+ org.eclipse.tracecompass.incubator.internal.scripting.core.analysis;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests,org.eclipse.tracecompass.incubator.scripting.ui",
+ org.eclipse.tracecompass.incubator.internal.scripting.core.data.provider;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests,org.eclipse.tracecompass.incubator.scripting.ui",
+ org.eclipse.tracecompass.incubator.internal.scripting.core.handler;x-friends:="org.eclipse.tracecompass.incubator.scripting.core.tests"
 Automatic-Module-Name: org.eclipse.tracecompass.incubator.scripting.core
-Import-Package: com.google.common.collect
+Import-Package: com.google.common.collect,
+ org.eclipse.lsp4j,
+ org.antlr.runtime

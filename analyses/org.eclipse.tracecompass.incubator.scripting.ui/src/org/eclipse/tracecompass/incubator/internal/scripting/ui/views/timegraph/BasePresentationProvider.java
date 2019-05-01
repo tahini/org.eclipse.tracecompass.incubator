@@ -19,7 +19,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
@@ -41,7 +40,6 @@ import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.Utils;
  *
  * @author Geneviève Bastien
  */
-@NonNullByDefault({})
 public class BasePresentationProvider extends TimeGraphPresentationProvider {
 
     private static final long[] COLOR_SEED = { 0x0000ff, 0xff0000, 0x00ff00,
@@ -138,7 +136,7 @@ public class BasePresentationProvider extends TimeGraphPresentationProvider {
         } else if (label != null) {
             return label;
         }
-        return "multiple state";
+        return "multiple state"; //$NON-NLS-1$
     }
 
     @Override

@@ -8,4 +8,4 @@
  *******************************************************************************/
 
 @org.eclipse.jdt.annotation.NonNullByDefault
-package org.eclipse.tracecompass.incubator.internal.scripting.ui.views;
+package org.eclipse.tracecompass.incubator.internal.provisional.scripting.core.data.provider;

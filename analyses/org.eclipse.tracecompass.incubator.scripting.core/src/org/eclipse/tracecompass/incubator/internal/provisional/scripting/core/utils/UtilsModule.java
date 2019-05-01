@@ -7,29 +7,15 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.scripting.core.utils;
+package org.eclipse.tracecompass.incubator.internal.provisional.scripting.core.utils;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.eclipse.ease.modules.WrapToScript;
 
-/**
- * @author Geneviève Bastien
- *
- * @param <T> The type of object to go in the list
- */
-public class ListWrapper<T> {
+public class UtilsModule {
 
-    private final List<T> fList = new ArrayList<>();
-
-    /**
-     * Constructor
-     */
-    public ListWrapper() {
-
-    }
-
-    public List<T> getList() {
-        return fList;
+    @WrapToScript
+    public ListWrapper createListWrapper() {
+        return new ListWrapper();
     }
 
 }

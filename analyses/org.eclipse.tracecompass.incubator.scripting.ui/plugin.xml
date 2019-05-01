@@ -5,7 +5,7 @@
          point="org.eclipse.ease.modules">
       <module
             category="org.eclipse.tracecompass.incubator.scripting.core.category"
-            class="org.eclipse.tracecompass.incubator.internal.scripting.ui.views.ViewModule"
+            class="org.eclipse.tracecompass.incubator.internal.provisional.scripting.ui.views.ViewModule"
             id="org.eclipse.tracecompass.incubator.scripting.ui.views"
             name="View"
             visible="true">
@@ -22,7 +22,6 @@
             allowMultiple="true"
             category="org.eclipse.linuxtools.lttng2.ui.views.category"
             class="org.eclipse.tracecompass.incubator.internal.scripting.ui.views.timegraph.ScriptedTimeGraphView"
-            icon="icons/eview16/critical-path.png"
             id="org.eclipse.tracecompass.incubator.scripting.ui.view.timegraph"
             name="%view.scripted"
             restorable="true">

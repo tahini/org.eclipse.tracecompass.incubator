@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.internal.scripting.core.analysis;
+package org.eclipse.tracecompass.incubator.internal.provisional.scripting.core.analysis;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -17,6 +17,7 @@ import org.eclipse.ease.modules.WrapToScript;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.common.core.collect.BufferedBlockingQueue;
+import org.eclipse.tracecompass.incubator.internal.scripting.core.analysis.TmfScriptAnalysis;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.event.TmfEvent;

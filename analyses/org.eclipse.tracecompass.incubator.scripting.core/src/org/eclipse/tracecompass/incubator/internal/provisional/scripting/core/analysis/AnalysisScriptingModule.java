@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.internal.scripting.core.analysis;
+package org.eclipse.tracecompass.incubator.internal.provisional.scripting.core.analysis;
 
 import java.util.List;
 import java.util.function.Function;

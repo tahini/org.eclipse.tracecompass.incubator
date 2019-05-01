@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.scripting.core.tests.trace;
+package org.eclipse.tracecompass.incubator.scripting.core.tests.analysis;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -19,8 +19,8 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.tracecompass.incubator.internal.scripting.core.analysis.AnalysisScriptingModule;
-import org.eclipse.tracecompass.incubator.internal.scripting.core.analysis.ScriptedAnalysis;
+import org.eclipse.tracecompass.incubator.internal.provisional.scripting.core.analysis.AnalysisScriptingModule;
+import org.eclipse.tracecompass.incubator.internal.provisional.scripting.core.analysis.ScriptedAnalysis;
 import org.eclipse.tracecompass.incubator.scripting.core.tests.ActivatorTest;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.event.TmfEvent;
@@ -39,7 +39,7 @@ import org.junit.rules.Timeout;
  *
  * @author Geneviève Bastien
  */
-public class TraceModuleTest {
+public class AnalysisModuleTest {
 
     private static final String CALLSTACK_FILE = "testfiles/traces/callstack.xml";
     private static final @NonNull String ANALYSIS_NAME = "scriptAnalysisTest";
