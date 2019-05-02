@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="org.eclipse.tracecompass.incubator.scripting.javascript"
+      label="%featureName"
+      version="0.0.1.qualifier"
+      provider-name="%featureProvider"
+      license-feature="org.eclipse.license"
+      license-feature-version="0.0.0">
+
+   <description>
+      %description
+   </description>
+
+   <copyright>
+      %copyright
+   </copyright>
+
+   <license url="%licenseURL">
+      %license
+   </license>
+
+   <url>
+      <discovery label="EASE" url="http://download.eclipse.org/ease/update/release"/>
+   </url>
+
+   <includes
+         id="org.eclipse.tracecompass.incubator.scripting"
+         version="0.0.0"/>
+
+   <requires>
+      <import feature="org.eclipse.ease.lang.javascript.feature" version="0.6.0.I201802201511"/>
+      <import plugin="org.mozilla.javascript"/>
+      <import plugin="org.eclipse.wst.jsdt.ui"/>
+      <import plugin="org.eclipse.platform"/>
+   </requires>
+
+</feature>
