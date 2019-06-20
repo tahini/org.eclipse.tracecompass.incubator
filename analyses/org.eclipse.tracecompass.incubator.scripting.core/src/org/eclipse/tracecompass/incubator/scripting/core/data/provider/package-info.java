@@ -7,5 +7,9 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
+/**
+ * EASE Scripting module to create data providers that can be used to populate
+ * various types of views.
+ */
 @org.eclipse.jdt.annotation.NonNullByDefault
 package org.eclipse.tracecompass.incubator.scripting.core.data.provider;

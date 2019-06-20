@@ -7,5 +7,9 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
+/**
+ * EASE scripting module and classes to create analyses, read a trace and fill
+ * common backends, to then be able to visualize the results in common views.
+ */
 @org.eclipse.jdt.annotation.NonNullByDefault
 package org.eclipse.tracecompass.incubator.scripting.core.analysis;

@@ -7,5 +7,9 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
+/**
+ * EASE Scripting module and classes with utility classes that wrap java classes
+ * hard to reproduce in scripting languages.
+ */
 @org.eclipse.jdt.annotation.NonNullByDefault
 package org.eclipse.tracecompass.incubator.scripting.core.utils;

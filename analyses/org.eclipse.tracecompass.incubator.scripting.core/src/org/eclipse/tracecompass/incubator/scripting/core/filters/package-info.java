@@ -7,5 +7,10 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
+/**
+ * EASE Scripting module that allows to filter Trace Compass data with specific
+ * regexes. Also contains helpers to create filter strings understandable by
+ * Trace Compass.
+ */
 @org.eclipse.jdt.annotation.NonNullByDefault
 package org.eclipse.tracecompass.incubator.scripting.core.filters;
