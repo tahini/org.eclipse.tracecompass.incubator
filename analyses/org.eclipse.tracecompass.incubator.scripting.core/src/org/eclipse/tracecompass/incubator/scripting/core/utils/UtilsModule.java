@@ -21,6 +21,8 @@ public class UtilsModule {
     /**
      * Create a new list wrapper
      *
+     * @param <T>
+     *            The type of elements that will be in the list
      * @return The list wrapper with an empty list
      */
     @WrapToScript
