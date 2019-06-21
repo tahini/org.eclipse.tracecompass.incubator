@@ -17,7 +17,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -40,7 +39,6 @@ import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.GroupMarker;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuCreator;
@@ -68,10 +66,8 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.tracecompass.common.core.NonNullUtils;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLogBuilder;
-import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
-import org.eclipse.tracecompass.incubator.callstack.core.callgraph.AllGroupDescriptor;
-import org.eclipse.tracecompass.incubator.callstack.core.callgraph.ICallGraphProvider;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.flamegraph.FlameGraphDataProvider;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
+import org.eclipse.tracecompass.incubator.internal.callstack.core.flamegraph.FlameGraphDataProvider2;
 import org.eclipse.tracecompass.incubator.internal.callstack.ui.Activator;
 import org.eclipse.tracecompass.internal.tmf.core.model.filters.FetchParametersUtils;
 import org.eclipse.tracecompass.statesystem.core.StateSystemUtils;
@@ -99,7 +95,6 @@ import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.ui.TmfUiRefreshHandler;
-import org.eclipse.tracecompass.tmf.ui.editors.ITmfTraceEditor;
 import org.eclipse.tracecompass.tmf.ui.symbols.ISymbolProviderPreferencePage;
 import org.eclipse.tracecompass.tmf.ui.symbols.SymbolProviderConfigDialog;
 import org.eclipse.tracecompass.tmf.ui.symbols.TmfSymbolProviderUpdatedSignal;
@@ -118,7 +113,6 @@ import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.TimeGraphEntry.Sa
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.TimeGraphControl;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.Utils.TimeFormat;
 import org.eclipse.ui.IActionBars;
-import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.progress.IWorkbenchSiteProgressService;
@@ -171,7 +165,7 @@ public class FlameGraphView extends TmfView {
     // The action to import a binary file mapping */
     private Action fConfigureSymbolsAction;
 
-    private @Nullable ICallStackGroupDescriptor fGroupBy = null;
+    private @Nullable String fGroupBy = null;
     /**
      * A plain old semaphore is used since different threads will be competing
      * for the same resource.
@@ -199,6 +193,7 @@ public class FlameGraphView extends TmfView {
     private Comparator<ITimeGraphEntry> fEntryComparator = new ThreadNameComparator();
     private @Nullable ZoomThread fZoomThread;
     private final Object fZoomThreadResultLock = new Object();
+    private @Nullable String fProviderId = null;
 
 
     /**
@@ -223,15 +218,17 @@ public class FlameGraphView extends TmfView {
         super.createPartControl(parent);
         fDisplayWidth = Display.getDefault().getBounds().width;
         fTimeGraphViewer = new TimeGraphViewer(parent, SWT.NONE);
-        fPresentationProvider = new BaseDataProviderTimeGraphPresentationProvider(getProviderId());
+        fPresentationProvider = new BaseDataProviderTimeGraphPresentationProvider(getProviderId()) {
+            @Override
+            protected ITimeGraphDataProvider<? extends TimeGraphEntryModel> getProvider(TimeGraphEntry entry) {
+                return FlameGraphView.getProvider(entry);
+            }
+        };
         fTimeGraphViewer.setTimeGraphProvider(fPresentationProvider);
         fTimeGraphViewer.setTimeFormat(TimeFormat.NUMBER);
-        IEditorPart editor = getSite().getPage().getActiveEditor();
-        if (editor instanceof ITmfTraceEditor) {
-            ITmfTrace trace = ((ITmfTraceEditor) editor).getTrace();
-            if (trace != null) {
-                traceSelected(new TmfTraceSelectedSignal(this, trace));
-            }
+        ITmfTrace trace = TmfTraceManager.getInstance().getActiveTrace();
+        if (trace != null) {
+            traceSelected(new TmfTraceSelectedSignal(this, trace));
         }
         contributeToActionBars();
         loadSortOption();
@@ -350,13 +347,13 @@ public class FlameGraphView extends TmfView {
      *
      * @return The call graph provider modules
      */
-    protected Iterable<ICallGraphProvider> getCallgraphModules() {
+    protected Iterable<IWeightedTreeProvider<?, ?, ?>> getCallgraphModules() {
         ITmfTrace trace = fTrace;
         if (trace == null) {
             return null;
         }
         String analysisId = NonNullUtils.nullToEmptyString(getViewSite().getSecondaryId());
-        Iterable<ICallGraphProvider> modules = TmfTraceUtils.getAnalysisModulesOfClass(trace, ICallGraphProvider.class);
+        Iterable<IWeightedTreeProvider> modules = TmfTraceUtils.getAnalysisModulesOfClass(trace, IWeightedTreeProvider.class);
         return StreamSupport.stream(modules.spliterator(), false)
                 .filter(m -> {
                     if (m instanceof IAnalysisModule) {
@@ -368,8 +365,16 @@ public class FlameGraphView extends TmfView {
     }
 
     private String getProviderId() {
-        String secondaryId = this.getViewSite().getSecondaryId();
-        return (secondaryId == null) ? FlameGraphDataProvider.ID : FlameGraphDataProvider.ID + ':' + secondaryId;
+        String providerId = fProviderId;
+        if (providerId == null) {
+            String secondaryId = this.getViewSite().getSecondaryId();
+            providerId = (secondaryId == null) ? FlameGraphDataProvider2.ID :
+                (secondaryId.contains("[COLON]")) ? secondaryId.replace("[COLON]", ":") : FlameGraphDataProvider2.ID + ':' + secondaryId;
+            fProviderId = providerId;
+        }
+        return providerId;
+
+
     }
 
     private class BuildRunnable {
@@ -408,9 +413,9 @@ public class FlameGraphView extends TmfView {
         while (!complete && !monitor.isCanceled()) {
             Map<String, Object> parameters = new HashMap<>();
             parameters.put(DataProviderParameterUtils.REQUESTED_TIME_KEY, ImmutableList.of(0, Long.MAX_VALUE));
-            ICallStackGroupDescriptor groupBy = fGroupBy;
+            String groupBy = fGroupBy;
             if (groupBy != null) {
-                parameters.put(FlameGraphDataProvider.GROUP_BY_KEY, groupBy.getName());
+                parameters.put(FlameGraphDataProvider2.GROUP_BY_KEY, groupBy);
             }
             TmfModelResponse<TmfTreeModel<@NonNull TimeGraphEntryModel>> response = dataProvider.fetchTree(parameters, monitor);
             if (response.getStatus() == ITmfResponse.Status.FAILED) {
@@ -1236,24 +1241,24 @@ public class FlameGraphView extends TmfView {
                         menu.dispose();
                     }
                     menu = new Menu(parent);
-                    Iterable<ICallGraphProvider> callgraphModules = getCallgraphModules();
-                    Iterator<ICallGraphProvider> iterator = callgraphModules.iterator();
-                    if (!iterator.hasNext()) {
-                        return menu;
-                    }
-                    ICallGraphProvider provider = iterator.next();
-                    // Add the all group element
-                    Action allGroupAction = createActionForGroup(AllGroupDescriptor.getInstance());
-                    new ActionContributionItem(allGroupAction).fill(menu, -1);
-                    Collection<ICallStackGroupDescriptor> series = provider.getGroupDescriptors();
-                    series.forEach(group -> {
-                        ICallStackGroupDescriptor subGroup = group;
-                        do {
-                            Action groupAction = createActionForGroup(subGroup);
-                            new ActionContributionItem(groupAction).fill(menu, -1);
-                            subGroup = subGroup.getNextGroup();
-                        } while (subGroup != null);
-                    });
+//                    Iterable<ICallGraphProvider> callgraphModules = getCallgraphModules();
+//                    Iterator<ICallGraphProvider> iterator = callgraphModules.iterator();
+//                    if (!iterator.hasNext()) {
+//                        return menu;
+//                    }
+//                    ICallGraphProvider provider = iterator.next();
+//                    // Add the all group element
+//                    Action allGroupAction = createActionForGroup(AllGroupDescriptor.getInstance());
+//                    new ActionContributionItem(allGroupAction).fill(menu, -1);
+//                    Collection<ICallStackGroupDescriptor> series = provider.getGroupDescriptors();
+//                    series.forEach(group -> {
+//                        ICallStackGroupDescriptor subGroup = group;
+//                        do {
+//                            Action groupAction = createActionForGroup(subGroup);
+//                            new ActionContributionItem(groupAction).fill(menu, -1);
+//                            subGroup = subGroup.getNextGroup();
+//                        } while (subGroup != null);
+//                    });
                     return menu;
                 }
 
@@ -1266,19 +1271,19 @@ public class FlameGraphView extends TmfView {
         return fAggregateByAction;
     }
 
-    private Action createActionForGroup(ICallStackGroupDescriptor descriptor) {
-        return new Action(descriptor.getName(), IAction.AS_RADIO_BUTTON) {
-            @Override
-            public void run() {
-                ITmfTrace trace = getTrace();
-                if (trace == null) {
-                    return;
-                }
-                fGroupBy = descriptor;
-                buildFlameGraph(trace, null, null);
-            }
-        };
-    }
+//    private Action createActionForGroup(ICallStackGroupDescriptor descriptor) {
+//        return new Action(descriptor.getName(), IAction.AS_RADIO_BUTTON) {
+//            @Override
+//            public void run() {
+//                ITmfTrace trace = getTrace();
+//                if (trace == null) {
+//                    return;
+//                }
+//                fGroupBy = descriptor;
+//                buildFlameGraph(trace, null, null);
+//            }
+//        };
+//    }
 
     // --------------------------------
     // Sorting related methods

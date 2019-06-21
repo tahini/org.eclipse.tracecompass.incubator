@@ -11,7 +11,9 @@ package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.diff;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IDataPalette;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
@@ -26,6 +28,7 @@ import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTr
 public class DifferentialWeightedTreeProvider implements IWeightedTreeProvider<Object, String, DifferentialWeightedTree<Object>> {
 
     private static final String DEFAULT_ELEMENT = "diff";
+    private static final List<MetricType> WEIGHT_TYPES = Collections.singletonList(new MetricType("Weight", DataType.NUMBER)); //$NON-NLS-1$
 
     private final Collection<DifferentialWeightedTree<Object>> fTrees;
 
@@ -66,5 +69,19 @@ public class DifferentialWeightedTreeProvider implements IWeightedTreeProvider<O
     public String toDisplayString(DifferentialWeightedTree<Object> tree) {
         return fOriginalTree.toDisplayString(tree.getOriginalTree());
     }
+
+    @Override
+    public List<MetricType> getAdditionalMetrics() {
+        return WEIGHT_TYPES;
+    }
+
+    @Override
+    public Object getAdditionalMetric(DifferentialWeightedTree<Object> object, int metricIndex) {
+        if (metricIndex == 0) {
+            return object.getDifference();
+        }
+        return StringUtils.EMPTY;
+    }
+
 
 }

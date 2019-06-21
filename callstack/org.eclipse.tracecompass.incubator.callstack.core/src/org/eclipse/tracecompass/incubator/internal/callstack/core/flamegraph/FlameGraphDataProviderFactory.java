@@ -72,7 +72,7 @@ public class FlameGraphDataProviderFactory implements IDataProviderFactory {
                 return null;
             }
             ((IAnalysisModule) module).schedule();
-            return new FlameGraphDataProvider2(trace, module, secondaryId);
+            return new FlameGraphDataProvider2(trace, module, FlameGraphDataProvider2.ID + ':' + secondaryId);
             //return module instanceof ICallGraphProvider ? new FlameGraphDataProvider(trace, (ICallGraphProvider) module, secondaryId) : new FlameGraphDataProvider2(trace, module, secondaryId);
         }
         return null;
