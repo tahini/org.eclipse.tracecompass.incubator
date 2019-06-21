@@ -233,7 +233,7 @@ public class WeightedTree<@NonNull T> implements Comparable<WeightedTree<T>> {
     public int getMaxDepth() {
         int maxDepth = 0;
         for (WeightedTree<T> child : getChildren()) {
-            maxDepth = Math.max(maxDepth, ((AggregatedCallSite) child).getMaxDepth());
+            maxDepth = Math.max(maxDepth, child.getMaxDepth());
         }
         return maxDepth + 1;
     }

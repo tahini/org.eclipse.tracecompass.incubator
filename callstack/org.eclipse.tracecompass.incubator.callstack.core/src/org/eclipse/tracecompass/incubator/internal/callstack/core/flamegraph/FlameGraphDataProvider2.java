@@ -9,7 +9,6 @@
 
 package org.eclipse.tracecompass.incubator.internal.callstack.core.flamegraph;
 
-import java.text.Format;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,7 +16,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -29,28 +27,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.analysis.timing.core.statistics.IStatistics;
-import org.eclipse.tracecompass.common.core.format.SubSecondTimeWithUnitFormat;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLogBuilder;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
-import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
-import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IDataPalette;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.ITree;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider.MetricType;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTree;
-import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
-import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
-import org.eclipse.tracecompass.incubator.callstack.core.callgraph.AllGroupDescriptor;
-import org.eclipse.tracecompass.incubator.callstack.core.callgraph.CallGraph;
-import org.eclipse.tracecompass.incubator.callstack.core.callgraph.CallGraphGroupBy;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.callgraph.AggregatedThreadStatus;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel.EntryType;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.FlameDefaultPalette;
@@ -60,7 +47,6 @@ import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderParameterUtils;
 import org.eclipse.tracecompass.tmf.core.model.CommonStatusMessage;
 import org.eclipse.tracecompass.tmf.core.model.IOutputStyleProvider;
-import org.eclipse.tracecompass.tmf.core.model.OutputElementStyle;
 import org.eclipse.tracecompass.tmf.core.model.OutputStyleModel;
 import org.eclipse.tracecompass.tmf.core.model.filters.SelectionTimeQueryFilter;
 import org.eclipse.tracecompass.tmf.core.model.filters.TimeQueryFilter;
@@ -74,9 +60,6 @@ import org.eclipse.tracecompass.tmf.core.model.timegraph.TimeGraphState;
 import org.eclipse.tracecompass.tmf.core.model.tree.TmfTreeModel;
 import org.eclipse.tracecompass.tmf.core.response.ITmfResponse;
 import org.eclipse.tracecompass.tmf.core.response.TmfModelResponse;
-import org.eclipse.tracecompass.tmf.core.symbols.ISymbolProvider;
-import org.eclipse.tracecompass.tmf.core.symbols.SymbolProviderManager;
-import org.eclipse.tracecompass.tmf.core.timestamp.TmfTimestamp;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.util.Pair;
 
@@ -171,7 +154,7 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
 
     @Override
     public String getId() {
-        return ID + ':' + fAnalysisId;
+        return fAnalysisId;
     }
 
     @Override
@@ -543,53 +526,47 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
 
     @Override
     public @NonNull TmfModelResponse<@NonNull Map<@NonNull String, @NonNull String>> fetchTooltip(@NonNull Map<@NonNull String, @NonNull Object> fetchParameters, @Nullable IProgressMonitor monitor) {
-//        List<Long> times = DataProviderParameterUtils.extractTimeRequested(fetchParameters);
-//        if (times == null || times.size() != 1) {
-//            return new TmfModelResponse<>(Collections.emptyMap(), ITmfResponse.Status.FAILED, "Invalid time requested for tooltip"); //$NON-NLS-1$
-//        }
-//        List<Long> items = DataProviderParameterUtils.extractSelectedItems(fetchParameters);
-//        if (items == null || items.size() != 1) {
-//            return new TmfModelResponse<>(Collections.emptyMap(), ITmfResponse.Status.FAILED, "Invalid selection requested for tooltip"); //$NON-NLS-1$
-//        }
-//        Long time = times.get(0);
-//        Long item = items.get(0);
-//        WeightedTreeEntry callGraphEntry = fCgEntries.get(item);
-//        if (callGraphEntry == null) {
-//            return new TmfModelResponse<>(Collections.emptyMap(), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
-//        }
-//        AggregatedCallSite callSite = findCallSite(callGraphEntry.fCallgraph.getCallingContextTree(callGraphEntry.fElement), time, callGraphEntry.fDepth, 0, 0);
-//        if (callSite != null) {
-//            return new TmfModelResponse<>(getTooltip(callSite), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
-//        }
+        List<Long> times = DataProviderParameterUtils.extractTimeRequested(fetchParameters);
+        if (times == null || times.size() != 1) {
+            return new TmfModelResponse<>(Collections.emptyMap(), ITmfResponse.Status.FAILED, "Invalid time requested for tooltip"); //$NON-NLS-1$
+        }
+        List<Long> items = DataProviderParameterUtils.extractSelectedItems(fetchParameters);
+        if (items == null || items.size() != 1) {
+            return new TmfModelResponse<>(Collections.emptyMap(), ITmfResponse.Status.FAILED, "Invalid selection requested for tooltip"); //$NON-NLS-1$
+        }
+        Long time = times.get(0);
+        Long item = items.get(0);
+        WeightedTreeEntry callGraphEntry = fCgEntries.get(item);
+        if (callGraphEntry == null) {
+            return new TmfModelResponse<>(Collections.emptyMap(), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
+        }
+        WeightedTree<@NonNull N> callSite = findCallSite((Collection<WeightedTree<@NonNull N>>) callGraphEntry.fCallgraph.getTreesFor(callGraphEntry.fElement), time, callGraphEntry.fDepth, 0, 0);
+        if (callSite != null) {
+            return new TmfModelResponse<>(getTooltip(callSite), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
+        }
 
         return new TmfModelResponse<>(Collections.emptyMap(), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
     }
 
-//    private static Map<String, String> getTooltip(AggregatedCallSite callSite) {
-//        ImmutableMap.Builder<String, String> builder = new ImmutableMap.Builder<>();
-//        for (Entry<String, IStatistics<?>> entry : callSite.getStatistics().entrySet()) {
-//            String statType = String.valueOf(entry.getKey());
-//            IStatistics<?> stats = entry.getValue();
-//            if (stats.getMax() != IHostModel.TIME_UNKNOWN) {
-//                builder.put(statType, ""); //$NON-NLS-1$
-//                String lowerType = statType.toLowerCase();
-//                builder.put("\t" + Messages.FlameGraph_Total + ' ' + lowerType, FORMATTER.format(stats.getTotal())); //$NON-NLS-1$
-//                builder.put("\t" + Messages.FlameGraph_Average + ' ' + lowerType, FORMATTER.format(stats.getMean())); //$NON-NLS-1$
-//                builder.put("\t" + Messages.FlameGraph_Max + ' ' + lowerType, FORMATTER.format(stats.getMax())); //$NON-NLS-1$
-//                builder.put("\t" + Messages.FlameGraph_Min + ' ' + lowerType, FORMATTER.format(stats.getMin())); //$NON-NLS-1$
-//                builder.put("\t" + Messages.FlameGraph_Deviation + ' ' + lowerType, FORMATTER.format(stats.getStdDev())); //$NON-NLS-1$
-//
-//            }
-//        }
-//        return builder.build();
-//    }
+    private Map<String, String> getTooltip(WeightedTree<@NonNull N> callSite) {
+        ImmutableMap.Builder<String, String> builder = new ImmutableMap.Builder<>();
+        MetricType metric = fWtProvider.getWeightType();
+        builder.put(metric.getTitle(), String.valueOf(callSite.getWeight()));
+        List<MetricType> additionalMetrics = fWtProvider.getAdditionalMetrics();
+        for (int i = 0; i < additionalMetrics.size(); i++) {
+            MetricType addMetric = additionalMetrics.get(i);
+            // TODO Find a way to get the statistics when available
+            builder.put(addMetric.getTitle(), String.valueOf(fWtProvider.getAdditionalMetric((T) callSite, i)));
+        }
+        return builder.build();
+    }
 
     /** Find the callsite at the time and depth requested */
-    private static @Nullable AggregatedCallSite findCallSite(Collection<AggregatedCallSite> collection, Long time, int depth, long currentTime, int currentDepth) {
-        List<AggregatedCallSite> cct = new ArrayList<>(collection);
-        cct.sort(CCT_COMPARATOR);
+    private @Nullable WeightedTree<@NonNull N> findCallSite(Collection<WeightedTree<N>> collection, Long time, int depth, long currentTime, int currentDepth) {
+        List<WeightedTree<N>> cct = new ArrayList<>(collection);
+        cct.sort(CCT_COMPARATOR2);
         long weight = currentTime;
-        for (AggregatedCallSite callsite : cct) {
+        for (WeightedTree<N> callsite : cct) {
             if (weight + callsite.getWeight() < time) {
                 weight += callsite.getWeight();
                 continue;
@@ -598,7 +575,7 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
             if (currentDepth == depth) {
                 return callsite;
             }
-            return findCallSite(callsite.getCallees(), time, depth, weight, currentDepth + 1);
+            return findCallSite(callsite.getChildren(), time, depth, weight, currentDepth + 1);
         }
         return null;
     }
