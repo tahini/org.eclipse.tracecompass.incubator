@@ -8,9 +8,14 @@
  *******************************************************************************/
 
 /**
- * EASE Scripting module that allows to filter Trace Compass data with specific
- * regexes. Also contains helpers to create filter strings understandable by
- * Trace Compass.
+ * EASE Scripting module (<code>/TraceCompass/Filters</code>) that allows to
+ * filter Trace Compass data with specific regexes. Also contains helpers to
+ * create filter strings understandable by Trace Compass.
+ *
+ * <pre>
+ * Load: <code>/TraceCompass/Filters</code>
+ * Type: Core
+ * </pre>
  */
 @org.eclipse.jdt.annotation.NonNullByDefault
 package org.eclipse.tracecompass.incubator.scripting.core.filters;

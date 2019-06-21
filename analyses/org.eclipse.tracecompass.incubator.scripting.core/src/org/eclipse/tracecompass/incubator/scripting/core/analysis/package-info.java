@@ -8,8 +8,14 @@
  *******************************************************************************/
 
 /**
- * EASE scripting module and classes to create analyses, read a trace and fill
- * common backends, to then be able to visualize the results in common views.
+ * EASE scripting module (<code>/TraceCompass/Analysis</code>) and classes to
+ * create analyses, read a trace and fill common backends, to then be able to
+ * visualize the results in common views.
+ *
+ * <pre>
+ * Load: <code>/TraceCompass/Analysis</code>
+ * Type: Core
+ * </pre>
  */
 @org.eclipse.jdt.annotation.NonNullByDefault
 package org.eclipse.tracecompass.incubator.scripting.core.analysis;

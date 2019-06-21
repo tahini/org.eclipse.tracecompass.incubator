@@ -7,5 +7,14 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
+/**
+ * EASE scripting module (<code>/TraceCompass/View</code>) to open and interact
+ * with views in Trace Compass.
+ *
+ * <pre>
+ * Load: <code>/TraceCompass/View</code>
+ * Type: UI
+ * </pre>
+ */
 @org.eclipse.jdt.annotation.NonNullByDefault
 package org.eclipse.tracecompass.incubator.scripting.ui.views;
