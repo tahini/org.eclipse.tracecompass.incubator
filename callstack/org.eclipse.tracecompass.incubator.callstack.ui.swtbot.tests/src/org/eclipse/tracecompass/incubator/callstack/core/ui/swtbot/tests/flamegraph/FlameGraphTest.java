@@ -14,8 +14,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -104,7 +104,7 @@ public class FlameGraphTest extends AggregationTreeTest {
     }
 
     private void loadFlameGraph() {
-        UIThreadRunnable.syncExec(() -> fFg.buildFlameGraph(Collections.singleton(getCga()), null, null));
+        UIThreadRunnable.syncExec(() -> fFg.buildFlameGraph(Objects.requireNonNull(getCga().getTrace()), null, null));
         fBot.waitUntil(new SWTBotTestCondition() {
             @Override
             public boolean test() throws Exception {
