@@ -114,7 +114,7 @@ public class AggregatedCallSite extends WeightedTree<ICallStackSymbol> {
      *
      * @return The extra children sites
      */
-    public Iterable<AggregatedCallSite> getExtraChildrenSites() {
+    public Collection<AggregatedCallSite> getExtraChildrenSites() {
         return Collections.emptyList();
     }
 
