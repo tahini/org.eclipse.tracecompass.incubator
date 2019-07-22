@@ -95,6 +95,7 @@ public class Activator extends Plugin {
         }
         URL location = FileLocator.find(plugin.getBundle(), new Path(relativePath), null);
         try {
+            System.out.println("Location: " + location + ' ' + FileLocator.toFileURL(location) + ' ' + plugin.getBundle());
             return new Path(FileLocator.toFileURL(location).getPath());
         } catch (IOException e) {
             throw new IllegalStateException();
