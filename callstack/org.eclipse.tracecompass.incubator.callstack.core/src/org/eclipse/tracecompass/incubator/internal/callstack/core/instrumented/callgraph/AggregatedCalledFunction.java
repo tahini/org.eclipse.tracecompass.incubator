@@ -9,6 +9,7 @@
 
 package org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.callgraph;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -302,7 +303,7 @@ public class AggregatedCalledFunction extends AggregatedCallSite {
     }
 
     @Override
-    public Iterable<AggregatedCallSite> getExtraChildrenSites() {
+    public Collection<AggregatedCallSite> getExtraChildrenSites() {
         return ImmutableList.copyOf(fProcessStatuses.values());
     }
 
