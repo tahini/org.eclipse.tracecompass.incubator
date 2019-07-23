@@ -105,6 +105,7 @@ import org.eclipse.tracecompass.tmf.ui.symbols.SymbolProviderConfigDialog;
 import org.eclipse.tracecompass.tmf.ui.symbols.TmfSymbolProviderUpdatedSignal;
 import org.eclipse.tracecompass.tmf.ui.views.SaveImageUtil;
 import org.eclipse.tracecompass.tmf.ui.views.TmfView;
+import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.BaseDataProviderTimeGraphPresentationProvider;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.TimeGraphPresentationProvider;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.TimeGraphViewer;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeEvent;
@@ -222,7 +223,7 @@ public class FlameGraphView extends TmfView {
         super.createPartControl(parent);
         fDisplayWidth = Display.getDefault().getBounds().width;
         fTimeGraphViewer = new TimeGraphViewer(parent, SWT.NONE);
-        fPresentationProvider = new FlameGraphPresentationProvider();
+        fPresentationProvider = new BaseDataProviderTimeGraphPresentationProvider(getProviderId());
         fTimeGraphViewer.setTimeGraphProvider(fPresentationProvider);
         fTimeGraphViewer.setTimeFormat(TimeFormat.NUMBER);
         IEditorPart editor = getSite().getPage().getActiveEditor();
@@ -786,9 +787,9 @@ public class FlameGraphView extends TmfView {
             return new NullTimeEvent(entry, state.getStartTime(), state.getDuration());
         }
         if (label != null) {
-            return new NamedTimeEvent(entry, state.getStartTime(), state.getDuration(), state.getValue(), label, state.getActiveProperties());
+            return new NamedTimeEvent(state, entry, label);
         }
-        return new TimeEvent(entry, state.getStartTime(), state.getDuration(), state.getValue(), state.getActiveProperties());
+        return new TimeEvent(state, entry);
     }
 
     /**

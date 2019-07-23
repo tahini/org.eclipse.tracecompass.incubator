@@ -45,6 +45,8 @@ import org.eclipse.tracecompass.incubator.callstack.core.instrumented.IFlameChar
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.statesystem.CallStackSeries;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.InstrumentedCallStackElement;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel.EntryType;
+import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.FlameDefaultPalette;
+import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.IFlamePalette;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.threadstatus.ThreadEntryModel;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.threadstatus.ThreadStatusDataProvider;
 import org.eclipse.tracecompass.internal.tmf.core.model.AbstractTmfTraceDataProvider;
@@ -55,6 +57,8 @@ import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderManager;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderParameterUtils;
 import org.eclipse.tracecompass.tmf.core.model.CommonStatusMessage;
+import org.eclipse.tracecompass.tmf.core.model.IOutputStyleProvider;
+import org.eclipse.tracecompass.tmf.core.model.OutputStyleModel;
 import org.eclipse.tracecompass.tmf.core.model.filters.SelectionTimeQueryFilter;
 import org.eclipse.tracecompass.tmf.core.model.filters.TimeQueryFilter;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphArrow;
@@ -97,7 +101,7 @@ import com.google.common.collect.Multimap;
  * @author Geneviève Bastien
  */
 @SuppressWarnings("restriction")
-public class FlameChartDataProvider extends AbstractTmfTraceDataProvider implements ITimeGraphDataProvider<FlameChartEntryModel> {
+public class FlameChartDataProvider extends AbstractTmfTraceDataProvider implements ITimeGraphDataProvider<FlameChartEntryModel>, IOutputStyleProvider {
 
     /**
      * Provider ID.
@@ -117,6 +121,7 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
     private final BiMap<Long, CallStackDepth> fIdToCallstack = HashBiMap.create();
     private final BiMap<Long, ICallStackElement> fIdToElement = HashBiMap.create();
     private final long fTraceId = ENTRY_ID.getAndIncrement();
+    private final IFlamePalette fPalette = FlameDefaultPalette.getInstance();
 
     /** Cache for entry metadata */
     private final Map<Long, @NonNull Multimap<@NonNull String, @NonNull Object>> fEntryMetadata = new HashMap<>();
@@ -711,6 +716,7 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
             for (ITimeGraphState state : rowModel.getStates()) {
                 if (tidInfo.intersects(state)) {
                     ITimeGraphState timeGraphState = tidInfo.sanitize(state);
+                    ((TimeGraphState) timeGraphState).setStyle(fPalette.getStyleFor(state));
                     // Use the callstack entry's filter data
                     applyFilterAndAddState(states, timeGraphState, linkedCsEntryId, predicates, monitor);
                 }
@@ -781,7 +787,9 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
         Object value = function.getSymbol();
         Integer pid = function.getProcessId();
         String name = String.valueOf(fTimeEventNames.getUnchecked(new Pair<>(pid, function)));
-        return new TimeGraphState(function.getStart(), function.getLength(), value.hashCode(), name);
+        TimeGraphState tgState = new TimeGraphState(function.getStart(), function.getLength(), value.hashCode(), name);
+        tgState.setStyle(fPalette.getStyleFor(function));
+        return tgState;
     }
 
     /**
@@ -908,6 +916,11 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
     public @NonNull TmfModelResponse<@NonNull Map<@NonNull String, @NonNull String>> fetchTooltip(@NonNull SelectionTimeQueryFilter filter, @Nullable IProgressMonitor monitor) {
         Map<String, Object> parameters = FetchParametersUtils.selectionTimeQueryToMap(filter);
         return fetchTooltip(parameters, monitor);
+    }
+
+    @Override
+    public TmfModelResponse<OutputStyleModel> fetchStyle(Map<String, Object> fetchParameters, @Nullable IProgressMonitor monitor) {
+        return new TmfModelResponse<>(new OutputStyleModel(fPalette.getStyles()), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
     }
 
 }
