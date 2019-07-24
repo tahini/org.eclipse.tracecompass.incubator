@@ -72,6 +72,7 @@ import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDes
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.AllGroupDescriptor;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.ICallGraphProvider;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.flamegraph.FlameGraphDataProvider;
+import org.eclipse.tracecompass.incubator.internal.callstack.core.flamegraph.FlameGraphDataProvider2;
 import org.eclipse.tracecompass.incubator.internal.callstack.ui.Activator;
 import org.eclipse.tracecompass.internal.provisional.tmf.core.model.filters.TmfFilterAppliedSignal;
 import org.eclipse.tracecompass.internal.provisional.tmf.core.model.filters.TraceCompassFilter;
@@ -362,7 +363,7 @@ public class FlameGraphView extends TmfView {
 
     private String getProviderId() {
         String secondaryId = this.getViewSite().getSecondaryId();
-        return (secondaryId == null) ? FlameGraphDataProvider.ID : FlameGraphDataProvider.ID + ':' + secondaryId;
+        return (secondaryId == null) ? FlameGraphDataProvider2.ID : FlameGraphDataProvider2.ID + ':' + secondaryId;
     }
 
     private class BuildRunnable {
