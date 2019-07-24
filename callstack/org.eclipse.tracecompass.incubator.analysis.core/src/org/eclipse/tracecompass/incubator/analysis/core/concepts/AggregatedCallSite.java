@@ -78,23 +78,6 @@ public class AggregatedCallSite extends WeightedTree<ICallStackSymbol> {
     }
 
     /**
-     * Get the maximum depth under and including this aggregated callsite. A
-     * depth of 1 means there is one element under and including this element.
-     *
-     * @return The maximum depth under and including this aggregated call site.
-     *         The minimal value for the depth is 1.
-     */
-    public int getMaxDepth() {
-        int maxDepth = 0;
-        for (WeightedTree<ICallStackSymbol> callsite : getChildren()) {
-            if (callsite instanceof AggregatedCallSite) {
-                maxDepth = Math.max(maxDepth, ((AggregatedCallSite) callsite).getMaxDepth());
-            }
-        }
-        return maxDepth + 1;
-    }
-
-    /**
      * Get additional statistics for this call site
      *
      * @return A map of statistics title with statistics

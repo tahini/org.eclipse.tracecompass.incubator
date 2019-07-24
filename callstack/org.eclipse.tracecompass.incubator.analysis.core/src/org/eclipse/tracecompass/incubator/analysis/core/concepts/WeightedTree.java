@@ -223,6 +223,21 @@ public class WeightedTree<@NonNull T> implements Comparable<WeightedTree<T>> {
         }
     }
 
+    /**
+     * Get the maximum depth under and including this aggregated callsite. A
+     * depth of 1 means there is one element under and including this element.
+     *
+     * @return The maximum depth under and including this aggregated call site.
+     *         The minimal value for the depth is 1.
+     */
+    public int getMaxDepth() {
+        int maxDepth = 0;
+        for (WeightedTree<T> child : getChildren()) {
+            maxDepth = Math.max(maxDepth, ((AggregatedCallSite) child).getMaxDepth());
+        }
+        return maxDepth + 1;
+    }
+
     @Override
     public String toString() {
         return "WeightedTreeNode: " + fObject; //$NON-NLS-1$
