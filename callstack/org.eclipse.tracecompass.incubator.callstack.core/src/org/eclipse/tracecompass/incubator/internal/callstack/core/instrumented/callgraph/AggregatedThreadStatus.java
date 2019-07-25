@@ -10,8 +10,8 @@
 package org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.callgraph;
 
 import org.eclipse.tracecompass.analysis.os.linux.core.model.ProcessStatus;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ProcessStatusInterval;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.symbol.StringSymbol;
 
 /**

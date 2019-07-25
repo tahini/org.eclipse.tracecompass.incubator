@@ -13,7 +13,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 
 import com.google.common.collect.HashMultimap;

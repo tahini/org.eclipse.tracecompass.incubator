@@ -13,8 +13,8 @@ import java.util.Collection;
 import java.util.EnumSet;
 
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ProcessStatusInterval;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 
 /**

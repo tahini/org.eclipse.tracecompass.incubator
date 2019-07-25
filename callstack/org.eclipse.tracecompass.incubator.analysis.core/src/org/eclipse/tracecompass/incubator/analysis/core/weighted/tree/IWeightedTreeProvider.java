@@ -7,13 +7,14 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.analysis.core.concepts;
+package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
 
 /**
@@ -198,5 +199,16 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
      * @return The title of this provider
      */
     String getTitle();
+
+    /**
+     * Weighted tree providers can also provide a palette of styles for the data
+     * represented. By default, this returns <code>null</code>, in which case
+     * the data will use an arbitrary default palette of styles.
+     *
+     * @return The style, or <code>null</code> if no specific style is defined.
+     */
+    default @Nullable IDataPalette getPalette() {
+        return null;
+    }
 
 }

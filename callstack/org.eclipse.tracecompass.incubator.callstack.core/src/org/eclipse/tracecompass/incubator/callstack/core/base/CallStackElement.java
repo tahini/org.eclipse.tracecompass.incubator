@@ -14,7 +14,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.ITree;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.ITree;
 
 /**
  * A basic callstack element implementing the methods of the interface.

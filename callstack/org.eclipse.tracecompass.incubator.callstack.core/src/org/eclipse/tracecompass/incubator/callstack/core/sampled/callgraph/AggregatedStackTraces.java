@@ -9,8 +9,8 @@
 
 package org.eclipse.tracecompass.incubator.callstack.core.sampled.callgraph;
 
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
 
 /**
  * A data structure aggregating data from the callstack for sampled call stack

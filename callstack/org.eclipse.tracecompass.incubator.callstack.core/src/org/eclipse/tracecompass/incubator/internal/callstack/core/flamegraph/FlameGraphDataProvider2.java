@@ -38,12 +38,13 @@ import org.eclipse.tracecompass.common.core.format.SubSecondTimeWithUnitFormat;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLogBuilder;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.ITree;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.IWeightedTreeProvider;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IDataPalette;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.ITree;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTree;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.AllGroupDescriptor;
@@ -53,13 +54,13 @@ import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.c
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel.EntryType;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.FlameDefaultPalette;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.IFlamePalette;
 import org.eclipse.tracecompass.internal.tmf.core.model.AbstractTmfTraceDataProvider;
 import org.eclipse.tracecompass.internal.tmf.core.model.filters.FetchParametersUtils;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderParameterUtils;
 import org.eclipse.tracecompass.tmf.core.model.CommonStatusMessage;
 import org.eclipse.tracecompass.tmf.core.model.IOutputStyleProvider;
+import org.eclipse.tracecompass.tmf.core.model.OutputElementStyle;
 import org.eclipse.tracecompass.tmf.core.model.OutputStyleModel;
 import org.eclipse.tracecompass.tmf.core.model.filters.SelectionTimeQueryFilter;
 import org.eclipse.tracecompass.tmf.core.model.filters.TimeQueryFilter;
@@ -96,8 +97,11 @@ import com.google.common.collect.Multimap;
  *
  * @author Geneviève Bastien
  * @param <N>
+ *            The type of objects represented by each node in the tree
  * @param <E>
+ *            The type of elements used to group the trees
  * @param <T>
+ *            The type of the tree provided
  */
 @SuppressWarnings("restriction")
 public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedTree<@NonNull N>>  extends AbstractTmfTraceDataProvider implements ITimeGraphDataProvider<FlameChartEntryModel>, IOutputStyleProvider {
@@ -122,7 +126,6 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
      * Logger for Abstract Tree Data Providers.
      */
     private static final Logger LOGGER = TraceCompassLog.getLogger(FlameGraphDataProvider2.class);
-    private static final Format FORMATTER = SubSecondTimeWithUnitFormat.getInstance();
 
     private final IWeightedTreeProvider<N, E, T> fWtProvider;
     private final String fAnalysisId;
@@ -132,9 +135,8 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
     private @Nullable Pair<Map<String, Object>, TmfModelResponse<TmfTreeModel<FlameChartEntryModel>>> fCached;
     private final Map<Long, FlameChartEntryModel> fEntries = new HashMap<>();
     private final Map<Long, WeightedTreeEntry> fCgEntries = new HashMap<>();
-    private final Collection<ISymbolProvider> fSymbolProviders;
     private final Map<Long, Long> fEndTimes = new HashMap<>();
-    private final IFlamePalette fPalette = FlameDefaultPalette.getInstance();
+    private final IDataPalette fPalette;
 
     /** An internal class to describe the data for an entry */
     private class WeightedTreeEntry {
@@ -163,9 +165,8 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
         super(trace);
         fWtProvider = module;
         fAnalysisId = secondaryId;
-        Collection<ISymbolProvider> symbolProviders = SymbolProviderManager.getInstance().getSymbolProviders(trace);
-        symbolProviders.forEach(provider -> provider.loadConfiguration(new NullProgressMonitor()));
-        fSymbolProviders = symbolProviders;
+        IDataPalette palette = module.getPalette();
+        fPalette = palette == null ? FlameDefaultPalette.getInstance() : palette;
     }
 
     @Override
@@ -175,14 +176,15 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
 
     @Override
     public @NonNull TmfModelResponse<@NonNull TmfTreeModel<@NonNull FlameChartEntryModel>> fetchTree(@NonNull Map<@NonNull String, @NonNull Object> fetchParameters, @Nullable IProgressMonitor monitor) {
-        // Did we cache this tree with those parameters
-        Pair<Map<String, Object>, TmfModelResponse<TmfTreeModel<FlameChartEntryModel>>> cached = fCached;
-        if (cached != null && cached.getFirst().equals(fetchParameters)) {
-            return cached.getSecond();
-        }
+
         fLock.writeLock().lock();
         try (FlowScopeLog scope = new FlowScopeLogBuilder(LOGGER, Level.FINE, "FlameGraphDataProvider#fetchTree") //$NON-NLS-1$
                 .setCategory(getClass().getSimpleName()).build()) {
+            // Did we cache this tree with those parameters
+            Pair<Map<String, Object>, TmfModelResponse<TmfTreeModel<FlameChartEntryModel>>> cached = fCached;
+            if (cached != null && cached.getFirst().equals(fetchParameters)) {
+                return cached.getSecond();
+            }
 
             fEntries.clear();
             fCgEntries.clear();
@@ -518,7 +520,7 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
 
     private ITimeGraphState createTimeGraphState(@NonNull T weightedTree, long currentWeightTime) {
         @NonNull N value = weightedTree.getObject();
-        TimeGraphState state = new TimeGraphState(currentWeightTime, weightedTree.getWeight(), value.hashCode(), String.valueOf(value));
+        TimeGraphState state = new TimeGraphState(currentWeightTime, weightedTree.getWeight(), value.hashCode(), fWtProvider.toDisplayString(weightedTree));
         state.setStyle(fPalette.getStyleFor(weightedTree));
         return state;
     }

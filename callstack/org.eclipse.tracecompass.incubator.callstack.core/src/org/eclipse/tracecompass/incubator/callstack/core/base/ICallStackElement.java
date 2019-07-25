@@ -12,7 +12,7 @@ package org.eclipse.tracecompass.incubator.callstack.core.base;
 import java.util.Collection;
 
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.ITree;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.ITree;
 
 /**
  * Interface that classes representing a single element in the callstack

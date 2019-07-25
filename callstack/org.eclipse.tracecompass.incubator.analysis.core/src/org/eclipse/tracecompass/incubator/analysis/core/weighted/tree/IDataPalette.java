@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.internal.callstack.core.palette;
+package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree;
 
 import java.util.Map;
 
@@ -16,7 +16,7 @@ import org.eclipse.tracecompass.tmf.core.model.OutputElementStyle;
 /**
  * @author Geneviève Bastien
  */
-public interface IFlamePalette {
+public interface IDataPalette {
 
     /**
      * @param callsite

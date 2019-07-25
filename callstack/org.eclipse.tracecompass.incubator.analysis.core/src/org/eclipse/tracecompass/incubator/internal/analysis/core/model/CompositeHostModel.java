@@ -26,12 +26,12 @@ import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelAnalysisModu
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelThreadInformationProvider;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.ProcessStatus;
 import org.eclipse.tracecompass.common.core.NonNullUtils;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICpuTimeProvider;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ISamplingDataProvider;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.IThreadOnCpuProvider;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ProcessStatusInterval;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.internal.analysis.core.model.ModelListener.IModuleWrapper;
 import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;

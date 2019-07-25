@@ -18,7 +18,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.callstack.core.base.CallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
@@ -77,7 +77,7 @@ public class SampledCallGraphTest {
         }
 
         @Override
-        protected @Nullable Pair<@NonNull ICallStackElement, @NonNull AggregatedCallSite> getProfiledStackTrace(@NonNull ITmfEvent event) {
+        protected @Nullable Pair<@NonNull ICallStackElement, org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite> getProfiledStackTrace(@NonNull ITmfEvent event) {
             // TODO Auto-generated method stub
             return null;
         }

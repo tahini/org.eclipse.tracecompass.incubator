@@ -11,6 +11,8 @@ package org.eclipse.tracecompass.incubator.analysis.core.concepts;
 
 import java.util.Collection;
 
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
+
 /**
  * Interfaces that classes providing sampling data for threads can implement
  *

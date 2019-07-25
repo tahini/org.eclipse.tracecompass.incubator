@@ -38,10 +38,11 @@ import org.eclipse.tracecompass.common.core.format.SubSecondTimeWithUnitFormat;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLogBuilder;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.IWeightedTreeProvider;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IDataPalette;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.AllGroupDescriptor;
@@ -52,7 +53,6 @@ import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.c
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel.EntryType;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.FlameDefaultPalette;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.IFlamePalette;
 import org.eclipse.tracecompass.internal.tmf.core.model.AbstractTmfTraceDataProvider;
 import org.eclipse.tracecompass.internal.tmf.core.model.filters.FetchParametersUtils;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
@@ -129,7 +129,7 @@ public class FlameGraphDataProvider extends AbstractTmfTraceDataProvider impleme
     private final Map<Long, CallGraphEntry> fCgEntries = new HashMap<>();
     private final Collection<ISymbolProvider> fSymbolProviders;
     private final Map<Long, Long> fEndTimes = new HashMap<>();
-    private final IFlamePalette fPalette = FlameDefaultPalette.getInstance();
+    private final IDataPalette fPalette = FlameDefaultPalette.getInstance();
 
     /** An internal class to describe the data for an entry */
     private static class CallGraphEntry {
