@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.analysis.core.concepts;
+package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree;
 
 import java.util.Collection;
 import java.util.HashMap;

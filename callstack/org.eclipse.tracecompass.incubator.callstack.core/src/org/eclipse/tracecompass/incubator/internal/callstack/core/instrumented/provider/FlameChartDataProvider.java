@@ -36,6 +36,7 @@ import org.eclipse.tracecompass.analysis.os.linux.core.model.HostThread;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLogBuilder;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IDataPalette;
 import org.eclipse.tracecompass.incubator.callstack.core.base.EdgeStateValue;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.flamechart.CallStack;
@@ -46,7 +47,6 @@ import org.eclipse.tracecompass.incubator.callstack.core.instrumented.statesyste
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.InstrumentedCallStackElement;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel.EntryType;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.FlameDefaultPalette;
-import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.IFlamePalette;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.threadstatus.ThreadEntryModel;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.threadstatus.ThreadStatusDataProvider;
 import org.eclipse.tracecompass.internal.tmf.core.model.AbstractTmfTraceDataProvider;
@@ -121,7 +121,7 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
     private final BiMap<Long, CallStackDepth> fIdToCallstack = HashBiMap.create();
     private final BiMap<Long, ICallStackElement> fIdToElement = HashBiMap.create();
     private final long fTraceId = ENTRY_ID.getAndIncrement();
-    private final IFlamePalette fPalette = FlameDefaultPalette.getInstance();
+    private final IDataPalette fPalette = FlameDefaultPalette.getInstance();
 
     /** Cache for entry metadata */
     private final Map<Long, @NonNull Multimap<@NonNull String, @NonNull Object>> fEntryMetadata = new HashMap<>();

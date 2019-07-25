@@ -18,8 +18,8 @@ import java.util.Optional;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ISamplingDataProvider;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.callstack.core.base.CallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.base.CallStackGroupDescriptor;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;

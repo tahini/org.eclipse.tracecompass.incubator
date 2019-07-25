@@ -17,9 +17,9 @@ import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.DifferentialWeightedTree;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTreeUtils;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTree;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTreeUtils;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.diff.DifferentialWeightedTree;
 import org.junit.Test;
 
 /**

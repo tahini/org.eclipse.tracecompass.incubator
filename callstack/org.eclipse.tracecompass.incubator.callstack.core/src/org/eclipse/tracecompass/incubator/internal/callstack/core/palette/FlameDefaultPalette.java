@@ -14,8 +14,9 @@ import java.util.Map.Entry;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.ProcessStatus;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IDataPalette;
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.ICalledFunction;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.callgraph.AggregatedThreadStatus;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.threadstatus.ThreadStatusDataProvider;
@@ -34,7 +35,7 @@ import com.google.common.collect.ImmutableMap;
  * @author Geneviève Bastien
  */
 @SuppressWarnings("restriction")
-public final class FlameDefaultPalette implements IFlamePalette {
+public final class FlameDefaultPalette implements IDataPalette {
 
     /**
      * The state index for the multiple state

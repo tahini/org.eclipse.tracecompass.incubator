@@ -17,11 +17,11 @@ import java.util.Map.Entry;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.ProcessStatus;
 import org.eclipse.tracecompass.analysis.timing.core.statistics.IStatistics;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ProcessStatusInterval;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTree;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

@@ -7,9 +7,10 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.analysis.core.concepts;
+package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.diff;
 
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTree;
 
 /**
  * A class that represents a differential weighted tree. The weight is the base
@@ -24,6 +25,7 @@ import org.eclipse.jdt.annotation.NonNull;
 public class DifferentialWeightedTree<@NonNull T> extends WeightedTree<@NonNull T> {
 
     private final double fDifference;
+    private final WeightedTree<@NonNull T> fOriginalTree;
 
     /**
      * Constructor
@@ -35,18 +37,32 @@ public class DifferentialWeightedTree<@NonNull T> extends WeightedTree<@NonNull 
      * @param diffWeight
      *            The differential weight with the base
      */
-    public DifferentialWeightedTree(T object, long initialWeight, double diffWeight) {
+    public DifferentialWeightedTree(WeightedTree<T> originalTree, T object, long initialWeight, double diffWeight) {
         super(object, initialWeight);
         fDifference = diffWeight;
+        fOriginalTree = originalTree;
     }
 
     /**
-     * Get the differential value for this object
+     * Get the differential value for this object. This value is the relative
+     * difference between the value of a first tree and the second tree
+     * compared. A positive value means the object's value is superior than the
+     * previous value. Conversely a negative difference means the second value
+     * is inferior to the initial value. 0 means there was no difference.
+     *
+     * It can also be {@link Double#NaN} if the value did not exist before
      *
      * @return The differential value
      */
     public double getDifference() {
         return fDifference;
+    }
+
+    /**
+     * @return
+     */
+    public WeightedTree<@NonNull T> getOriginalTree() {
+        return fOriginalTree;
     }
 
 }

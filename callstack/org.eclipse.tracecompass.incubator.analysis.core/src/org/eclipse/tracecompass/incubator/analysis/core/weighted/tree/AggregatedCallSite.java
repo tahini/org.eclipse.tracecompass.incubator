@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.analysis.core.concepts;
+package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.tracecompass.analysis.timing.core.statistics.IStatistics;
+import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
 
 import com.google.common.collect.ImmutableMap;
 

@@ -27,9 +27,9 @@ import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.SubSecondT
 import org.eclipse.tracecompass.common.core.NonNullUtils;
 import org.eclipse.tracecompass.common.core.format.DataSizeWithUnitFormat;
 import org.eclipse.tracecompass.common.core.format.DataSpeedWithUnitFormat;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.IWeightedTreeProvider;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.WeightedTree;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.IWeightedTreeProvider.DataType;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTree;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider.DataType;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;

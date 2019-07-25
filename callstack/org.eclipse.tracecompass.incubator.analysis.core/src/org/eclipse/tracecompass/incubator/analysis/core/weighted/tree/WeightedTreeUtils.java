@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.analysis.core.concepts;
+package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,6 +16,7 @@ import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.diff.DifferentialWeightedTree;
 
 /**
  * Utility methods to operate on {@link WeightedTree} objects
@@ -48,7 +49,7 @@ public final class WeightedTreeUtils {
             // Find the equivalent tree in the first collection
             WeightedTree<T> other = findObject(first, object);
             double diffWeight = other == null ? Double.NaN : (double) (base.getWeight() - other.getWeight()) / other.getWeight();
-            DifferentialWeightedTree<@NonNull T> diffTree = new DifferentialWeightedTree<>(object, base.getWeight(), diffWeight);
+            DifferentialWeightedTree<@NonNull T> diffTree = new DifferentialWeightedTree<>(base, object, base.getWeight(), diffWeight);
             diffTrees.add(diffTree);
 
             // Make the differential of the children

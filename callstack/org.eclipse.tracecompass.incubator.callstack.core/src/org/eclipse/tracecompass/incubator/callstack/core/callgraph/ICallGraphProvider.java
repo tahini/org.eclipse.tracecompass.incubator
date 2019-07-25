@@ -12,9 +12,9 @@ package org.eclipse.tracecompass.incubator.callstack.core.callgraph;
 import java.util.Collection;
 
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
-import org.eclipse.tracecompass.incubator.analysis.core.concepts.IWeightedTreeProvider;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AggregatedCallSite;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
 import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
@@ -25,7 +25,7 @@ import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
  *
  * @author Geneviève Bastien
  */
-public interface ICallGraphProvider extends IWeightedTreeProvider<@NonNull ICallStackSymbol, ICallStackElement, @NonNull AggregatedCallSite> {
+public interface ICallGraphProvider extends IWeightedTreeProvider<@NonNull ICallStackSymbol, ICallStackElement, AggregatedCallSite> {
 
     /**
      * Get the group descriptors that describe how the elements are grouped in this
