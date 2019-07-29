@@ -9,12 +9,20 @@
 
 package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree;
 
+import java.text.FieldPosition;
+import java.text.Format;
+import java.text.ParsePosition;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.common.core.format.DecimalUnitFormat;
+import org.eclipse.tracecompass.common.core.format.SubSecondTimeWithUnitFormat;
+import org.eclipse.tracecompass.common.core.format.DataSizeWithUnitFormat;
+import org.eclipse.tracecompass.common.core.format.DataSpeedWithUnitFormat;
 import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
 
 /**
@@ -46,31 +54,70 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
         /**
          * Data represent a decimal number
          */
-        NUMBER,
+        NUMBER(new DecimalUnitFormat()),
         /**
          * Data represent a time in nanoseconds, can be negative
          */
-        NANOSECONDS,
+        NANOSECONDS(SubSecondTimeWithUnitFormat.getInstance()),
         /**
          * Data represent a binary size, in bytes
          */
-        BYTES,
+        BYTES(DataSizeWithUnitFormat.getInstance()),
         /**
          * Data represent a binary speed, in bytes/second
          */
-        BINARY_SPEED,
+        BINARY_SPEED(DataSpeedWithUnitFormat.getInstance()),
         /**
-         * Any other type of data
+         * Any other type of data. Metric that use this data type may use
+         * additional formatter.
          */
-        OTHER
+        OTHER(new Format() {
+
+            /**
+             *
+             */
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public StringBuffer format(@Nullable Object obj, @Nullable StringBuffer toAppendTo, @Nullable FieldPosition pos) {
+                if (toAppendTo == null) {
+                    return new StringBuffer(String.valueOf(obj));
+                }
+                return Objects.requireNonNull(toAppendTo.append(String.valueOf(obj)));
+            }
+
+            @Override
+            public @Nullable Object parseObject(@Nullable String source, @Nullable ParsePosition pos) {
+                return null;
+            }
+
+        });
+
+        private Format fFormatter;
+
+        private DataType(Format formatter) {
+            fFormatter = formatter;
+        }
+
+        /**
+         * Formats an object according to the specified formatter
+         *
+         * @param object
+         *            The object to format
+         * @return The formatted string
+         */
+        public String format(Object object) {
+            return fFormatter.format(object);
+        }
     }
 
     /**
      * This class associate a title to a data type for tree metrics
      */
     public static class MetricType {
-        private String fTitle;
-        private DataType fDataType;
+        private final String fTitle;
+        private final DataType fDataType;
+        private final @Nullable Format fFormatter;
 
         /**
          * Constructor
@@ -79,10 +126,15 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
          *            The title of this metric (a string meant for end users)
          * @param dataType
          *            The type of data this metric represent
+         * @param format
+         *            The formatter for this metric. If <code>null</code>,
+         *            formatting will use the {@link DataType}'s default
+         *            formatter
          */
-        public MetricType(String title, DataType dataType) {
+        public MetricType(String title, DataType dataType, @Nullable Format format) {
             fTitle = title;
             fDataType = dataType;
+            fFormatter = format;
         }
 
         /**
@@ -103,12 +155,26 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
             return fDataType;
         }
 
+        /**
+         * Formats an object for this metric
+         *
+         * @param obj
+         *            The object to format
+         * @return The formatted string
+         */
+        public String format(Object obj) {
+            if (fFormatter != null) {
+                return Objects.requireNonNull(fFormatter.format(obj));
+            }
+            return fDataType.format(obj);
+        }
+
     }
 
     /**
      * The default metric type for the tree's weight
      */
-    MetricType WEIGHT_TYPE = new MetricType("Weight", DataType.NUMBER); //$NON-NLS-1$
+    MetricType WEIGHT_TYPE = new MetricType("Weight", DataType.NUMBER, null); //$NON-NLS-1$
 
     /**
      * Get the trees provided by this analysis. This should return all the trees
@@ -178,6 +244,18 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
      */
     default Object getAdditionalMetric(T object, int metricIndex) {
         throw new UnsupportedOperationException("If the tree provider has metric, it should implement this method, or it should not be called"); //$NON-NLS-1$
+    }
+
+    /**
+     * Return a list of additional data sets' titles. These sets will be available
+     * by calling {@link WeightedTree#getExtraDataTrees(int)} on the trees,
+     * where the index in the list is the parameter that the children set should
+     * match
+     *
+     * @return The title of each child set
+     */
+    default List<String> getExtraDataSets() {
+        return Collections.emptyList();
     }
 
     /**

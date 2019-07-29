@@ -626,11 +626,11 @@ public class FlameGraphView extends TmfView {
         try (FlowScopeLog log = new FlowScopeLogBuilder(LOGGER, Level.FINE, "FlameGraphView:ZoomThreadCreated").setCategory(getViewId()).build()) { //$NON-NLS-1$
             long clampedStartTime = Math.max(0, Math.min(startTime, getEndTime()));
             long clampedEndTime = Math.min(getEndTime(), Math.max(endTime, 0));
+            fDirty.incrementAndGet();
             // Ignore if end time < start time, data has not been set correctly [yet]
             if (clampedEndTime < clampedStartTime) {
                 return;
             }
-            fDirty.incrementAndGet();
             ZoomThread zoomThread = fZoomThread;
             if (zoomThread != null) {
                 zoomThread.cancel();
@@ -651,9 +651,9 @@ public class FlameGraphView extends TmfView {
                  * finishes after.
                  */
                 synchronized (fZoomThreadResultLock) {
-                    zoomThread.start();
                     // zoomThread decrements, so we increment here
                     fDirty.incrementAndGet();
+                    zoomThread.start();
                 }
             }
         } finally {

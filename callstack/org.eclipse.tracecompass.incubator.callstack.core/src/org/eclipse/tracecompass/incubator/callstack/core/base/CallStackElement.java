@@ -150,7 +150,7 @@ public class CallStackElement implements ICallStackElement {
 
     @Override
     public String getObject() {
-        return fName;
+        return getName();
     }
 
     @Override

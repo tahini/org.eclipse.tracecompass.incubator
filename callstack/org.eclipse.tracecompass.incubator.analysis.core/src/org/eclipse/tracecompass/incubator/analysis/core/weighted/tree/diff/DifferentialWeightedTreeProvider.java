@@ -9,11 +9,16 @@
 
 package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.diff;
 
+import java.text.DecimalFormat;
+import java.text.FieldPosition;
+import java.text.Format;
+import java.text.ParsePosition;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IDataPalette;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
@@ -22,19 +27,52 @@ import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTr
 /**
  * @author gbastien
  *
- * @param <N>
- * @param <E>
  */
 public class DifferentialWeightedTreeProvider implements IWeightedTreeProvider<Object, String, DifferentialWeightedTree<Object>> {
 
     private static final String DEFAULT_ELEMENT = "diff";
-    private static final List<MetricType> WEIGHT_TYPES = Collections.singletonList(new MetricType("Weight", DataType.NUMBER)); //$NON-NLS-1$
+    private static final Format FORMAT = new DecimalFormat("#.#"); //$NON-NLS-1$
+
+    private static final Format DIFFERENTIAL_FORMAT = new Format() {
+
+        /**
+         *
+         */
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public @Nullable StringBuffer format(@Nullable Object obj, @Nullable StringBuffer toAppendTo, @Nullable FieldPosition pos) {
+            StringBuffer buf = toAppendTo;
+            if (buf == null) {
+                buf = new StringBuffer();
+            }
+            if (obj instanceof Number) {
+                double num = ((Number) obj).doubleValue();
+                if (num == 0.0) {
+                    return buf.append("No Difference"); //$NON-NLS-1$
+                }
+                return buf.append((num > 0 ? "+" : "")).append(FORMAT.format(num * 100)).append("%"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            }
+            return FORMAT.format(obj, toAppendTo, pos);
+        }
+
+        @Override
+        public @Nullable Object parseObject(@Nullable String source, @Nullable ParsePosition pos) {
+            return null;
+        }
+
+    };
+
+    private static final List<MetricType> WEIGHT_TYPES = Collections.singletonList(new MetricType("Differential", DataType.OTHER, DIFFERENTIAL_FORMAT)); //$NON-NLS-1$
 
     private final Collection<DifferentialWeightedTree<Object>> fTrees;
 
     private final IWeightedTreeProvider<Object, ?, WeightedTree<Object>> fOriginalTree;
 
     /**
+     * Constructor
+     *
+     * @param originalTree
      * @param trees
      */
     public DifferentialWeightedTreeProvider(IWeightedTreeProvider<Object, ?, WeightedTree<Object>> originalTree, Collection<DifferentialWeightedTree<Object>> trees) {
@@ -58,6 +96,11 @@ public class DifferentialWeightedTreeProvider implements IWeightedTreeProvider<O
     @Override
     public String getTitle() {
         return "Differential tree"; //$NON-NLS-1$
+    }
+
+    @Override
+    public @NonNull MetricType getWeightType() {
+        return fOriginalTree.getWeightType();
     }
 
     @Override

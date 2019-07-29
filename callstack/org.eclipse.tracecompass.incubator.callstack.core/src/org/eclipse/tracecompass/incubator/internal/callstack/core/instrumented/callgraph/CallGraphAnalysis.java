@@ -76,11 +76,11 @@ public class CallGraphAnalysis extends TmfAbstractAnalysisModule implements ICal
     private static final String SELF_TIME_TITLE = Objects.requireNonNull(Messages.CallGraphStats_SelfTime);
     private static final String CPU_TIME_TITLE =Objects.requireNonNull(Messages.CallGraphStats_CpuTime);
     private static final String NB_CALLS_TITLE = Objects.requireNonNull(Messages.CallGraphStats_NbCalls);
-    private static final MetricType DURATION_METRIC = new MetricType(Objects.requireNonNull(Messages.CallGraphStats_Duration), DataType.NANOSECONDS);
+    private static final MetricType DURATION_METRIC = new MetricType(Objects.requireNonNull(Messages.CallGraphStats_Duration), DataType.NANOSECONDS, null);
     private static final List<MetricType> METRICS = ImmutableList.of(
-            new MetricType(SELF_TIME_TITLE, DataType.NANOSECONDS),
-            new MetricType(CPU_TIME_TITLE, DataType.NANOSECONDS),
-            new MetricType(NB_CALLS_TITLE, DataType.NUMBER));
+            new MetricType(SELF_TIME_TITLE, DataType.NANOSECONDS, null),
+            new MetricType(CPU_TIME_TITLE, DataType.NANOSECONDS, null),
+            new MetricType(NB_CALLS_TITLE, DataType.NUMBER, null));
 
     // ------------------------------------------------------------------------
     // Attributes
