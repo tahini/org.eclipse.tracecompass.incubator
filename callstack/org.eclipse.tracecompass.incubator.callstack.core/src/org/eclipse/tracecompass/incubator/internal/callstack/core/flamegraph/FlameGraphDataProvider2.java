@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -38,7 +39,9 @@ import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.ITree;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider.MetricType;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTree;
+import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.callgraph.AggregatedThreadStatus;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel;
+import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel.Builder;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel.EntryType;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.FlameDefaultPalette;
 import org.eclipse.tracecompass.internal.tmf.core.model.AbstractTmfTraceDataProvider;
@@ -131,6 +134,16 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
             fElement = element;
             fCallgraph = wtProvider;
             fDepth = depth;
+        }
+    }
+
+    private class WeightedTreeExtraEntry extends WeightedTreeEntry {
+
+        private final int fIndex;
+
+        private WeightedTreeExtraEntry(E element, IWeightedTreeProvider<@NonNull N, E, @NonNull T> wtProvider, int depth, int index) {
+            super(element, wtProvider, depth);
+            fIndex = index;
         }
     }
 
@@ -307,43 +320,44 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
         }
 
         List<FlameChartEntryModel.Builder> childrenEntries = new ArrayList<>();
-        List<FlameChartEntryModel.Builder> extraEntries = new ArrayList<>();
+        List<String> extraDataSets = wtProvider.getExtraDataSets();
+        List<List<FlameChartEntryModel.Builder>> extraEntries = new ArrayList<>(extraDataSets.size());
+        for (int i = 0; i<extraDataSets.size(); i++) {
+            extraEntries.add(new ArrayList<>());
+        }
         Deque<Long> timestampStack = new ArrayDeque<>();
         timestampStack.push(0L);
 
         // Sort children by duration
         rootTrees.sort(CCT_COMPARATOR);
         for (T rootFunction : rootTrees) {
-            createLevelChildren(element, rootFunction, childrenEntries, timestampStack, entry.getId());
+            // Create the level entries and extra children entries
+            createLevelChildren(rootFunction, childrenEntries, timestampStack, entry.getId());
+            for (int i = 0; i<extraDataSets.size(); i++) {
+                List<Builder> list = Objects.requireNonNull(extraEntries.get(i));
+                createExtraChildren(extraDataSets.get(i), i, rootFunction, list, timestampStack, entry.getId());
+            }
             long currentThreadDuration = timestampStack.pop() + rootFunction.getWeight();
             timestampStack.push(currentThreadDuration);
         }
+        builder.addAll(childrenEntries);
         for (FlameChartEntryModel.Builder child : childrenEntries) {
-            builder.add(child);
             fCgEntries.put(child.getId(), new WeightedTreeEntry(element, wtProvider, child.getDepth()));
         }
-        for (FlameChartEntryModel.Builder child : extraEntries) {
-            builder.add(child);
-            fCgEntries.put(child.getId(), new WeightedTreeEntry(element, wtProvider, child.getDepth()));
+        for (int i = 0; i<extraDataSets.size(); i++) {
+            List<Builder> list = extraEntries.get(i);
+            builder.addAll(list);
+            for (FlameChartEntryModel.Builder child : list) {
+                fCgEntries.put(child.getId(), new WeightedTreeExtraEntry(element, wtProvider, child.getDepth(), i));
+            }
         }
+
         entry.setEndTime(timestampStack.pop());
         return;
     }
 
-    /**
-     * Parse the aggregated tree created by the callGraphAnalysis and creates
-     * the event list (functions) for each entry (depth)
-     *
-     * @param element
-     *
-     * @param rootFunction
-     *            The first node of the aggregation tree
-     * @param childrenEntries
-     *            The list of entries for one thread
-     * @param timestampStack
-     *            A stack used to save the functions timeStamps
-     */
-    private void createLevelChildren(E element, @NonNull T rootFunction, List<FlameChartEntryModel.Builder> childrenEntries, Deque<Long> timestampStack, long parentId) {
+
+    private void createLevelChildren(@NonNull T rootFunction, List<FlameChartEntryModel.Builder> childrenEntries, Deque<Long> timestampStack, long parentId) {
         long lastEnd = timestampStack.peek();
         // Prepare all the level entries for this callsite
         for (int i = 0; i <= rootFunction.getMaxDepth() - 1; i++) {
@@ -352,6 +366,39 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
                 childrenEntries.add(entry);
             }
             childrenEntries.get(i).setEndTime(lastEnd + rootFunction.getWeight());
+        }
+    }
+
+    private void createExtraChildren(String datasetTitle, int index, @NonNull T rootFunction, List<FlameChartEntryModel.Builder> extraEntries, Deque<Long> timestampStack, long parentId) {
+        long lastEnd = timestampStack.peek();
+        Iterator<WeightedTree<@NonNull N>> extraChildrenSites = rootFunction.getExtraDataTrees(index).iterator();
+
+        if (!extraChildrenSites.hasNext()) {
+            return;
+        }
+        // Get or add the entry
+        if (extraEntries.isEmpty()) {
+            FlameChartEntryModel.Builder entry = new FlameChartEntryModel.Builder(ENTRY_ID.getAndIncrement(), parentId, datasetTitle, 0, EntryType.KERNEL, -1);
+            extraEntries.add(entry);
+        }
+        FlameChartEntryModel.Builder entry = extraEntries.get(0);
+
+        while (extraChildrenSites.hasNext()) {
+            WeightedTree<@NonNull N> next = extraChildrenSites.next();
+            lastEnd += next.getWeight();
+            entry.setEndTime(lastEnd);
+        }
+    }
+
+    private static class SetDepthId {
+        private final int fSetIndex;
+        private final int fDepth;
+        private final long fId;
+
+        private SetDepthId(int setIndex, int depth, long id) {
+            fSetIndex = setIndex;
+            fDepth = depth;
+            fId = id;
         }
     }
 
@@ -372,12 +419,16 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
             selected = fEntries.keySet();
         }
         List<WeightedTreeEntry> selectedEntries = new ArrayList<>();
-        Multimap<Pair<IWeightedTreeProvider<@NonNull N, E, @NonNull T>, E>, Pair<Integer, Long>> requested = HashMultimap.create();
+        Multimap<Pair<IWeightedTreeProvider<@NonNull N, E, @NonNull T>, E>, SetDepthId> requested = HashMultimap.create();
         for (Long id : selected) {
             WeightedTreeEntry entry = fCgEntries.get(id);
             if (entry != null) {
                 selectedEntries.add(entry);
-                requested.put(new Pair<>(entry.fCallgraph, entry.fElement), new Pair<>(entry.fDepth, id));
+                if (entry instanceof FlameGraphDataProvider2.WeightedTreeExtraEntry) {
+                    requested.put(new Pair<>(entry.fCallgraph, entry.fElement), new SetDepthId(((FlameGraphDataProvider2.WeightedTreeExtraEntry) entry).fIndex, entry.fDepth, id));
+                } else {
+                    requested.put(new Pair<>(entry.fCallgraph, entry.fElement), new SetDepthId(-1, entry.fDepth, id));
+                }
             }
         }
 
@@ -397,7 +448,7 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
             if (subMonitor.isCanceled()) {
                 return new TmfModelResponse<>(null, ITmfResponse.Status.CANCELLED, CommonStatusMessage.TASK_CANCELLED);
             }
-            Collection<Pair<Integer, Long>> depths = requested.get(element);
+            Collection<SetDepthId> depths = requested.get(element);
             rowModels.addAll(getStatesForElement(times, predicates, subMonitor, element.getFirst(), element.getSecond(), depths));
         }
 
@@ -406,7 +457,7 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
 
     private List<ITimeGraphRowModel> getStatesForElement(List<Long> times, Map<Integer, Predicate<Multimap<String, Object>>> predicates, IProgressMonitor monitor,
             IWeightedTreeProvider<@NonNull N, E, @NonNull T> provider, E e,
-            Collection<Pair<Integer, Long>> depths) {
+            Collection<SetDepthId> depths) {
         // Get the cct for this element (first level callsites) and sort them
         Collection<T> cct = provider.getTreesFor(e);
         List<T> sortedCct = new ArrayList<>(cct);
@@ -416,11 +467,18 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
         Map<Integer, Pair<Long, List<ITimeGraphState>>> depthIds = new HashMap<>();
         int maxDepth = 0;
         long maxEndTime = 0;
-        for (Pair<Integer, Long> depth : depths) {
-            maxDepth = Math.max(depth.getFirst(), maxDepth);
-            Long endTime = fEndTimes.get(depth.getSecond());
-            maxEndTime = endTime != null ? Math.max(endTime, maxEndTime) : maxEndTime;
-            depthIds.put(depth.getFirst(), new Pair<>(depth.getSecond(), new ArrayList<>()));
+
+        Multimap<Integer, Pair<Long, List<ITimeGraphState>>> extraSets = HashMultimap.create();
+        for (SetDepthId depth : depths) {
+            if (depth.fSetIndex < 0) {
+                // This is the main set
+                maxDepth = Math.max(depth.fDepth, maxDepth);
+                Long endTime = fEndTimes.get(depth.fId);
+                maxEndTime = endTime != null ? Math.max(endTime, maxEndTime) : maxEndTime;
+                depthIds.put(depth.fDepth, new Pair<>(depth.fId, new ArrayList<>()));
+            } else {
+                extraSets.put(depth.fSetIndex, new Pair<>(depth.fId, new ArrayList<>()));
+            }
         }
 
         long currentWeightTime = 0;
@@ -428,6 +486,30 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
         for (T callsite : sortedCct) {
             if (timeOverlap(currentWeightTime, callsite.getWeight(), times)) {
                 recurseAddCallsite(callsite, currentWeightTime, predicates, times, depthIds, 0, maxDepth, monitor);
+            }
+            // Are there other extra sets to display
+            for (Integer extraSet : extraSets.keySet()) {
+                // TODO support more than one row of additional data
+                Collection<Pair<Long, List<ITimeGraphState>>> collection = extraSets.get(extraSet);
+                Iterator<Pair<Long, List<ITimeGraphState>>> iterator = collection.iterator();
+                if (!iterator.hasNext()) {
+                    continue;
+                }
+                Pair<Long, List<ITimeGraphState>> next = iterator.next();
+                List<WeightedTree<@NonNull N>> extraDataTrees = new ArrayList<>(callsite.getExtraDataTrees(extraSet));
+                extraDataTrees.sort(CCT_COMPARATOR2);
+                // Add the required children
+                long weightTime = currentWeightTime;
+                for (WeightedTree<@NonNull N> child : extraDataTrees) {
+                    if (timeOverlap(weightTime, child.getWeight(), times)) {
+
+                        TimeGraphState timeGraphState = new TimeGraphState(weightTime, child.getWeight(), ((AggregatedThreadStatus) child).getProcessStatus().getStateValue().unboxInt());
+                        timeGraphState.setStyle(fPalette.getStyleFor(child));
+                        applyFilterAndAddState(next.getSecond(), timeGraphState, next.getFirst(), predicates, monitor);
+
+                    }
+                    weightTime += child.getWeight();
+                }
             }
             currentWeightTime += callsite.getWeight();
         }
@@ -439,6 +521,9 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
 
         List<ITimeGraphRowModel> rowModels = new ArrayList<>();
         for (Pair<Long, List<ITimeGraphState>> states : depthIds.values()) {
+            rowModels.add(new TimeGraphRowModel(states.getFirst(), states.getSecond()));
+        }
+        for (Pair<Long, List<ITimeGraphState>> states : extraSets.values()) {
             rowModels.add(new TimeGraphRowModel(states.getFirst(), states.getSecond()));
         }
         return rowModels;
@@ -551,12 +636,12 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
     private Map<String, String> getTooltip(WeightedTree<@NonNull N> callSite) {
         ImmutableMap.Builder<String, String> builder = new ImmutableMap.Builder<>();
         MetricType metric = fWtProvider.getWeightType();
-        builder.put(metric.getTitle(), String.valueOf(callSite.getWeight()));
+        builder.put(metric.getTitle(), metric.format(callSite.getWeight()));
         List<MetricType> additionalMetrics = fWtProvider.getAdditionalMetrics();
         for (int i = 0; i < additionalMetrics.size(); i++) {
             MetricType addMetric = additionalMetrics.get(i);
             // TODO Find a way to get the statistics when available
-            builder.put(addMetric.getTitle(), String.valueOf(fWtProvider.getAdditionalMetric((T) callSite, i)));
+            builder.put(addMetric.getTitle(), addMetric.format(fWtProvider.getAdditionalMetric((T) callSite, i)));
         }
         return builder.build();
     }

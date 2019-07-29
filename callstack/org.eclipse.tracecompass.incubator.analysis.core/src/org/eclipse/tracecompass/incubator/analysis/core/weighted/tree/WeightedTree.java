@@ -10,6 +10,7 @@
 package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -236,6 +237,26 @@ public class WeightedTree<@NonNull T> implements Comparable<WeightedTree<T>> {
             maxDepth = Math.max(maxDepth, child.getMaxDepth());
         }
         return maxDepth + 1;
+    }
+
+    /**
+     * Get other children of this tree that are not its direct descendants. It
+     * can be used for instance to represent extra data, for example kernel
+     * statuses for a callstack.
+     * <p>
+     * A weighted tree provider will advertise those potential children data
+     * that come with this tree, and consumers can then call this method with
+     * the index of this extra type, if the tree has more than one extra data
+     * set
+     *
+     * @param index
+     *            The index of this extra children set, as provided by the
+     *            {@link IWeightedTreeProvider#getExtraDataSets()} method.
+     *
+     * @return The extra children sites
+     */
+    public Collection<WeightedTree<@NonNull T>> getExtraDataTrees(int index) {
+        return Collections.emptyList();
     }
 
     @Override

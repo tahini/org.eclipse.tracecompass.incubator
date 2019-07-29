@@ -47,7 +47,7 @@ import org.eclipse.tracecompass.tmf.core.util.Pair;
  */
 public abstract class ProfilingCallGraphAnalysisModule extends TmfAbstractAnalysisModule implements ICallGraphProvider, IEventCallStackProvider {
 
-    private static final MetricType WEIGHT_METRIC = new MetricType(Objects.requireNonNull(Messages.CallGraphStats_NbCalls), DataType.NUMBER);
+    private static final MetricType WEIGHT_METRIC = new MetricType(Objects.requireNonNull(Messages.CallGraphStats_NbCalls), DataType.NUMBER, null);
 
     private @Nullable ITmfEventRequest fRequest;
     private final Set<ICallStackElement> fRootElements = new HashSet<>();

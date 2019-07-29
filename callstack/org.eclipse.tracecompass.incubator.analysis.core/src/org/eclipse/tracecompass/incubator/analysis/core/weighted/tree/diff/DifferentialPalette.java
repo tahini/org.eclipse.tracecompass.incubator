@@ -29,30 +29,42 @@ import com.google.common.collect.ImmutableMap;
 public class DifferentialPalette implements IDataPalette {
 
     private static @Nullable DifferentialPalette fInstance = null;
-    private static final int NB_COLORS = 10;
+    private static final int NB_COLORS = 5;
+    private static final String NO_DIFF_STYLE = "equal"; //$NON-NLS-1$
     private static final OutputElementStyle WHITE_STYLE;
     private static final String LESS_STYLES = "less"; //$NON-NLS-1$
     private static final String MORE_STYLES = "more"; //$NON-NLS-1$
     private static final Map<String, OutputElementStyle> STYLES;
 
     static {
-        WHITE_STYLE = new OutputElementStyle(null, ImmutableMap.of(ITimeEventStyleStrings.fillColor(), new RGBAColor(255,255,255).toInt()));
+        WHITE_STYLE = new OutputElementStyle(null, ImmutableMap.of(ITimeEventStyleStrings.fillColor(), new RGBAColor(255, 255, 255).toInt()));
 
         // Create the green palette (for less)
-        IPaletteProvider palette = SequentialPaletteProvider.create(DefaultColorPaletteProvider.GREEN, NB_COLORS);
-        int i = 10;
+        IPaletteProvider palette = SequentialPaletteProvider.create(DefaultColorPaletteProvider.GREEN, NB_COLORS + 1);
+        int i = 0;
         ImmutableMap.Builder<String, OutputElementStyle> builder = new ImmutableMap.Builder<>();
+        builder.put(NO_DIFF_STYLE, WHITE_STYLE);
         for (RGBAColor color : palette.get()) {
+            if (i == 0) {
+                // Skip first color (white)
+                i++;
+                continue;
+            }
             builder.put(LESS_STYLES + String.valueOf(i), new OutputElementStyle(null, ImmutableMap.of(ITimeEventStyleStrings.fillColor(), color.toInt())));
-            i--;
+            i++;
         }
 
         // Create the red palette (for more)
-        palette = SequentialPaletteProvider.create(DefaultColorPaletteProvider.RED, NB_COLORS);
-        i = 10;
+        palette = SequentialPaletteProvider.create(DefaultColorPaletteProvider.RED, NB_COLORS + 1);
+        i = 0;
         for (RGBAColor color : palette.get()) {
+            if (i == 0) {
+                // Skip first color (white)
+                i++;
+                continue;
+            }
             builder.put(MORE_STYLES + String.valueOf(i), new OutputElementStyle(null, ImmutableMap.of(ITimeEventStyleStrings.fillColor(), color.toInt())));
-            i--;
+            i++;
         }
         STYLES = builder.build();
     }
@@ -88,7 +100,7 @@ public class DifferentialPalette implements IDataPalette {
             }
             if (difference < 0) {
                 // The heat will be between 1 and NB_COLORS
-                int diffHeat = Math.max(1, Math.min(NB_COLORS, (int) difference * 100));
+                int diffHeat = Math.max(1, Math.min(NB_COLORS, (int) (Math.abs(difference) * 100)));
                 return STYLES.getOrDefault(LESS_STYLES + diffHeat, WHITE_STYLE);
             }
             int diffHeat = Math.max(1, Math.min(NB_COLORS, (int) difference * 100));

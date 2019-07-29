@@ -27,8 +27,6 @@ import org.eclipse.ui.PlatformUI;
  */
 public class CallStackUiScriptingModule {
 
-    private static final String DATA_PROVIDER_PREFIX = FlameGraphDataProvider2.ID + ':';
-
     /**
      * Open a time graph view with a data provider
      *
