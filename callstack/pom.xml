@@ -31,7 +31,7 @@
     <module>org.eclipse.tracecompass.incubator.callstack.core</module>
     <module>org.eclipse.tracecompass.incubator.callstack.core.tests</module>
     <module>org.eclipse.tracecompass.incubator.callstack.ui</module>
-    <module>org.eclipse.tracecompass.incubator.callstack.ui.swtbot.tests</module>
+    <!--module>org.eclipse.tracecompass.incubator.callstack.ui.swtbot.tests</module-->
     <!-- insert modules here -->
   </modules>
 

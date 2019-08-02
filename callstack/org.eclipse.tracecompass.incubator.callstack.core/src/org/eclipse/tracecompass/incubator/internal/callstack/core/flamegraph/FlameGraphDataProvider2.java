@@ -227,6 +227,9 @@ public class FlameGraphDataProvider2<@NonNull N, E, @NonNull T extends WeightedT
         }
     }
 
+    /**
+     * @param fetchParameters
+     */
     private @Nullable IWeightedTreeProvider<N, E, T> getCallGraph(Map<String, Object> fetchParameters, SubMonitor subMonitor) {
         // Get the provider and wait for the analysis completion
         IWeightedTreeProvider<N, E, T> wtProvider = fWtProvider;

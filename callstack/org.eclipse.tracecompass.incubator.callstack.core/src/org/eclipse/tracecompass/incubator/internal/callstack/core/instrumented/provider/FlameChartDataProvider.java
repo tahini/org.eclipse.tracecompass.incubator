@@ -787,7 +787,7 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
         Object value = function.getSymbol();
         Integer pid = function.getProcessId();
         String name = String.valueOf(fTimeEventNames.getUnchecked(new Pair<>(pid, function)));
-        TimeGraphState tgState = new TimeGraphState(function.getStart(), function.getLength(), value.hashCode(), name);
+        TimeGraphState tgState = new TimeGraphState(function.getStart(), function.getLength(), (value.hashCode() % 20) + 100, name);
         tgState.setStyle(fPalette.getStyleFor(function));
         return tgState;
     }

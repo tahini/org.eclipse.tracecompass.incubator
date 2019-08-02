@@ -40,7 +40,7 @@ public final class FlameDefaultPalette implements IDataPalette {
     /**
      * The state index for the multiple state
      */
-    private static final int NUM_COLORS = 360;
+    private static final int NUM_COLORS = 20;
     private static final String KERNEL_STATE_PREFIX = "k"; //$NON-NLS-1$
 
     private static final Map<String, OutputElementStyle> CONTROL_FLOW_STYLES = ThreadStatusDataProvider.getStyleMap();

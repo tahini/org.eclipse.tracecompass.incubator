@@ -99,6 +99,8 @@
       <plugin id="org.eclipse.osgi.compatibility.state" fragment="true"/>
       <plugin id="org.eclipse.osgi.services"/>
       <plugin id="org.eclipse.osgi.util"/>
+      <plugin id="org.eclipse.test.performance"/>
+      <plugin id="org.eclipse.test.performance.win32" fragment="true"/>
       <plugin id="org.eclipse.text"/>
       <plugin id="org.eclipse.tracecompass.analysis.counters.core"/>
       <plugin id="org.eclipse.tracecompass.analysis.graph.core"/>
@@ -108,11 +110,13 @@
       <plugin id="org.eclipse.tracecompass.analysis.timing.core"/>
       <plugin id="org.eclipse.tracecompass.common.core"/>
       <plugin id="org.eclipse.tracecompass.ctf.core"/>
+      <plugin id="org.eclipse.tracecompass.ctf.core.tests"/>
       <plugin id="org.eclipse.tracecompass.ctf.parser"/>
       <plugin id="org.eclipse.tracecompass.datastore.core"/>
       <plugin id="org.eclipse.tracecompass.datastore.core.tests" fragment="true"/>
       <plugin id="org.eclipse.tracecompass.incubator.analysis.core"/>
       <plugin id="org.eclipse.tracecompass.incubator.callstack.core"/>
+      <plugin id="org.eclipse.tracecompass.incubator.callstack.core.tests"/>
       <plugin id="org.eclipse.tracecompass.incubator.filters.core"/>
       <plugin id="org.eclipse.tracecompass.incubator.trace.server.jersey.rest.core"/>
       <plugin id="org.eclipse.tracecompass.incubator.uftrace.core"/>
@@ -122,10 +126,14 @@
       <plugin id="org.eclipse.tracecompass.lttng2.ust.core"/>
       <plugin id="org.eclipse.tracecompass.segmentstore.core"/>
       <plugin id="org.eclipse.tracecompass.statesystem.core"/>
+      <plugin id="org.eclipse.tracecompass.statesystem.core.tests"/>
+      <plugin id="org.eclipse.tracecompass.testtraces.tracecompass-test-traces-ctf"/>
       <plugin id="org.eclipse.tracecompass.tmf.analysis.xml.core"/>
       <plugin id="org.eclipse.tracecompass.tmf.chart.core"/>
       <plugin id="org.eclipse.tracecompass.tmf.core"/>
+      <plugin id="org.eclipse.tracecompass.tmf.core.tests"/>
       <plugin id="org.eclipse.tracecompass.tmf.ctf.core"/>
+      <plugin id="org.eclipse.tracecompass.tmf.ctf.core.tests"/>
       <plugin id="org.eclipse.tracecompass.tmf.filter.parser"/>
       <plugin id="org.eclipse.xtext.xbase.lib"/>
       <plugin id="org.glassfish.hk2.api"/>
