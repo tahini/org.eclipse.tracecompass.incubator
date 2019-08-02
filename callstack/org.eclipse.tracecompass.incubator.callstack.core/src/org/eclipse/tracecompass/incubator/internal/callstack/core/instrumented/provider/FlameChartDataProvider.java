@@ -491,12 +491,12 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
             for (int depth = 0; depth < callStack.getMaxDepth(); depth++) {
                 FlameChartEntryModel flameChartEntry = new FlameChartEntryModel(getEntryId(new CallStackDepth(callStack, depth + 1)), entry.getId(), Collections.singletonList(element.getName()), parentEntry.getStartTime(), parentEntry.getEndTime(),
                         FlameChartEntryModel.EntryType.FUNCTION, depth + 1, hostThread);
-                builder.add(flameChartEntry);
                 if (depth == 0 && callStack.hasKernelStatuses()) {
                     needsKernel = true;
                     builder.add(new FlameChartEntryModel(getKernelEntryId(flameChartEntry.getId()), entry.getId(), Collections.singletonList(String.valueOf(Messages.FlameChartDataProvider_KernelStatusTitle)), parentEntry.getStartTime(), parentEntry.getEndTime(),
                             FlameChartEntryModel.EntryType.KERNEL, -1, hostThread));
                 }
+                builder.add(flameChartEntry);
             }
             return needsKernel;
         }

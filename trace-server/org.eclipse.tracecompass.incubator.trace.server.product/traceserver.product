@@ -58,6 +58,7 @@
       <plugin id="javax.xml.stream"/>
       <plugin id="org.antlr.runtime"/>
       <plugin id="org.aopalliance"/>
+      <plugin id="org.apache.commons.compress"/>
       <plugin id="org.apache.commons.io"/>
       <plugin id="org.apache.commons.lang3"/>
       <plugin id="org.apache.felix.gogo.command"/>
@@ -91,6 +92,8 @@
       <plugin id="org.eclipse.jetty.server"/>
       <plugin id="org.eclipse.jetty.servlet"/>
       <plugin id="org.eclipse.jetty.util"/>
+      <plugin id="org.eclipse.lsp4j"/>
+      <plugin id="org.eclipse.lsp4j.jsonrpc"/>
       <plugin id="org.eclipse.ltk.core.refactoring"/>
       <plugin id="org.eclipse.osgi"/>
       <plugin id="org.eclipse.osgi.compatibility.state" fragment="true"/>
@@ -101,15 +104,22 @@
       <plugin id="org.eclipse.tracecompass.analysis.graph.core"/>
       <plugin id="org.eclipse.tracecompass.analysis.lami.core"/>
       <plugin id="org.eclipse.tracecompass.analysis.os.linux.core"/>
+      <plugin id="org.eclipse.tracecompass.analysis.profiling.core"/>
       <plugin id="org.eclipse.tracecompass.analysis.timing.core"/>
       <plugin id="org.eclipse.tracecompass.common.core"/>
       <plugin id="org.eclipse.tracecompass.ctf.core"/>
       <plugin id="org.eclipse.tracecompass.ctf.parser"/>
       <plugin id="org.eclipse.tracecompass.datastore.core"/>
+      <plugin id="org.eclipse.tracecompass.datastore.core.tests" fragment="true"/>
+      <plugin id="org.eclipse.tracecompass.incubator.analysis.core"/>
+      <plugin id="org.eclipse.tracecompass.incubator.callstack.core"/>
+      <plugin id="org.eclipse.tracecompass.incubator.filters.core"/>
       <plugin id="org.eclipse.tracecompass.incubator.trace.server.jersey.rest.core"/>
+      <plugin id="org.eclipse.tracecompass.incubator.uftrace.core"/>
       <plugin id="org.eclipse.tracecompass.lttng2.common.core"/>
       <plugin id="org.eclipse.tracecompass.lttng2.control.core"/>
       <plugin id="org.eclipse.tracecompass.lttng2.kernel.core"/>
+      <plugin id="org.eclipse.tracecompass.lttng2.ust.core"/>
       <plugin id="org.eclipse.tracecompass.segmentstore.core"/>
       <plugin id="org.eclipse.tracecompass.statesystem.core"/>
       <plugin id="org.eclipse.tracecompass.tmf.analysis.xml.core"/>
@@ -117,6 +127,7 @@
       <plugin id="org.eclipse.tracecompass.tmf.core"/>
       <plugin id="org.eclipse.tracecompass.tmf.ctf.core"/>
       <plugin id="org.eclipse.tracecompass.tmf.filter.parser"/>
+      <plugin id="org.eclipse.xtext.xbase.lib"/>
       <plugin id="org.glassfish.hk2.api"/>
       <plugin id="org.glassfish.hk2.locator"/>
       <plugin id="org.glassfish.hk2.osgi-resource-locator"/>
