@@ -40,6 +40,7 @@ import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.p
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel.EntryType;
 import org.eclipse.tracecompass.incubator.internal.callstack.ui.Activator;
 import org.eclipse.tracecompass.internal.analysis.os.linux.ui.actions.FollowThreadAction;
+import org.eclipse.tracecompass.incubator.internal.callstack.ui.FlameViewPresentationProvider;
 import org.eclipse.tracecompass.internal.tmf.core.model.filters.FetchParametersUtils;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderManager;
 import org.eclipse.tracecompass.tmf.core.model.filters.SelectionTimeQueryFilter;
@@ -241,7 +242,7 @@ public class FlameChartView extends BaseDataProviderTimeGraphView {
      * Default constructor
      */
     public FlameChartView() {
-        this(ID, new FlameChartPresentationProvider(), FlameChartDataProvider.ID);
+        this(ID, new FlameViewPresentationProvider(FlameChartDataProvider.ID), FlameChartDataProvider.ID);
     }
 
     /**
@@ -324,6 +325,8 @@ public class FlameChartView extends BaseDataProviderTimeGraphView {
                 traceSelected(new TmfTraceSelectedSignal(this, trace));
             }
         }
+
+        ((FlameViewPresentationProvider) getPresentationProvider()).setProviderId(getProviderId());
     }
 
     /**
@@ -355,19 +358,6 @@ public class FlameChartView extends BaseDataProviderTimeGraphView {
     // ------------------------------------------------------------------------
     // Internal
     // ------------------------------------------------------------------------
-
-    /**
-     * @since 2.1
-     * @deprecated no need to link back and forth between the
-     *             {@link FlameChartPresentationProvider} and {@link FlameChartView}
-     *             anymore
-     */
-    @Deprecated
-    @Override
-    protected FlameChartPresentationProvider getPresentationProvider() {
-        /* Set to this type by the constructor */
-        return (FlameChartPresentationProvider) super.getPresentationProvider();
-    }
 
     /**
      * @since 2.0
@@ -417,11 +407,10 @@ public class FlameChartView extends BaseDataProviderTimeGraphView {
             return new NullTimeEvent(entry, state.getStartTime(), state.getDuration());
         }
         String label = state.getLabel();
-        int value = state.getValue();
         if (label != null) {
-            return new NamedTimeEvent(entry, state.getStartTime(), state.getDuration(), value, label, state.getActiveProperties());
+            return new NamedTimeEvent(state, entry, label);
         }
-        return new TimeEvent(entry, state.getStartTime(), state.getDuration(), value, state.getActiveProperties());
+        return new TimeEvent(state, entry);
     }
 
     /**

@@ -23,6 +23,7 @@ import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.tracecompass.incubator.internal.opentracing.core.analysis.spanlife.SpanLifeEntryModel;
 import org.eclipse.tracecompass.internal.tmf.core.model.filters.FetchParametersUtils;
+import org.eclipse.tracecompass.tmf.core.model.ITimeEventStyleStrings;
 import org.eclipse.tracecompass.tmf.core.model.filters.SelectionTimeQueryFilter;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphDataProvider;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.TimeGraphEntryModel;
@@ -32,7 +33,6 @@ import org.eclipse.tracecompass.tmf.ui.views.timegraph.BaseDataProviderTimeGraph
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.StateItem;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.TimeGraphPresentationProvider;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeEvent;
-import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeEventStyleStrings;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeGraphEntry;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.TimeEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.TimeGraphEntry;

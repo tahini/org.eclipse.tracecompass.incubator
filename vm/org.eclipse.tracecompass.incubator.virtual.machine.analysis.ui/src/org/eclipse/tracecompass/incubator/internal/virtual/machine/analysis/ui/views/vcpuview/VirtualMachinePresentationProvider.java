@@ -21,11 +21,11 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.data.VcpuStateValues;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.core.virtual.resources.StateValues;
 import org.eclipse.tracecompass.incubator.internal.virtual.machine.analysis.ui.views.vcpuview.VirtualMachineCommon.Type;
+import org.eclipse.tracecompass.tmf.core.model.ITimeEventStyleStrings;
 import org.eclipse.tracecompass.tmf.core.presentation.RGBAColor;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.StateItem;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.TimeGraphPresentationProvider;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeEvent;
-import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeEventStyleStrings;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.NullTimeEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.TimeEvent;
 

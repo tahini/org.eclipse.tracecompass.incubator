@@ -278,4 +278,15 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
      */
     String getTitle();
 
+    /**
+     * Weighted tree providers can also provide a palette of styles for the data
+     * represented. By default, this returns <code>null</code>, in which case
+     * the data will use an arbitrary default palette of styles.
+     *
+     * @return The style, or <code>null</code> if no specific style is defined.
+     */
+    default @Nullable IDataPalette getPalette() {
+        return null;
+    }
+
 }

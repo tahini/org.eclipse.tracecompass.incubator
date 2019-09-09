@@ -25,7 +25,7 @@
          point="org.eclipse.tracecompass.tmf.core.dataprovider">
       <dataProviderFactory
             class="org.eclipse.tracecompass.incubator.internal.callstack.core.flamegraph.FlameGraphDataProviderFactory"
-            id="org.eclipse.tracecompass.incubator.internal.callstack.core.flamegraph.provider2">
+            id="org.eclipse.tracecompass.incubator.internal.callstack.core.flamegraph.provider">
       </dataProviderFactory>
       <dataProviderFactory
             class="org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartDataProviderFactory"

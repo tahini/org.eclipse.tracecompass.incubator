@@ -16,9 +16,11 @@ import java.text.ParsePosition;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IDataPalette;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTree;
 
@@ -71,9 +73,13 @@ public class DifferentialWeightedTreeProvider implements IWeightedTreeProvider<O
      * Constructor
      *
      * @param originalTree
+<<<<<<< HEAD
      *            The original tree provider, used to get information for texts and metrics.
      * @param trees
      *            The differential tree
+=======
+     * @param trees
+>>>>>>> 17c87cab... the rest
      */
     public DifferentialWeightedTreeProvider(IWeightedTreeProvider<Object, ?, WeightedTree<Object>> originalTree, Collection<DifferentialWeightedTree<Object>> trees) {
         fTrees = trees;
@@ -101,6 +107,11 @@ public class DifferentialWeightedTreeProvider implements IWeightedTreeProvider<O
     @Override
     public @NonNull MetricType getWeightType() {
         return fOriginalTree.getWeightType();
+    }
+
+    @Override
+    public @Nullable IDataPalette getPalette() {
+        return DifferentialPalette.getInstance();
     }
 
     @Override

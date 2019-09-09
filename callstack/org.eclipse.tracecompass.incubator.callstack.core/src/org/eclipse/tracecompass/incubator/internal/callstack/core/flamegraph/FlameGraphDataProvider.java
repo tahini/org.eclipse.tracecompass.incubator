@@ -41,6 +41,7 @@ import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLo
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.AggregatedCallSite;
 import org.eclipse.tracecompass.incubator.analysis.core.concepts.ICallStackSymbol;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IDataPalette;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackElement;
 import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
@@ -51,11 +52,14 @@ import org.eclipse.tracecompass.incubator.callstack.core.callgraph.ICallGraphPro
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.callgraph.AggregatedThreadStatus;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel.EntryType;
+import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.FlameDefaultPalette;
 import org.eclipse.tracecompass.internal.tmf.core.model.AbstractTmfTraceDataProvider;
 import org.eclipse.tracecompass.internal.tmf.core.model.filters.FetchParametersUtils;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderParameterUtils;
 import org.eclipse.tracecompass.tmf.core.model.CommonStatusMessage;
+import org.eclipse.tracecompass.tmf.core.model.IOutputStyleProvider;
+import org.eclipse.tracecompass.tmf.core.model.OutputStyleModel;
 import org.eclipse.tracecompass.tmf.core.model.filters.SelectionTimeQueryFilter;
 import org.eclipse.tracecompass.tmf.core.model.filters.TimeQueryFilter;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphArrow;
@@ -92,7 +96,7 @@ import com.google.common.collect.Multimap;
  * @author Geneviève Bastien
  */
 @SuppressWarnings("restriction")
-public class FlameGraphDataProvider extends AbstractTmfTraceDataProvider implements ITimeGraphDataProvider<FlameChartEntryModel> {
+public class FlameGraphDataProvider extends AbstractTmfTraceDataProvider implements ITimeGraphDataProvider<FlameChartEntryModel>, IOutputStyleProvider {
 
     /**
      * Provider ID.
@@ -125,6 +129,7 @@ public class FlameGraphDataProvider extends AbstractTmfTraceDataProvider impleme
     private final Map<Long, CallGraphEntry> fCgEntries = new HashMap<>();
     private final Collection<ISymbolProvider> fSymbolProviders;
     private final Map<Long, Long> fEndTimes = new HashMap<>();
+    private final IDataPalette fPalette = FlameDefaultPalette.getInstance();
 
     /** An internal class to describe the data for an entry */
     private static class CallGraphEntry {
@@ -467,7 +472,8 @@ public class FlameGraphDataProvider extends AbstractTmfTraceDataProvider impleme
                     long weightTime = currentWeightTime;
                     for (AggregatedCallSite child : extraChildrenSites) {
                         if (timeOverlap(weightTime, child.getWeight(), times)) {
-                            ITimeGraphState timeGraphState = new TimeGraphState(weightTime, child.getWeight(), ((AggregatedThreadStatus) child).getProcessStatus().getStateValue().unboxInt());
+                            TimeGraphState timeGraphState = new TimeGraphState(weightTime, child.getWeight(), ((AggregatedThreadStatus) child).getProcessStatus().getStateValue().unboxInt());
+                            timeGraphState.setStyle(fPalette.getStyleFor(child));
                             applyFilterAndAddState(kernelData.getSecond(), timeGraphState, kernelData.getFirst(), predicates, monitor);
 
                         }
@@ -550,7 +556,9 @@ public class FlameGraphDataProvider extends AbstractTmfTraceDataProvider impleme
     private ITimeGraphState createTimeGraphState(AggregatedCallSite callsite, long currentWeightTime) {
         ICallStackSymbol value = callsite.getObject();
         String resolved = value.resolve(fSymbolProviders);
-        return new TimeGraphState(currentWeightTime, callsite.getWeight(), value.hashCode(), resolved);
+        TimeGraphState state = new TimeGraphState(currentWeightTime, callsite.getWeight(), value.hashCode(), resolved);
+        state.setStyle(fPalette.getStyleFor(callsite));
+        return state;
     }
 
     /** Verify if one of the requested time overlaps this callsite */
@@ -670,6 +678,11 @@ public class FlameGraphDataProvider extends AbstractTmfTraceDataProvider impleme
     public @NonNull TmfModelResponse<@NonNull Map<@NonNull String, @NonNull String>> fetchTooltip(@NonNull SelectionTimeQueryFilter filter, @Nullable IProgressMonitor monitor) {
         Map<String, Object> parameters = FetchParametersUtils.selectionTimeQueryToMap(filter);
         return fetchTooltip(parameters, monitor);
+    }
+
+    @Override
+    public TmfModelResponse<OutputStyleModel> fetchStyle(Map<String, Object> fetchParameters, @Nullable IProgressMonitor monitor) {
+        return new TmfModelResponse<>(new OutputStyleModel(fPalette.getStyles()), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
     }
 
 }

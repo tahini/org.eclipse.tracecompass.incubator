@@ -101,5 +101,4 @@ public class FlameGraphDataProviderFactory implements IDataProviderFactory {
     public static void registerDataProviderWithId(String id, FlameGraphDataProvider dataProvider) {
         INSTANCES.put(id, dataProvider);
     }
-
 }
