@@ -34,6 +34,14 @@ public class Activator extends AbstractUIPlugin {
     public void start(@Nullable BundleContext context) throws Exception {
         super.start(context);
         plugin = this;
+
+        // Register CLI parser only if the class exists
+        try {
+            Class.forName("org.eclipse.tracecompass.tracing.rcp.ui.cli.CliParserExtension"); //$NON-NLS-1$
+        } catch (ClassNotFoundException e) {
+            // RCP not loaded
+            return;
+        }
     }
 
     @Override
