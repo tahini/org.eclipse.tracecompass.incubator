@@ -212,7 +212,7 @@ public class CallStack {
         }
         try {
             ITmfStateInterval interval = fStateSystem.querySingleState(time, fQuarks.get(depth - 1));
-            while ((interval.getStateValue().isNull() || interval.getEndTime() < start) && interval.getEndTime() + 1 < endTime) {
+            while ((interval.getStateValue().isNull() || interval.getEndTime() < start) && interval.getEndTime() + 1 <= endTime) {
                 interval = fStateSystem.querySingleState(interval.getEndTime() + 1, fQuarks.get(depth - 1));
             }
             if (!interval.getStateValue().isNull() && interval.getStartTime() < end) {
