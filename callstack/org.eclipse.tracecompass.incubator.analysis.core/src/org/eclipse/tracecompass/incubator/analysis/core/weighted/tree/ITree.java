@@ -17,9 +17,6 @@ import org.eclipse.jdt.annotation.Nullable;
  * A basic interface for a tree structure, ie hierarchical data where each node
  * can be linked to a specific object.
  *
- * This interface is meant to be used for consuming the tree structure, the
- * implementations can add their own tree building methods.
- *
  * @author Geneviève Bastien
  */
 public interface ITree {
@@ -37,8 +34,7 @@ public interface ITree {
      *
      * @return The caller of this callsite
      */
-    @Nullable
-    ITree getParent();
+    @Nullable ITree getParent();
 
     /**
      * Get the callees of this callsite, ie the functions called by this one
@@ -46,5 +42,38 @@ public interface ITree {
      * @return A collection of callees' callsites
      */
     Collection<ITree> getChildren();
+
+    void addChild(ITree child);
+
+    void setParent(@Nullable ITree parent);
+
+    /**
+     * Create a new element that is a copy of the current object. This copy
+     * should copy only the object's data, not the hierarchy as callers of this
+     * method may want to create a new hierarchy for those elements.
+     *
+     * @return a new element, copy of the element in parameter
+     */
+    ITree copyElement();
+
+    /**
+     * Get the depth of this object, recursively with its children. An object
+     * with no children would have a depth of 1.
+     *
+     * @param tree
+     *            The object for which to get the depth
+     * @return The depth
+     */
+    static int getDepth(ITree tree) {
+        Collection<ITree> children = tree.getChildren();
+        if (children.isEmpty()) {
+            return 1;
+        }
+        int depth = 1;
+        for (ITree child : children) {
+            depth = Math.max(depth, getDepth(child) + 1);
+        }
+        return depth;
+    }
 
 }
