@@ -155,7 +155,7 @@ public class FlameGraphTest extends AggregationTreeTest {
         CallGraphAnalysisStub cga = Objects.requireNonNull(getCga());
         ITmfTrace trace = getTrace();
         fFg.traceSelected(new TmfTraceSelectedSignal(this, trace));
-        FlameGraphDataProvider dp = new FlameGraphDataProvider(trace, cga, SECONDARY_ID);
+        FlameGraphDataProvider<?, ?, ?> dp = new FlameGraphDataProvider<>(trace, cga, FlameGraphDataProvider.ID + ':' + SECONDARY_ID);
         FlameGraphDataProviderFactory.registerDataProviderWithId(SECONDARY_ID, dp);
         UIThreadRunnable.syncExec(() -> fFg.buildFlameGraph(trace, null, null));
         fBot.waitUntil(new SWTBotTestCondition() {

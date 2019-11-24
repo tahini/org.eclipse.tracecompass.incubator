@@ -68,8 +68,8 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.tracecompass.common.core.NonNullUtils;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLogBuilder;
-import org.eclipse.tracecompass.incubator.callstack.core.base.ICallStackGroupDescriptor;
-import org.eclipse.tracecompass.incubator.callstack.core.callgraph.AllGroupDescriptor;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AllGroupDescriptor;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeGroupDescriptor;
 import org.eclipse.tracecompass.incubator.callstack.core.callgraph.ICallGraphProvider;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.flamegraph.FlameGraphDataProvider;
 import org.eclipse.tracecompass.incubator.internal.callstack.ui.Activator;
@@ -174,7 +174,7 @@ public class FlameGraphView extends TmfView {
     // The action to import a binary file mapping */
     private Action fConfigureSymbolsAction;
 
-    private @Nullable ICallStackGroupDescriptor fGroupBy = null;
+    private @Nullable IWeightedTreeGroupDescriptor fGroupBy = null;
     /**
      * A plain old semaphore is used since different threads will be competing
      * for the same resource.
@@ -402,7 +402,7 @@ public class FlameGraphView extends TmfView {
         while (!complete && !monitor.isCanceled()) {
             Map<String, Object> parameters = new HashMap<>(additionalParams);
             parameters.put(DataProviderParameterUtils.REQUESTED_TIME_KEY, ImmutableList.of(0, Long.MAX_VALUE));
-            ICallStackGroupDescriptor groupBy = fGroupBy;
+            IWeightedTreeGroupDescriptor groupBy = fGroupBy;
             if (groupBy != null) {
                 parameters.put(FlameGraphDataProvider.GROUP_BY_KEY, groupBy.getName());
             }
@@ -1293,9 +1293,9 @@ public class FlameGraphView extends TmfView {
                     // Add the all group element
                     Action allGroupAction = createActionForGroup(AllGroupDescriptor.getInstance());
                     new ActionContributionItem(allGroupAction).fill(menu, -1);
-                    Collection<ICallStackGroupDescriptor> series = provider.getGroupDescriptors();
+                    Collection<IWeightedTreeGroupDescriptor> series = provider.getGroupDescriptors();
                     series.forEach(group -> {
-                        ICallStackGroupDescriptor subGroup = group;
+                        IWeightedTreeGroupDescriptor subGroup = group;
                         do {
                             Action groupAction = createActionForGroup(subGroup);
                             new ActionContributionItem(groupAction).fill(menu, -1);
@@ -1314,7 +1314,7 @@ public class FlameGraphView extends TmfView {
         return fAggregateByAction;
     }
 
-    private Action createActionForGroup(ICallStackGroupDescriptor descriptor) {
+    private Action createActionForGroup(IWeightedTreeGroupDescriptor descriptor) {
         return new Action(descriptor.getName(), IAction.AS_RADIO_BUTTON) {
             @Override
             public void run() {
