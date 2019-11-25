@@ -24,6 +24,7 @@ import org.eclipse.tracecompass.common.core.format.DataSizeWithUnitFormat;
 import org.eclipse.tracecompass.common.core.format.DataSpeedWithUnitFormat;
 import org.eclipse.tracecompass.common.core.format.DecimalUnitFormat;
 import org.eclipse.tracecompass.common.core.format.SubSecondTimeWithUnitFormat;
+import org.eclipse.tracecompass.incubator.internal.analysis.core.weighted.tree.DefaultDataPalette;
 import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
 
 /**
@@ -373,6 +374,17 @@ public interface IWeightedTreeProvider<@NonNull N, E, @NonNull T extends Weighte
         }
 
         return DepthGroupDescriptor.createChainForDepth(lvl - 1);
+    }
+
+    /**
+     * Weighted tree providers can also provide a palette of styles for the data
+     * represented. By default, this returns <code>null</code>, in which case
+     * the data will use an arbitrary default palette of styles.
+     *
+     * @return The style, or <code>null</code> if no specific style is defined.
+     */
+    default IDataPalette getPalette() {
+        return DefaultDataPalette.getInstance();
     }
 
 }
