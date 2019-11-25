@@ -45,6 +45,7 @@ import org.eclipse.tracecompass.incubator.callstack.core.instrumented.IFlameChar
 import org.eclipse.tracecompass.incubator.callstack.core.instrumented.statesystem.CallStackSeries;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.InstrumentedCallStackElement;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel.EntryType;
+import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.FlameDefaultPalette;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.threadstatus.ThreadEntryModel;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.threadstatus.ThreadStatusDataProvider;
 import org.eclipse.tracecompass.internal.tmf.core.model.AbstractTmfTraceDataProvider;
@@ -55,6 +56,9 @@ import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderManager;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderParameterUtils;
 import org.eclipse.tracecompass.tmf.core.model.CommonStatusMessage;
+import org.eclipse.tracecompass.tmf.core.model.IOutputStyleProvider;
+import org.eclipse.tracecompass.tmf.core.model.OutputElementStyle;
+import org.eclipse.tracecompass.tmf.core.model.OutputStyleModel;
 import org.eclipse.tracecompass.tmf.core.model.filters.SelectionTimeQueryFilter;
 import org.eclipse.tracecompass.tmf.core.model.filters.TimeQueryFilter;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphArrow;
@@ -97,7 +101,7 @@ import com.google.common.collect.Multimap;
  * @author Geneviève Bastien
  */
 @SuppressWarnings("restriction")
-public class FlameChartDataProvider extends AbstractTmfTraceDataProvider implements ITimeGraphDataProvider<FlameChartEntryModel> {
+public class FlameChartDataProvider extends AbstractTmfTraceDataProvider implements ITimeGraphDataProvider<FlameChartEntryModel>, IOutputStyleProvider {
 
     /**
      * Provider ID.
@@ -147,11 +151,7 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
             if (state.getStartTime() < fStart || state.getStartTime() + state.getDuration() > fEnd) {
                 long start = Math.max(state.getStartTime(), fStart);
                 long end = Math.min(state.getStartTime() + state.getDuration(), fEnd);
-                String label = state.getLabel();
-                if (label != null) {
-                    return new TimeGraphState(start, end - start, state.getValue(), label);
-                }
-                return new TimeGraphState(start, end - start, state.getValue());
+                return new TimeGraphState(start, end - start, state.getLabel(), state.getStyle());
             }
             return state;
         }
@@ -778,10 +778,9 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
             return new TimeGraphState(state.getStart(), state.getLength(), Integer.MIN_VALUE);
         }
         ICalledFunction function = (ICalledFunction) state;
-        Object value = function.getSymbol();
         Integer pid = function.getProcessId();
         String name = String.valueOf(fTimeEventNames.getUnchecked(new Pair<>(pid, function)));
-        return new TimeGraphState(function.getStart(), function.getLength(), value.hashCode(), name);
+        return new TimeGraphState(function.getStart(), function.getLength(), name, FlameDefaultPalette.getInstance().getStyleFor(state));
     }
 
     /**
@@ -908,6 +907,29 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
     public @NonNull TmfModelResponse<@NonNull Map<@NonNull String, @NonNull String>> fetchTooltip(@NonNull SelectionTimeQueryFilter filter, @Nullable IProgressMonitor monitor) {
         Map<String, Object> parameters = FetchParametersUtils.selectionTimeQueryToMap(filter);
         return fetchTooltip(parameters, monitor);
+    }
+
+    @Override
+    public TmfModelResponse<OutputStyleModel> fetchStyle(Map<String, Object> fetchParameters, @Nullable IProgressMonitor monitor) {
+        // Get the styles from the flame palette
+        Map<String, OutputElementStyle> styles = FlameDefaultPalette.getInstance().getStyles();
+        // Get the thread status styles as well
+        Set<ITmfTrace> tracesForHost = TmfTraceManager.getInstance().getTracesForHost(getTrace().getHostId());
+        for (ITmfTrace trace : tracesForHost) {
+            ThreadStatusDataProvider dataProvider = DataProviderManager.getInstance().getDataProvider(trace, ThreadStatusDataProvider.ID, ThreadStatusDataProvider.class);
+            if (dataProvider != null) {
+                // Get the tree for the trace's current range
+                TmfModelResponse<OutputStyleModel> threadStyles = dataProvider.fetchStyle(fetchParameters, monitor);
+                OutputStyleModel model = threadStyles.getModel();
+                if (model != null) {
+                    ImmutableMap.Builder<String, OutputElementStyle> builder = ImmutableMap.builder();
+                    builder.putAll(styles);
+                    builder.putAll(model.getStyles());
+                    styles = builder.build();
+                }
+            }
+        }
+        return new TmfModelResponse<>(new OutputStyleModel(styles), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
     }
 
 }
