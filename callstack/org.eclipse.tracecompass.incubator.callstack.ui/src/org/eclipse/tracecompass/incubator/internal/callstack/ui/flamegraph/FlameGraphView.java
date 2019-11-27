@@ -105,7 +105,6 @@ import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.ui.TmfUiRefreshHandler;
-import org.eclipse.tracecompass.tmf.ui.editors.ITmfTraceEditor;
 import org.eclipse.tracecompass.tmf.ui.symbols.ISymbolProviderPreferencePage;
 import org.eclipse.tracecompass.tmf.ui.symbols.SymbolProviderConfigDialog;
 import org.eclipse.tracecompass.tmf.ui.symbols.TmfSymbolProviderUpdatedSignal;
@@ -122,7 +121,6 @@ import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.TimeGraphEntry.Sa
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.TimeGraphControl;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.Utils.TimeFormat;
 import org.eclipse.ui.IActionBars;
-import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.progress.IWorkbenchSiteProgressService;
@@ -230,13 +228,6 @@ public class FlameGraphView extends TmfView {
         fPresentationProvider = new BaseDataProviderTimeGraphPresentationProvider();
         fTimeGraphViewer.setTimeGraphProvider(fPresentationProvider);
         fTimeGraphViewer.setTimeFormat(TimeFormat.NUMBER);
-        IEditorPart editor = getSite().getPage().getActiveEditor();
-        if (editor instanceof ITmfTraceEditor) {
-            ITmfTrace trace = ((ITmfTraceEditor) editor).getTrace();
-            if (trace != null) {
-                traceSelected(new TmfTraceSelectedSignal(this, trace));
-            }
-        }
         contributeToActionBars();
         loadSortOption();
         TmfSignalManager.register(this);
@@ -295,6 +286,11 @@ public class FlameGraphView extends TmfView {
                 });
             }
         });
+
+        ITmfTrace trace = TmfTraceManager.getInstance().getActiveTrace();
+        if (trace != null) {
+            traceSelected(new TmfTraceSelectedSignal(this, trace));
+        }
     }
 
     /**
@@ -364,7 +360,11 @@ public class FlameGraphView extends TmfView {
 
     private String getProviderId() {
         String secondaryId = this.getViewSite().getSecondaryId();
-        return (secondaryId == null) ? FlameGraphDataProvider.ID : FlameGraphDataProvider.ID + ':' + secondaryId;
+        // The secondary ID may contain the '[COLON]' text, in which case, it
+        // should be replace with a real ':' and this is the complete
+        // providerId. This kind of secondary ID may come from external sources
+        // of data provider, such as scripting
+        return (secondaryId == null) ? FlameGraphDataProvider.ID : (secondaryId.contains("[COLON]")) ? secondaryId.replace("[COLON]", ":") : FlameGraphDataProvider.ID + ':' + secondaryId;
     }
 
     private class BuildRunnable {
