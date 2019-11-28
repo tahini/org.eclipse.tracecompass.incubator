@@ -179,11 +179,15 @@ public class CriticalPathToCallGraph implements IWeightedTreeSet<Object, String,
     }
 
     @Override
-    public Collection<WeightedTree<Object>> getTreesFor(String element) {
-        if (element.endsWith(ALL_SUFFIX)) {
+    public Collection<WeightedTree<Object>> getTreesFor(Object element) {
+        if (!(element instanceof String)) {
+            return Collections.emptyList();
+        }
+        String elStr = (String) element;
+        if (elStr.endsWith(ALL_SUFFIX)) {
             return fAggregatedTree.getChildren();
         }
-        if (element.endsWith(PROCESS_SUFFIX)) {
+        if (elStr.endsWith(PROCESS_SUFFIX)) {
             return fProcessTree.getChildren();
         }
         return fTree.getChildren();

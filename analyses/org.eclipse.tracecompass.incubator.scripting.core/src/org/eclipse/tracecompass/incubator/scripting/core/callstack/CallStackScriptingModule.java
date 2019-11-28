@@ -13,8 +13,13 @@ import java.util.Collection;
 
 import org.eclipse.ease.modules.WrapToScript;
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.AllGroupDescriptor;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeGroupDescriptor;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeProvider;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeSet;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTree;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTreeGroupBy;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.WeightedTreeUtils;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.diff.DifferentialWeightedTree;
 import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.diff.DifferentialWeightedTreeProvider;
@@ -28,15 +33,60 @@ import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 public class CallStackScriptingModule {
 
     /**
+     * @param <N>
+     * @param <E>
+     * @param provider
+     * @param level
+     * @return
+     */
+    @WrapToScript
+    public <@NonNull N, E> IWeightedTreeSet<N, ?, WeightedTree<N>> groupTreesBy(IWeightedTreeProvider<N, E, WeightedTree<N>> provider, int level) {
+        IWeightedTreeSet<N, E, WeightedTree<N>> treeSet = provider.getTreeSet();
+        IWeightedTreeGroupDescriptor groupDescriptor = getGroupDescriptor(provider, level);
+        if (groupDescriptor != null) {
+            return WeightedTreeGroupBy.groupWeightedTreeBy(groupDescriptor, treeSet, provider);
+        }
+        return treeSet;
+    }
+
+    private static <@NonNull N> @Nullable IWeightedTreeGroupDescriptor getGroupDescriptor(IWeightedTreeProvider<N, ?, WeightedTree<N>> provider, int level) {
+        IWeightedTreeGroupDescriptor groupDescriptor = provider.getGroupDescriptor();
+        if (level == 0) {
+            return AllGroupDescriptor.getInstance();
+        }
+        int i = 1;
+        while (groupDescriptor != null && i < level) {
+            groupDescriptor = groupDescriptor.getNextGroup();
+            i++;
+        }
+        return groupDescriptor;
+    }
+
+    /**
      * @param first
      * @param second
      * @return
      */
     @WrapToScript
-    public IWeightedTreeProvider<Object, String, DifferentialWeightedTree<Object>> diffTrees(IWeightedTreeProvider<Object, ?, WeightedTree<Object>> provider, Collection<WeightedTree<Object>> first,
+    public IWeightedTreeProvider<Object, Object, DifferentialWeightedTree<Object>> diffTrees(IWeightedTreeProvider<Object, ?, WeightedTree<Object>> provider, Collection<WeightedTree<Object>> first,
             Collection<WeightedTree<Object>> second) {
         Collection<DifferentialWeightedTree<Object>> diffTrees = WeightedTreeUtils.diffTrees(first, second);
         return new DifferentialWeightedTreeProvider(provider, diffTrees);
+    }
+
+    /**
+     * @param provider
+     * @param <N>
+     * @param first
+     * @param second
+     * @return
+     */
+    @WrapToScript
+    public <@NonNull N> @Nullable DifferentialWeightedTreeProvider<N> diffTreeSets(IWeightedTreeProvider<N, ?, WeightedTree<N>> provider,
+            IWeightedTreeSet<N, @NonNull ?, WeightedTree<N>> first,
+            IWeightedTreeSet<N, @NonNull ?, WeightedTree<N>> second) {
+        DifferentialWeightedTreeProvider<@NonNull N> diffTrees = WeightedTreeUtils.diffTreeSets(provider, first, second);
+        return diffTrees;
     }
 
     /**
