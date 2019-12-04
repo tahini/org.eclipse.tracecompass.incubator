@@ -19,6 +19,11 @@ import org.eclipse.tracecompass.tmf.core.model.OutputElementStyle;
 public interface IDataPalette {
 
     /**
+     * Get the style for an object. The returned style should not be one of the
+     * original style returned by the {@link #getStyles()} method, but a style
+     * object with the name of the base style as parent and a possibly empty
+     * map.
+     *
      * @param object
      * @return
      */

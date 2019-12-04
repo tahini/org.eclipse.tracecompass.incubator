@@ -16,6 +16,7 @@ import org.eclipse.tracecompass.incubator.internal.callstack.core.flamegraph.Fla
 import org.eclipse.tracecompass.incubator.internal.callstack.ui.flamegraph.FlameGraphView;
 import org.eclipse.tracecompass.incubator.internal.scripting.ui.views.timegraph.ScriptedTimeGraphView;
 import org.eclipse.ui.IViewPart;
+import org.eclipse.ui.IViewReference;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
@@ -54,7 +55,15 @@ public class CallStackUiScriptingModule {
         final IWorkbench wb = PlatformUI.getWorkbench();
         final IWorkbenchPage activePage = wb.getActiveWorkbenchWindow().getActivePage();
 
-        return activePage.showView(FlameGraphView.ID, name.replace(":", "[COLON]"), IWorkbenchPage.VIEW_ACTIVATE);
+        String secondaryId = name.replace(":", "[COLON]"); //$NON-NLS-1$ //$NON-NLS-2$
+        // Hide the view first so it is refreshed when showing again
+        // FIXME: It works, even though it does not close the view. how?
+        IViewReference viewRef = activePage.findViewReference(FlameGraphView.ID, secondaryId);
+        if (viewRef != null) {
+            activePage.hideView(viewRef);
+        }
+
+        return activePage.showView(FlameGraphView.ID, secondaryId, IWorkbenchPage.VIEW_ACTIVATE);
     }
 
 }

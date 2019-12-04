@@ -23,7 +23,7 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.ui.views,
  org.eclipse.ease.ui,
  org.eclipse.core.expressions,
- org.eclipse.tracecompass.rcp.ui;resolution:=optional
+ org.eclipse.tracecompass.rcp.ui;resolution:=optional,
  org.eclipse.tracecompass.incubator.analysis.core;resolution:=optional,
  org.eclipse.tracecompass.incubator.callstack.core;resolution:=optional,
  org.eclipse.tracecompass.incubator.callstack.ui;resolution:=optional

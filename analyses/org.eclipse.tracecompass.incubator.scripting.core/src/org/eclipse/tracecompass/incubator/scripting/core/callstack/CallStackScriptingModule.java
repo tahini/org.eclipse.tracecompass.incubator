@@ -71,14 +71,16 @@ public class CallStackScriptingModule {
     public IWeightedTreeProvider<Object, Object, DifferentialWeightedTree<Object>> diffTrees(IWeightedTreeProvider<Object, ?, WeightedTree<Object>> provider, Collection<WeightedTree<Object>> first,
             Collection<WeightedTree<Object>> second) {
         Collection<DifferentialWeightedTree<Object>> diffTrees = WeightedTreeUtils.diffTrees(first, second);
-        return new DifferentialWeightedTreeProvider(provider, diffTrees);
+        return new DifferentialWeightedTreeProvider<>(provider, diffTrees);
     }
 
     /**
-     * @param provider
-     * @param <N>
+     * @param provider The original weighted tree provider, whose values will be used for the metrics, palettes, etc
+     *
      * @param first
      * @param second
+     * @param <N>
+     *            The type of data that goes in the trees
      * @return
      */
     @WrapToScript

@@ -46,6 +46,7 @@ import org.eclipse.tracecompass.incubator.callstack.core.instrumented.statesyste
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.InstrumentedCallStackElement;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.instrumented.provider.FlameChartEntryModel.EntryType;
 import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.FlameDefaultPalette;
+import org.eclipse.tracecompass.incubator.internal.callstack.core.palette.FlameWithKernelPalette;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.threadstatus.ThreadEntryModel;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.threadstatus.ThreadStatusDataProvider;
 import org.eclipse.tracecompass.internal.tmf.core.model.AbstractTmfTraceDataProvider;
@@ -911,24 +912,8 @@ public class FlameChartDataProvider extends AbstractTmfTraceDataProvider impleme
 
     @Override
     public TmfModelResponse<OutputStyleModel> fetchStyle(Map<String, Object> fetchParameters, @Nullable IProgressMonitor monitor) {
-        // Get the styles from the flame palette
-        Map<String, OutputElementStyle> styles = FlameDefaultPalette.getInstance().getStyles();
-        // Get the thread status styles as well
-        Set<ITmfTrace> tracesForHost = TmfTraceManager.getInstance().getTracesForHost(getTrace().getHostId());
-        for (ITmfTrace trace : tracesForHost) {
-            ThreadStatusDataProvider dataProvider = DataProviderManager.getInstance().getDataProvider(trace, ThreadStatusDataProvider.ID, ThreadStatusDataProvider.class);
-            if (dataProvider != null) {
-                // Get the tree for the trace's current range
-                TmfModelResponse<OutputStyleModel> threadStyles = dataProvider.fetchStyle(fetchParameters, monitor);
-                OutputStyleModel model = threadStyles.getModel();
-                if (model != null) {
-                    ImmutableMap.Builder<String, OutputElementStyle> builder = ImmutableMap.builder();
-                    builder.putAll(styles);
-                    builder.putAll(model.getStyles());
-                    styles = builder.build();
-                }
-            }
-        }
+        // Use the palette with kernel styles, at worst, kernel styles won't be used
+        Map<String, OutputElementStyle> styles = FlameWithKernelPalette.getInstance().getStyles();
         return new TmfModelResponse<>(new OutputStyleModel(styles), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
     }
 
