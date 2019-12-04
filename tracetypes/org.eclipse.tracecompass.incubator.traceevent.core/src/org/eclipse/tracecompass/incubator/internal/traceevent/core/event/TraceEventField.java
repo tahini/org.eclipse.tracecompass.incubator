@@ -33,6 +33,11 @@ import com.google.gson.JsonPrimitive;
  */
 @NonNullByDefault
 public class TraceEventField {
+
+    /**
+     * Name of events when no other name is available
+     */
+    public static final String UNKNOWN_EXIT_EVENT = "exit unknown"; //$NON-NLS-1$
     private static final double MICRO_TO_NANO = 1000.0;
 
     private final long fTs;
@@ -77,7 +82,7 @@ public class TraceEventField {
             // FIXME: Easy way to avoid null warning
             phase = "I"; //$NON-NLS-1$
         }
-        String name = String.valueOf(optString(root, ITraceEventConstants.NAME, TraceEventPhases.DURATION_END.equals(phase) ? "exit" : "unknown")); //$NON-NLS-1$ //$NON-NLS-2$
+        String name = String.valueOf(optString(root, ITraceEventConstants.NAME, UNKNOWN_EXIT_EVENT));
         Integer tid = optInt(root, ITraceEventConstants.TID);
         if (tid == Integer.MIN_VALUE) {
             tid = null;
