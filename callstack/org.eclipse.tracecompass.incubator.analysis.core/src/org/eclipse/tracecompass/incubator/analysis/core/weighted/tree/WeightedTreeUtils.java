@@ -101,10 +101,10 @@ public final class WeightedTreeUtils {
      * @return A differential weighted tree provider wrapping the resulting tree
      *         set
      */
-    public static <@NonNull N> @Nullable DifferentialWeightedTreeProvider<N> diffTreeSets(IWeightedTreeProvider<N, ?, WeightedTree<N>> provider,
-            IWeightedTreeSet<N, @NonNull ?, WeightedTree<N>> first,
-            IWeightedTreeSet<N, @NonNull ?, WeightedTree<N>> second) {
-        Collection<Pair<@NonNull ?, @NonNull ?>> pairedElements = pairElementsFromTrees(first, second);
+    public static <@NonNull N, @NonNull E1, @NonNull E2> @Nullable DifferentialWeightedTreeProvider<N> diffTreeSets(IWeightedTreeProvider<N, ?, WeightedTree<N>> provider,
+            IWeightedTreeSet<N, E1, WeightedTree<N>> first,
+            IWeightedTreeSet<N, E2, WeightedTree<N>> second) {
+        Collection<Pair<E1, E2>> pairedElements = pairElementsFromTrees(first, second);
         if (pairedElements.isEmpty()) {
             return null;
         }
@@ -121,9 +121,120 @@ public final class WeightedTreeUtils {
         return new DifferentialWeightedTreeProvider<>(provider, treeSet);
     }
 
-    private static <@NonNull N> Collection<Pair<@NonNull ?, @NonNull ?>> pairElementsFromTrees(IWeightedTreeSet<N, @NonNull ?, WeightedTree<N>> first, IWeightedTreeSet<N, @NonNull ?, WeightedTree<N>> second) {
-        Collection<@NonNull ?> elements1 = first.getElements();
-        Collection<@NonNull ?> elements2 = second.getElements();
+    /**
+     * Does the merge of 2 weighted tree sets, ie for each comparable elements,
+     * merge the corresponding treesets from the second tree with the ones from
+     * the first tree.
+     * <p>
+     * Calling this method assumes the tree sets are comparable. It is the
+     * caller's responsibility to make sure the parameters make sense. If the 2
+     * tree sets come from different {@link IWeightedTreeProvider}, they should
+     * be of similar types, otherwise, the comparison may not make sense.
+     * </p>
+     * <p>
+     * First, all the elements from the first treeset are added to the resulting
+     * treeset. Then the elements from the second treesets are paired with those
+     * from the first treeset as follows:
+     * </p>
+     * <p>
+     * 1- If there is only one element in each tree, they will be paired.
+     * </p>
+     * <p>
+     * 2- If the same elements are present in both tree sets, they will be
+     * paired, all other elements are ignored
+     * </p>
+     * <p>
+     * 3- If no elements are paired, they will be paired by name (and
+     * hierarchical names, if it applies). Unmatched elements will be ignored.
+     * </p>
+     * <p>
+     * Then all the elements from the second treeset who have not been paired
+     * will be added to the resulting treeset.
+     * </p>
+     *
+     * @param first
+     *            The first treeset to compare to
+     * @param second
+     *            The second treeset to compare.
+     * @return A differential weighted tree provider wrapping the resulting tree
+     *         set
+     */
+    public static <@NonNull N, @NonNull E> @Nullable WeightedTreeSet<N, E> mergeTreeSets(IWeightedTreeSet<N, E, WeightedTree<N>> first,
+            IWeightedTreeSet<N, E, WeightedTree<N>> second) {
+        Collection<Pair<E, E>> pairedElements = pairElementsFromTrees(first, second);
+        if (pairedElements.isEmpty()) {
+            return null;
+        }
+        WeightedTreeSet<N, E> treeSet = new WeightedTreeSet<>();
+        // Add all elements from the first treeset, by copying the originals
+        for (E element : first.getElements()) {
+            Collection<WeightedTree<N>> treesFor = first.getTreesFor(element);
+            for (WeightedTree<N> tree : treesFor) {
+                treeSet.addWeightedTree(element, tree.copyOf());
+            }
+            if (element instanceof ITree) {
+                mergeChildrenTrees((ITree) element, first, treeSet);
+            }
+        }
+
+        // Add the paired elements of the
+        Collection<E> elFromSecond = new ArrayList<>();
+        for (Pair<E, E> pair : pairedElements) {
+            Collection<WeightedTree<N>> trees2 = second.getTreesFor(pair.getSecond());
+            for (WeightedTree<N> tree : trees2) {
+                treeSet.addWeightedTree(pair.getFirst(), tree.copyOf());
+            }
+            elFromSecond.add(pair.getSecond());
+        }
+
+        // Add the leftover elements from second treeset
+        Collection<E> allElements = getAllElements(second);
+        allElements.removeAll(elFromSecond);
+        for (E secondElement : allElements) {
+            Collection<WeightedTree<N>> trees2 = second.getTreesFor(secondElement);
+            for (WeightedTree<N> tree : trees2) {
+                treeSet.addWeightedTree(secondElement, tree.copyOf());
+            }
+        }
+
+        return treeSet;
+    }
+
+    private static <@NonNull N, @NonNull E> Collection<E> getAllElements(IWeightedTreeSet<N, E, WeightedTree<N>> treeSet) {
+        Collection<@NonNull E> elements = treeSet.getElements();
+        Collection<E> allElements = new ArrayList<>(elements);
+        for (E element : elements) {
+            if (element instanceof ITree) {
+                allElements.addAll(getChildrenElements(element));
+            }
+        }
+        return allElements;
+    }
+
+    private static <@NonNull E> Collection<? extends @NonNull E> getChildrenElements(@NonNull E element) {
+        Collection<E> children = (Collection<E>) ((ITree) element).getChildren();
+        Collection<E> allElements = new ArrayList<>(children);
+        for (E child : children) {
+            if (child instanceof ITree) {
+                allElements.addAll(getChildrenElements(child));
+            }
+        }
+        return allElements;
+    }
+
+    private static <@NonNull N, E> void mergeChildrenTrees(ITree element, IWeightedTreeSet<@NonNull N, @NonNull E, WeightedTree<@NonNull N>> original, WeightedTreeSet<@NonNull N, E> treeSet) {
+        for (ITree child : element.getChildren()) {
+            Collection<WeightedTree<N>> treesFor = original.getTreesFor(child);
+            for (WeightedTree<N> tree : treesFor) {
+                treeSet.addWeightedTree((E) child, tree.copyOf());
+            }
+            mergeChildrenTrees(child, original, treeSet);
+        }
+    }
+
+    private static <@NonNull N, E1, E2> Collection<Pair<@NonNull E1, @NonNull E2>> pairElementsFromTrees(IWeightedTreeSet<N, @NonNull E1, WeightedTree<N>> first, IWeightedTreeSet<N, @NonNull E2, WeightedTree<N>> second) {
+        Collection<@NonNull E1> elements1 = first.getElements();
+        Collection<@NonNull E2> elements2 = second.getElements();
         // If there is only one element and it is not a tree, pair it
         if (elements1.size() == 1 && elements2.size() == 1) {
             @NonNull Object element1 = elements1.iterator().next();
@@ -134,7 +245,7 @@ public final class WeightedTreeUtils {
         }
 
         // Try to find equal elements in both trees
-        Collection<Pair<@NonNull ?, @NonNull ?>> pairedElements = pairEqualElements(elements1, elements2);
+        Collection<Pair<E1, E2>> pairedElements = pairEqualElements(elements1, elements2);
         if (!pairedElements.isEmpty()) {
             return pairedElements;
         }
@@ -144,14 +255,14 @@ public final class WeightedTreeUtils {
         return pairedElements;
     }
 
-    private static Collection<Pair<@NonNull ?, @NonNull ?>> pairEqualElements(Collection<@NonNull ?> elements1, Collection<@NonNull ?> elements2) {
-        List<Pair<@NonNull ?, @NonNull ?>> pairedElements = new ArrayList<>();
-        for (@NonNull Object element1 : elements1) {
-            for (@NonNull Object element2 : elements2) {
+    private static <@NonNull E1, @NonNull E2> Collection<Pair<E1, E2>> pairEqualElements(Collection<E1> elements1, Collection<E2> elements2) {
+        List<Pair<E1, E2>> pairedElements = new ArrayList<>();
+        for (E1 element1 : elements1) {
+            for (E2 element2 : elements2) {
                 if (element1.equals(element2)) {
-                    pairedElements.add(new Pair<>(element1, element1));
+                    pairedElements.add(new Pair<>(element1, element2));
                     if (element1 instanceof ITree && element2 instanceof ITree) {
-                        pairedElements.addAll(pairEqualElements(((ITree) element1).getChildren(), ((ITree) element2).getChildren()));
+                        pairedElements.addAll(pairEqualElements((Collection<E1>) ((ITree) element1).getChildren(), (Collection<E2>) ((ITree) element2).getChildren()));
                     }
                     break;
                 }
@@ -160,19 +271,19 @@ public final class WeightedTreeUtils {
         return pairedElements;
     }
 
-    private static Collection<Pair<@NonNull ?, @NonNull ?>> pairSameNameElements(Collection<@NonNull ?> elements1, Collection<?> elements2) {
-        List<Pair<@NonNull ?, @NonNull ?>> pairedElements = new ArrayList<>();
-        for (@NonNull Object element1 : elements1) {
+    private static <@NonNull E1, @NonNull E2> Collection<Pair<E1, E2>> pairSameNameElements(Collection<E1> elements1, Collection<E2> elements2) {
+        List<Pair<E1, E2>> pairedElements = new ArrayList<>();
+        for (E1 element1 : elements1) {
             if (!(element1 instanceof ITree)) {
                 continue;
             }
-            for (@NonNull Object element2 : elements2) {
+            for (E2 element2 : elements2) {
                 if (!(element2 instanceof ITree)) {
                     continue;
                 }
                 if (((ITree) element1).getName().equals(((ITree) element2).getName())) {
                     pairedElements.add(new Pair<>(element1, element2));
-                    pairedElements.addAll(pairSameNameElements(((ITree) element1).getChildren(), ((ITree) element2).getChildren()));
+                    pairedElements.addAll(pairSameNameElements((Collection<E1>) ((ITree) element1).getChildren(), (Collection<E2>) ((ITree) element2).getChildren()));
                     break;
                 }
             }

@@ -375,6 +375,43 @@ public class WeightedTreeUtilsTest {
         assertNull(diffProvider);
     }
 
+    /**
+     * Test the
+     * {@link WeightedTreeUtils#mergeTreeSets(IWeightedTreeSet, IWeightedTreeSet)}
+     * with treesets having a single element, that are not identical in both
+     * trees
+     */
+    @Test
+    public void testMergeTreeSetOneElement() {
+        // Prepare the treesets for this test case
+        String element1 = "elementForTree1";
+        String element2 = "elementForTree2";
+
+        WeightedTreeSet<Integer, String> treeSet1 = new WeightedTreeSet<>();
+        WeightedTreeSet<Integer, String> treeSet2 = new WeightedTreeSet<>();
+        List<WeightedTree<Integer>> tree1 = fTree1;
+        List<WeightedTree<Integer>> tree2 = fTree2;
+        assertNotNull(tree1);
+        assertNotNull(tree2);
+
+        tree1.forEach(t -> treeSet1.addWeightedTree(element1, t));
+        tree2.forEach(t -> treeSet2.addWeightedTree(element2, t));
+
+        // Differentiate treeset1 and treeset2
+        WeightedTreeProviderStub<Integer, String> provider = new WeightedTreeProviderStub<>();
+        DifferentialWeightedTreeProvider<Integer> diffProvider = WeightedTreeUtils.diffTreeSets(provider, treeSet1, treeSet2);
+        assertNotNull(diffProvider);
+        IWeightedTreeSet<Integer, Object, DifferentialWeightedTree<Integer>> treeSet = diffProvider.getTreeSet();
+
+        // Make sure there is one element in the treeset and it's the same as element1
+        Collection<Object> elements = treeSet.getElements();
+        assertEquals("Number of elements in diff tree", 1, elements.size());
+        Object element = elements.iterator().next();
+        assertEquals("element in diffTree", element1, element);
+        Collection<DifferentialWeightedTree<Integer>> diffTrees = treeSet.getTreesFor(element);
+        verifyDiffTrees12(diffTrees);
+    }
+
     private static void verifyDiffTrees12(Collection<DifferentialWeightedTree<Integer>> diffTrees) {
         assertEquals("Size of differential tree", 2, diffTrees.size());
         // Compare the first element
