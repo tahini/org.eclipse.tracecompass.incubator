@@ -28,6 +28,9 @@
       <xmlfile
             file="xml_analyses/GroupedTasks.xml">
       </xmlfile>
+      <xmlfile
+            file="xml_analyses/GroupedPerTrace.xml">
+      </xmlfile>
    </extension>
 
 </plugin>
