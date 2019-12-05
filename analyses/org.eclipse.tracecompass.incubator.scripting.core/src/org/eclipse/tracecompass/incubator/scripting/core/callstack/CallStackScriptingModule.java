@@ -11,6 +11,7 @@ package org.eclipse.tracecompass.incubator.scripting.core.callstack;
 
 import java.util.Collection;
 
+import org.eclipse.ease.modules.ScriptParameter;
 import org.eclipse.ease.modules.WrapToScript;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
@@ -79,6 +80,12 @@ public class CallStackScriptingModule {
      *
      * @param first
      * @param second
+     * @param minSignificantValue
+     *            The value as a percentage (between 0 and 100), under which is
+     *            difference should not be highlighted
+     * @param maxSignificantValue
+     *            The value as a percentage (between 0 and 100), above which the
+     *            difference should be highlighted at the maximal value.
      * @param <N>
      *            The type of data that goes in the trees
      * @return
@@ -86,8 +93,13 @@ public class CallStackScriptingModule {
     @WrapToScript
     public <@NonNull N> @Nullable DifferentialWeightedTreeProvider<N> diffTreeSets(IWeightedTreeProvider<N, ?, WeightedTree<N>> provider,
             IWeightedTreeSet<N, @NonNull ?, WeightedTree<N>> first,
-            IWeightedTreeSet<N, @NonNull ?, WeightedTree<N>> second) {
+            IWeightedTreeSet<N, @NonNull ?, WeightedTree<N>> second,
+            @ScriptParameter(defaultValue = "-1") int minSignificantValue,
+            @ScriptParameter(defaultValue = "-1") int maxSignificantValue) {
         DifferentialWeightedTreeProvider<@NonNull N> diffTrees = WeightedTreeUtils.diffTreeSets(provider, first, second);
+        if (diffTrees != null && minSignificantValue >= 0) {
+            diffTrees.setHeatThresholds(minSignificantValue, maxSignificantValue);
+        }
         return diffTrees;
     }
 

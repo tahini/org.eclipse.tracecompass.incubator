@@ -76,6 +76,7 @@ public class DifferentialWeightedTreeProvider<@NonNull N> implements IWeightedTr
 
     private final IWeightedTreeProvider<N, ?, WeightedTree<N>> fOriginalTree;
     private final List<MetricType> fAdditionalMetrics = new ArrayList<>(WEIGHT_TYPES);
+    private @Nullable IDataPalette fPalette = null;
 
     /**
      * Constructor
@@ -101,6 +102,29 @@ public class DifferentialWeightedTreeProvider<@NonNull N> implements IWeightedTr
         fOriginalTree = originalTree;
         fTreeSet = treeSet;
         fAdditionalMetrics.addAll(fOriginalTree.getAdditionalMetrics());
+    }
+
+    /**
+     * Set the differential threshold for this tree, ie views will highlight the
+     * gradual heat of the differential value when the value is between min and
+     * max threshold values.
+     *
+     * If the 2 values are identical, the default palette will be used.
+     *
+     * @param minThreshold
+     *            Minimal threshold (in %) of significance for the heat
+     *            (absolute value). Any percentage below this value (whether
+     *            positive or negative) will be considered as equal.
+     * @param maxThreshold
+     *            Maximal threshold (in %) of significance for the heat
+     *            (absolute value). Any percentage above this value (whether
+     *            positive or negative) will be considered at maximum heat
+     */
+    public void setHeatThresholds(int minThreshold, int maxThreshold) {
+        if (minThreshold == maxThreshold) {
+            fPalette = DifferentialPalette.getInstance();
+        }
+        fPalette = DifferentialPalette.create(minThreshold, maxThreshold);
     }
 
     @Override
@@ -138,7 +162,8 @@ public class DifferentialWeightedTreeProvider<@NonNull N> implements IWeightedTr
 
     @Override
     public IDataPalette getPalette() {
-        return DifferentialPalette.getInstance();
+        IDataPalette palette = fPalette;
+        return palette == null ? DifferentialPalette.getInstance() : palette;
     }
 
 }
