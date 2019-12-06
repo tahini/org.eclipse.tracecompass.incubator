@@ -28,12 +28,16 @@ public class Messages extends NLS {
     public static String FlameGraph_Total;
     /** Label for total CPU time */
     public static String FlameGraph_Average;
-    /** Label for average CPU time */
+    /** Label for the minimum value */
     public static String FlameGraph_Min;
-    /** Label for minimum CPU time */
+    /** Label for the maximum value */
     public static String FlameGraph_Max;
     /** Label for maximum CPU time */
     public static String FlameGraph_Deviation;
+    /** Label for the goto min action */
+    public static String FlameGraph_GoToMin;
+    /** Label for the goto max action */
+    public static String FlameGraph_GoToMax;
     /**
      * The number of calls of a function
      */
