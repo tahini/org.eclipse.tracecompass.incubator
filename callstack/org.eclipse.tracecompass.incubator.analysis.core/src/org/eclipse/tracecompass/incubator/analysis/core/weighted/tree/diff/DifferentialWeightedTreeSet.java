@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree;
+package org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.diff;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -15,33 +15,51 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.ITree;
+import org.eclipse.tracecompass.incubator.analysis.core.weighted.tree.IWeightedTreeSet;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 
 /**
- * An implementation of the weighted tree set, with generic types and nodes
+ * A treeset for differential weighted trees.
  *
  * @author Geneviève Bastien
- * @param <N>
- *            The type of objects represented by each node in the tree
- * @param <E>
- *            The type of elements used to group the trees. If this type extends
- *            {@link ITree}, then the elements and their associated weighted
- *            trees will be grouped in a hierarchical style
  */
-public class WeightedTreeSet<@NonNull N, E> implements IWeightedTreeSet<N, E, WeightedTree<N>> {
+public class DifferentialWeightedTreeSet<@NonNull N> implements IWeightedTreeSet<N, Object, DifferentialWeightedTree<N>> {
 
-    private final Set<E> fRootElements = new HashSet<>();
-    private final Multimap<Object, WeightedTree<N>> fTrees = HashMultimap.create();
+    private static final String DEFAULT_ELEMENT = "diff"; //$NON-NLS-1$
+
+    private final Set<Object> fRootElements = new HashSet<>();
+    private final Multimap<Object, DifferentialWeightedTree<N>> fTrees = HashMultimap.create();
+
+    /**
+     * Constructor. This constructor takes weighted trees and adds them to a
+     * unique default element
+     *
+     * @param trees
+     *            The differential weighted trees for the single element
+     */
+    public DifferentialWeightedTreeSet(Collection<DifferentialWeightedTree<N>> trees) {
+        fRootElements.add(DEFAULT_ELEMENT);
+        fTrees.putAll(DEFAULT_ELEMENT, trees);
+    }
+
+    /**
+     * Default constructor. The elements and their trees should be added by
+     * calling {@link #addWeightedTree(Object, DifferentialWeightedTree)}
+     */
+    public DifferentialWeightedTreeSet() {
+
+    }
 
     @Override
-    public Collection<E> getElements() {
+    public Collection<Object> getElements() {
         return fRootElements;
     }
 
     @Override
-    public Collection<@NonNull WeightedTree<N>> getTreesFor(Object element) {
+    public Collection<@NonNull DifferentialWeightedTree<N>> getTreesFor(Object element) {
         return Objects.requireNonNull(fTrees.get(element));
     }
 
@@ -57,13 +75,13 @@ public class WeightedTreeSet<@NonNull N, E> implements IWeightedTreeSet<N, E, We
      *            that is part of another tree (for groupings or diff or other
      *            operations for instance)
      */
-    public void addWeightedTree(E dstGroup, WeightedTree<N> tree) {
+    public void addWeightedTree(Object dstGroup, DifferentialWeightedTree<N> tree) {
         // Make sure the root element is present
-        E root = dstGroup;
+        Object root = dstGroup;
         if (dstGroup instanceof ITree) {
             ITree parent = ((ITree) dstGroup).getParent();
             while (parent != null) {
-                root = (E) parent;
+                root = parent;
                 parent = parent.getParent();
             }
             fRootElements.add(root);
@@ -71,8 +89,8 @@ public class WeightedTreeSet<@NonNull N, E> implements IWeightedTreeSet<N, E, We
         fRootElements.add(root);
 
         // Add the tree to the appropriate group
-        Collection<WeightedTree<N>> trees = fTrees.get(dstGroup);
-        for (WeightedTree<N> currentTree : trees) {
+        Collection<DifferentialWeightedTree<N>> trees = fTrees.get(dstGroup);
+        for (DifferentialWeightedTree<N> currentTree : trees) {
             if (currentTree.getObject().equals(tree.getObject())) {
                 currentTree.merge(tree);
                 return;
