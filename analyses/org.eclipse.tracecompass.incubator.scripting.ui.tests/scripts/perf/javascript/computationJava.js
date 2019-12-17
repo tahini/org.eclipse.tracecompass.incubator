@@ -1,0 +1,3 @@
+loadModule("/TraceCompassTest/Test")
+
+doJavaLoop()
