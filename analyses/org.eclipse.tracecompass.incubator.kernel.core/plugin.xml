@@ -43,6 +43,10 @@
             class="org.eclipse.tracecompass.incubator.internal.kernel.core.fileaccess.FileAccessDataProviderFactory"
             id="org.eclipse.tracecompass.incubator.internal.kernel.core.fileacess.dataprovider">
       </dataProviderFactory>
+      <dataProviderFactory
+            class="org.eclipse.tracecompass.incubator.internal.kernel.core.inputoutput.DiskRequestDataProviderFactory"
+            id="org.eclipse.tracecompass.incubator.kernel.core.inputoutput.DiskRequestDataProvider">
+      </dataProviderFactory>
    </extension>
 
 </plugin>
