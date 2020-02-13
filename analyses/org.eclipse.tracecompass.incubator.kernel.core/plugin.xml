@@ -63,6 +63,10 @@
          class="org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoPerProcessDataProviderFactory"
          id="org.eclipse.tracecompass.incubator.kernel.core.io.per.process">
       </dataProviderFactory>
+      <dataProviderFactory
+         class="org.eclipse.tracecompass.incubator.internal.kernel.core.inputoutput.DiskRequestDataProviderFactory"
+         id="org.eclipse.tracecompass.incubator.kernel.core.inputoutput.DiskRequestDataProvider">
+      </dataProviderFactory>
    </extension>
 
 </plugin>
