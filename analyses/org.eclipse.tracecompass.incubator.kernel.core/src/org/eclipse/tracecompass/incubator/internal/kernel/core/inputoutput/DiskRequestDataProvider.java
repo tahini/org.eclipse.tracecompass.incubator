@@ -18,18 +18,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Predicate;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.analysis.os.linux.core.inputoutput.Attributes;
-import org.eclipse.tracecompass.analysis.os.linux.core.inputoutput.InputOutputAnalysisModule;
+import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.Attributes;
+import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.Disk;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.DiskUtils;
-import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.RequestStateValue;
-import org.eclipse.tracecompass.internal.tmf.core.model.filters.FetchParametersUtils;
+import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.InputOutputAnalysisModule;
+import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.IoOperationType;
 import org.eclipse.tracecompass.internal.tmf.core.model.timegraph.AbstractTimeGraphDataProvider;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.exceptions.StateSystemDisposedException;
+import org.eclipse.tracecompass.statesystem.core.exceptions.TimeRangeException;
 import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderParameterUtils;
 import org.eclipse.tracecompass.tmf.core.dataprovider.X11ColorUtils;
@@ -38,8 +42,6 @@ import org.eclipse.tracecompass.tmf.core.model.IOutputStyleProvider;
 import org.eclipse.tracecompass.tmf.core.model.OutputElementStyle;
 import org.eclipse.tracecompass.tmf.core.model.OutputStyleModel;
 import org.eclipse.tracecompass.tmf.core.model.StyleProperties;
-import org.eclipse.tracecompass.tmf.core.model.filters.SelectionTimeQueryFilter;
-import org.eclipse.tracecompass.tmf.core.model.filters.TimeQueryFilter;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphArrow;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphRowModel;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.ITimeGraphState;
@@ -74,7 +76,6 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
     /**
      * The state index for the multiple state
      */
-    private static final int NUM_COLORS = 25;
     private static final int MAX_SIZE = 500;
     private static final int NB_SIZE_STYLES = 5;
     private static final String SIZE_STYLE_PREFIX = "size"; //$NON-NLS-1$
@@ -82,6 +83,8 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
     private static final String WRITE_STYLE = "write"; //$NON-NLS-1$
     private static final String FLUSH_STYLE = "flush"; //$NON-NLS-1$
     private static final String OTHER_STYLE = "other"; //$NON-NLS-1$
+
+    private static final Comparator<ITmfStateInterval> INTERVAL_COMPARATOR = Comparator.comparing(ITmfStateInterval::getStartTime);
 
     private static final Map<String, OutputElementStyle> STYLES;
     // Map of styles with the parent
@@ -126,6 +129,112 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
 
         STYLES = builder.build();
     }
+
+    /**
+     * Inline class to encapsulate all the values required to build a series.
+     * Allows for reuse of full query results to be faster than {@link Disk}.
+     */
+    private final class RequestBuilder {
+
+        private final long fId;
+        /** This series' sector quark. public because final */
+        private final int fMainQuark;
+        private final int fSectorQuark;
+        private final int fSizeQuark;
+
+        /**
+         * Constructor
+         *
+         * @param id
+         *            The ID of the request entry
+         * @param quark
+         *            The main quark of the request
+         * @param ss
+         *            The state system
+         */
+        private RequestBuilder(Long id, Integer quark, ITmfStateSystem ss) {
+            fId = id;
+            fMainQuark = quark;
+            fSectorQuark = ss.optQuarkRelative(quark, Attributes.CURRENT_REQUEST);
+            fSizeQuark = ss.optQuarkRelative(quark, Attributes.REQUEST_SIZE);
+        }
+
+        private List<Integer> getQuarks() {
+            List<Integer> quarks = new ArrayList<>();
+            quarks.add(fMainQuark);
+            if (fSectorQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+                quarks.add(fSectorQuark);
+            }
+            if (fSizeQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+                quarks.add(fSizeQuark);
+            }
+            return quarks;
+        }
+
+        private @Nullable ITmfStateInterval findInterval(@Nullable Set<ITmfStateInterval> intervals, long time) {
+            if (intervals == null) {
+                return null;
+            }
+            for (ITmfStateInterval interval : intervals) {
+                // Intervals are sorted, return if interval has start time later than time, the interval is not there
+                if (interval.getStartTime() > time) {
+                    return null;
+                }
+                if (time >= interval.getStartTime() && time <= interval.getEndTime()) {
+                    return interval;
+                }
+            }
+            return null;
+        }
+
+        public ITimeGraphRowModel createStates(Map<Integer, Set<ITmfStateInterval>> intervals, Map<Integer, Predicate<Multimap<String, Object>>> predicates, @Nullable IProgressMonitor monitor) {
+            Set<ITmfStateInterval> mainIntervals = intervals.get(fMainQuark);
+            if (mainIntervals == null) {
+                return new TimeGraphRowModel(fId, Collections.emptyList());
+            }
+            List<ITimeGraphState> states = new ArrayList<>();
+
+            for (ITmfStateInterval mainInterval : mainIntervals) {
+                long startTime = mainInterval.getStartTime();
+                long duration = mainInterval.getEndTime() - startTime + 1;
+                Object value = mainInterval.getValue();
+                if (value == null) {
+                    ITimeGraphState timeGraphState = new TimeGraphState(startTime, duration, Integer.MIN_VALUE);
+                    applyFilterAndAddState(states, timeGraphState, fId, predicates, monitor);
+                } else {
+                    // There should be one sector interval per request
+                    Long sector = 0L;
+                    if (fSectorQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+                        ITmfStateInterval sectorInterval = findInterval(intervals.get(fSectorQuark), startTime);
+                        Object sectorObj = sectorInterval == null ? null : sectorInterval.getValue();
+                        if (sectorObj instanceof Long) {
+                            sector = (Long) sectorObj;
+                        }
+                    }
+                    if (fSizeQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
+                        ITimeGraphState timeGraphState = new TimeGraphState(startTime, duration, "0x" + Long.toHexString(sector), getStyleFor(IoOperationType.fromNumber((Integer) value), null)); //$NON-NLS-1$
+                        applyFilterAndAddState(states, timeGraphState, fId, predicates, monitor);
+                    } else {
+                        long time = startTime;
+                        while (time < mainInterval.getEndTime()) {
+                            // Add a request for each size
+                            ITmfStateInterval sizeInterval = findInterval(intervals.get(fSizeQuark), time);
+                            ITimeGraphState timeGraphState = new TimeGraphState(startTime, duration, "0x" + Long.toHexString(sector), getStyleFor(IoOperationType.fromNumber((Integer) value), sizeInterval == null ? null : (Integer) sizeInterval.getValue())); //$NON-NLS-1$
+                            applyFilterAndAddState(states, timeGraphState, fId, predicates, monitor);
+
+                            if (sizeInterval == null) {
+                                break;
+                            }
+                            time = sizeInterval.getEndTime() + 1;
+                        }
+                    }
+                }
+            }
+            return new TimeGraphRowModel(fId, states);
+        }
+    }
+
+    private final Set<Integer> fRequestQuark = new TreeSet<>();
 
     /**
      * Constructor
@@ -191,6 +300,7 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
         long queueId = getId(queueQuark);
         entries.add(new TimeGraphEntryModel(queueId, diskId, queueName, start, end));
         for (Integer requestQuark : subAttributes) {
+            fRequestQuark.add(requestQuark);
             entries.add(new TimeGraphEntryModel(getId(requestQuark), queueId, ss.getAttributeName(requestQuark), start, end));
         }
         return entries;
@@ -214,51 +324,42 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
             predicates.putAll(computeRegexPredicate(regexesMap));
         }
 
-        Map<Long, List<ITimeGraphState>> rows = new HashMap<>();
-        // Order the intervals by start time to make sure states are ordered
-//        TreeMultimap<Integer, ITmfStateInterval> intervals = TreeMultimap.create(Comparator.naturalOrder(),
-//                Comparator.comparing(ITmfStateInterval::getStartTime));
-//        for (ITmfStateInterval interval : ss.query2D(selectedEntries.values(), times)) {
-//            if (monitor != null && monitor.isCanceled()) {
-//                return null;
-//            }
-//            intervals.put(interval.getAttribute(), interval);
-//        }
-        for (ITmfStateInterval interval : ss.query2D(selectedEntries.values(), times)) {
-            long startTime = interval.getStartTime();
-            long duration = interval.getEndTime() - startTime + 1;
-            long key = getId(interval.getAttribute());
-            List<ITimeGraphState> eventList = rows.computeIfAbsent(key, id -> new ArrayList<>());
-            Object value = interval.getValue();
-            if (value == null) {
-                ITimeGraphState timeGraphState = new TimeGraphState(startTime, duration, Integer.MIN_VALUE);
-                applyFilterAndAddState(eventList, timeGraphState, key, predicates, monitor);
-            } else if (value instanceof RequestStateValue) {
-                RequestStateValue rsv = (RequestStateValue) value;
-                ITimeGraphState timeGraphState = new TimeGraphState(startTime, duration, "0x" + Long.toHexString(rsv.getSector()), getStyleFor(rsv)); //$NON-NLS-1$
-                applyFilterAndAddState(eventList, timeGraphState, key, predicates, monitor);
-            } else {
-                ITimeGraphState timeGraphState = new TimeGraphState(startTime, duration, String.valueOf(value), getStyleFor(String.valueOf(value)));
-                applyFilterAndAddState(eventList, timeGraphState, key, predicates, monitor);
+        List<Integer> quarksToQuery = new ArrayList<>();
+        List<RequestBuilder> builders = new ArrayList<>();
+        for (Entry<Long, Integer> entry : selectedEntries.entrySet()) {
+            if (fRequestQuark.contains(entry.getValue())) {
+                RequestBuilder seriesBuilder = new RequestBuilder(entry.getKey(), entry.getValue(), ss);
+                builders.add(seriesBuilder);
+                quarksToQuery.addAll(seriesBuilder.getQuarks());
             }
+        }
 
+        // Put all intervals in a map, there shouldn't be too many, we'll handle them later
+
+        Map<Integer, Set<ITmfStateInterval>> intervals = new HashMap<>();
+        try {
+            for (ITmfStateInterval interval : ss.query2D(quarksToQuery, times)) {
+                if (monitor != null && monitor.isCanceled()) {
+                    return null;
+                }
+                intervals.computeIfAbsent(interval.getAttribute(), q -> new TreeSet<>(INTERVAL_COMPARATOR)).add(interval);
+            }
+        } catch (IndexOutOfBoundsException | TimeRangeException | StateSystemDisposedException e) {
+            return null;
         }
+
         List<ITimeGraphRowModel> models = new ArrayList<>();
-        for (Entry<Long, List<ITimeGraphState>> state : rows.entrySet()) {
-            Collections.sort(state.getValue(), Comparator.comparing(ITimeGraphState::getStartTime));
-            models.add(new TimeGraphRowModel(state.getKey(), state.getValue()));
+        for (RequestBuilder builder : builders) {
+            models.add(builder.createStates(intervals, predicates, monitor));
         }
+
         return new TimeGraphModel(models);
     }
 
-    private static OutputElementStyle getStyleFor(String callsite) {
-        return STYLE_MAP.computeIfAbsent(String.valueOf(Math.floorMod(callsite.hashCode(), NUM_COLORS)), style -> new OutputElementStyle(style));
-    }
-
-    private static @Nullable OutputElementStyle getStyleFor(RequestStateValue request) {
+    private static @Nullable OutputElementStyle getStyleFor(IoOperationType type, @Nullable Integer size) {
         String typeStyle = null;
         String sizeStyle = null;
-        switch(request.getRequestType()) {
+        switch(type) {
         case FLUSH:
             typeStyle = FLUSH_STYLE;
             break;
@@ -267,11 +368,15 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
             break;
         case READ:
             typeStyle = READ_STYLE;
-            sizeStyle = SIZE_STYLE_PREFIX + Math.min(NB_SIZE_STYLES - 1, (int) (((double) request.getNrSector() / MAX_SIZE) * NB_SIZE_STYLES));
+            if (size != null) {
+                sizeStyle = SIZE_STYLE_PREFIX + Math.min(NB_SIZE_STYLES - 1, (int) (((double) size / MAX_SIZE) * NB_SIZE_STYLES));
+            }
             break;
         case WRITE:
             typeStyle = WRITE_STYLE;
-            sizeStyle = SIZE_STYLE_PREFIX + Math.min(NB_SIZE_STYLES - 1, (int) (((double) request.getNrSector() / MAX_SIZE) * NB_SIZE_STYLES));
+            if (size != null) {
+                sizeStyle = SIZE_STYLE_PREFIX + Math.min(NB_SIZE_STYLES - 1, (int) (((double) size / MAX_SIZE) * NB_SIZE_STYLES));
+            }
             break;
         default:
             return null;
@@ -280,23 +385,9 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
         return STYLE_MAP.computeIfAbsent(styleKey, style -> new OutputElementStyle(style));
     }
 
-    @Deprecated
-    @Override
-    public TmfModelResponse<List<ITimeGraphArrow>> fetchArrows(TimeQueryFilter filter, @Nullable IProgressMonitor monitor) {
-        Map<String, Object> parameters = FetchParametersUtils.timeQueryToMap(filter);
-        return fetchArrows(parameters, monitor);
-    }
-
     @Override
     public TmfModelResponse<List<ITimeGraphArrow>> fetchArrows(Map<String, Object> fetchParameters, @Nullable IProgressMonitor monitor) {
         return new TmfModelResponse<>(null, ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
-    }
-
-    @Deprecated
-    @Override
-    public TmfModelResponse<Map<String, String>> fetchTooltip(SelectionTimeQueryFilter filter, @Nullable IProgressMonitor monitor) {
-        Map<String, Object> parameters = FetchParametersUtils.selectionTimeQueryToMap(filter);
-        return fetchTooltip(parameters, monitor);
     }
 
     @Override
@@ -325,19 +416,42 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
             return new TmfModelResponse<>(null, ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
         }
 
-        Integer quark = selectedEntries.values().iterator().next();
+        List<Integer> quarks = new ArrayList<>();
+        Map<String, String> retMap = new LinkedHashMap<>(1);
 
+        Integer quark = selectedEntries.values().iterator().next();
+        retMap.put(Objects.requireNonNull(Messages.DiskRequestDataProvider_Sector), StringUtils.EMPTY);
+        quarks.add(quark);
+        int sectorQuark = ss.optQuarkRelative(quark, Attributes.CURRENT_REQUEST);
+        if (sectorQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+            retMap.put(Objects.requireNonNull(Messages.DiskRequestDataProvider_Sector), StringUtils.EMPTY);
+            quarks.add(sectorQuark);
+        }
+        int sizeQuark = ss.optQuarkRelative(quark, Attributes.REQUEST_SIZE);
+        if (sizeQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+            retMap.put(Objects.requireNonNull(Messages.DiskRequestDataProvider_NbSectors), StringUtils.EMPTY);
+            quarks.add(sizeQuark);
+        }
         try {
-            Map<String, String> retMap = new LinkedHashMap<>(1);
-            ITmfStateInterval interval = ss.querySingleState(start, quark);
-            Object value = interval.getValue();
-            if (!(value instanceof RequestStateValue)) {
-                return new TmfModelResponse<>(null, ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
-            }
-            RequestStateValue request = (RequestStateValue) value;
-            retMap.put(Objects.requireNonNull(Messages.DiskRequestDataProvider_Sector), "0x" + Long.toHexString(request.getSector())); //$NON-NLS-1$
-            retMap.put(Objects.requireNonNull(Messages.DiskRequestDataProvider_NbSectors), String.valueOf(request.getNrSector()));
-            retMap.put(Objects.requireNonNull(Messages.DiskRequestDataProvider_RequestType), String.valueOf(request.getRequestType()));
+            for (ITmfStateInterval interval : ss.query2D(quarks, start, start)) {
+                int attribute = interval.getAttribute();
+                if (attribute == sectorQuark) {
+                    Object value = interval.getValue();
+                    if (value instanceof Long) {
+                        retMap.put(Objects.requireNonNull(Messages.DiskRequestDataProvider_Sector), "0x" + Long.toHexString(Objects.requireNonNull((Long) value))); //$NON-NLS-1$
+                    }
+                } else if (attribute == sizeQuark) {
+                    Object value = interval.getValue();
+                    if (value instanceof Integer) {
+                        retMap.put(Objects.requireNonNull(Messages.DiskRequestDataProvider_NbSectors), String.valueOf(value));
+                    }
+                } else if (attribute == quark) {
+                    Object value = interval.getValue();
+                    if (!(value instanceof Integer)) {
+                        return new TmfModelResponse<>(null, ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
+                    }
+                    retMap.put(Objects.requireNonNull(Messages.DiskRequestDataProvider_RequestType), String.valueOf(IoOperationType.fromNumber((Integer) value)));
+                }                           }
             return new TmfModelResponse<>(retMap, ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
         } catch (StateSystemDisposedException e) {
         }
