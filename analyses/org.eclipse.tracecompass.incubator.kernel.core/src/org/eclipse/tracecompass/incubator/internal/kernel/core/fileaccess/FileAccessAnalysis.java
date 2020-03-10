@@ -13,6 +13,7 @@ package org.eclipse.tracecompass.incubator.internal.kernel.core.fileaccess;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelTrace;
+import org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.TmfStateSystemAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
@@ -33,7 +34,7 @@ public class FileAccessAnalysis extends TmfStateSystemAnalysisModule {
     protected @NonNull ITmfStateProvider createStateProvider() {
         ITmfTrace trace = getTrace();
         if (trace instanceof IKernelTrace) {
-            return new FileAccessStateProvider((IKernelTrace) trace);
+            return new IoStateProvider((IKernelTrace) trace);
         }
         throw new IllegalStateException("Trace " + trace + "(" + (trace == null ? "null" : trace.getClass().getCanonicalName()) + ")" + " is not of the type IKernelTrace."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
     }
