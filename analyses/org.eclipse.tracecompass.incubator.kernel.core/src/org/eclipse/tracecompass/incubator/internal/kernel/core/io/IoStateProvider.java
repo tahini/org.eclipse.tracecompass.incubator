@@ -29,6 +29,7 @@ import org.eclipse.tracecompass.statesystem.core.exceptions.StateValueTypeExcept
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.statesystem.AbstractTmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
+import org.eclipse.tracecompass.tmf.core.statesystem.TmfAttributePool;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -69,13 +70,16 @@ public class IoStateProvider extends AbstractTmfStateProvider {
     /**
      * TID field in state system
      */
-    public static final String ATTRIBUTE_FDTBL = "TID"; //$NON-NLS-1$
-
+    public static final String ATTRIBUTE_FDTBL = "FDTBL"; //$NON-NLS-1$
 
     /**
      * Read entry
      */
-    public static final String ATTRIBUTE_READ = "read"; //$NON-NLS-1$
+    public static final String ATTRIBUTE_READ = "READ"; //$NON-NLS-1$
+    /**
+     * Write entry
+     */
+    public static final String ATTRIBUTE_WRITE = "WRITE"; //$NON-NLS-1$
 
     /** Various syscall names for different purposes */
     private static final Collection<String> OPEN_FROM_DISK = ImmutableList.of("open", "openat");  //$NON-NLS-1$//$NON-NLS-2$
@@ -95,15 +99,15 @@ public class IoStateProvider extends AbstractTmfStateProvider {
     private static final String FIELD_OLDFD = "oldfd"; //$NON-NLS-1$
     private static final String FIELD_FILDES = "fildes"; //$NON-NLS-1$
     private static final String FIELD_DESCRIPTOR = "fd"; //$NON-NLS-1$
+    private static final String FIELD_FDIN = "fd_in"; //$NON-NLS-1$
+    private static final String FIELD_FDOUT = "fd_out"; //$NON-NLS-1$
+    private static final String FIELD_LEN = "len"; //$NON-NLS-1$
 
     private static final String UNKNOWN_FILE = "<unknown>"; //$NON-NLS-1$
 
-    private static final int VERSION = 2;
+    private static final int VERSION = 3;
 
-    /**
-     * Write entry
-     */
-    public static final String ATTRIBUTE_WRITE = "write"; //$NON-NLS-1$
+
 
     private final Map<String, EventConsumer> fHandlers = new HashMap<>();
     private final IKernelAnalysisEventLayout fLayout;
@@ -111,16 +115,35 @@ public class IoStateProvider extends AbstractTmfStateProvider {
     /*
      * Nullable to make the jdt be quiet
      */
-    private final Map<Integer, @Nullable Long> fToRead = new HashMap<>();
-    private final Map<Integer, @Nullable Long> fToWrite = new HashMap<>();
+    private final Map<Integer, @Nullable FdRequestWithPools> fToRead = new HashMap<>();
+    private final Map<Integer, @Nullable FdRequestWithPools> fToWrite = new HashMap<>();
     /* Map a TID to the file being opened */
     private final Map<Integer, String> fOpening = new HashMap<>();
     /* Map a TID to the file descriptor being closed */
     private final Map<Integer, Long> fClosing = new HashMap<>();
+    /* Map a quark to attribute pool */
+    private final Map<Integer, TmfAttributePool> fPools = new HashMap<>();
 
     @FunctionalInterface
     private interface EventConsumer {
         void handleEvent(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid);
+    }
+
+    private static class FdRequestWithPools {
+
+        private final Long fFd;
+        private final Integer fFdPoolQuark;
+        private final Integer fTidPoolQuark;
+        private final TmfAttributePool fFdPool;
+        private final TmfAttributePool fTidPool;
+
+        public FdRequestWithPools(Long fd, TmfAttributePool fdPool, Integer fdPoolQuark, TmfAttributePool tidPool, Integer tidPoolQuark) {
+            fFd = fd;
+            fFdPool = fdPool;
+            fFdPoolQuark = fdPoolQuark;
+            fTidPool = tidPool;
+            fTidPoolQuark = tidPoolQuark;
+        }
     }
 
     /**
@@ -255,12 +278,22 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
     }
 
+    /**
+     * @param ssb
+     * @param event
+     * @param tid
+     */
     private void netBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
-
+        // TODO Support network IO
     }
 
+    /**
+     * @param ssb
+     * @param event
+     * @param tid
+     */
     private void netEnd(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
-
+        // TODO Support network IO
     }
 
     private void dupBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
@@ -299,12 +332,24 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         openFile(ssb, event.getTimestamp().toNanos(), tid, newFd, filename);
     }
 
+    /**
+     * @param ssb
+     * @param event
+     * @param tid
+     */
     private void syncBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
-
+        // TODO Support sync, there should be disk requests in there, or at
+        // least something
     }
 
+    /**
+     * @param ssb
+     * @param event
+     * @param tid
+     */
     private void syncEnd(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
-
+        // TODO Support sync, there should be disk requests in there, or at
+        // least something
     }
 
     /**
@@ -312,26 +357,17 @@ public class IoStateProvider extends AbstractTmfStateProvider {
      */
     private void readBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
         Long fd = (event.getContent().getFieldValue(Long.class, FIELD_DESCRIPTOR));
+        Long len = (event.getContent().getFieldValue(Long.class, FIELD_LEN));
         if (fd == null) {
             return;
         }
-        fToRead.put(tid, fd);
+        startReadingFd(ssb, event.getTimestamp().toNanos(), tid, fd, len == null ? 0 : len);
     }
 
     private void readEnd(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
         long time = event.getTimestamp().toNanos();
         Long count = (event.getContent().getFieldValue(Long.class, getLayout().fieldSyscallRet()));
-        Long fd = fToRead.remove(tid);
-        // No read was done
-        if (fd == null || count == null || count < 0) {
-            return;
-        }
-        Long validFd = isValidFileDescriptor(ssb, tid, fd);
-        if (validFd == null) {
-            // The file is not opened in the state system, open it for this thread
-            openFile(ssb, time, tid, fd, null);
-        }
-        readFromFd(ssb, time, tid, fd, count);
+        readFromFd(ssb, time, tid, count == null ? 0L: count);
     }
 
     /**
@@ -339,34 +375,39 @@ public class IoStateProvider extends AbstractTmfStateProvider {
      */
     private void writeBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
         Long fd = (event.getContent().getFieldValue(Long.class, FIELD_DESCRIPTOR));
+        Long len = (event.getContent().getFieldValue(Long.class, FIELD_LEN));
         if (fd == null) {
             return;
         }
-        fToWrite.put(tid, fd);
+        startWritingFd(ssb, event.getTimestamp().toNanos(), tid, fd, len == null ? 0 : len);
     }
 
     private void writeEnd(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
         long time = event.getTimestamp().toNanos();
         Long count = (event.getContent().getFieldValue(Long.class, getLayout().fieldSyscallRet()));
-        Long fd = fToRead.remove(tid);
-        // No read was done
-        if (fd == null || count == null || count < 0) {
-            return;
-        }
-        Long validFd = isValidFileDescriptor(ssb, tid, fd);
-        if (validFd == null) {
-            // The file is not opened in the state system, open it for this thread
-            openFile(ssb, time, tid, fd, null);
-        }
-        writeFromFd(ssb, time, tid, fd, count);
+        writeToFd(ssb, time, tid, count == null ? 0L: count);
     }
 
+    /**
+     * @param ssb
+     */
     private void readWriteBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
-
+        Long fdIn = event.getContent().getFieldValue(Long.class, FIELD_FDIN);
+        Long fdOut = event.getContent().getFieldValue(Long.class, FIELD_FDOUT);
+        if (fdIn == null || fdOut == null) {
+            // We don't know about one of the files
+            return;
+        }
+        startReadingFd(ssb, event.getTimestamp().toNanos(), tid, fdIn, 0L);
+        startWritingFd(ssb, event.getTimestamp().toNanos(), tid, fdOut, 0L);
+        // TODO add support of sendfile
     }
 
     private void readWriteEnd(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
-
+        long time = event.getTimestamp().toNanos();
+        Long count = (event.getContent().getFieldValue(Long.class, getLayout().fieldSyscallRet()));
+        readFromFd(ssb, time, tid, count == null ? 0L: count);
+        writeToFd(ssb, time, tid, count == null ? 0L: count);
     }
 
     private void closeBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
@@ -400,26 +441,89 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
     private static void openFile(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd, @Nullable String filename) {
         int fdQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), ATTRIBUTE_FDTBL, String.valueOf(fd));
-        ssb.modifyAttribute(time, filename != null ? filename : UNKNOWN_FILE, fdQuark);
+        if (time < 0) {
+            ssb.updateOngoingState(filename, fdQuark);
+        } else {
+            ssb.modifyAttribute(time, filename != null ? filename : UNKNOWN_FILE, fdQuark);
+        }
     }
 
-    private static void readFromFd(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd, Long count) {
-        rwFromFd(ssb, time, tid, fd, count, ATTRIBUTE_READ);
+    private void startReadingFd(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd, Long count) {
+        startRwFd(ssb, time, tid, fd, count, ATTRIBUTE_READ, fToRead);
     }
 
-    private static void writeFromFd(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd, Long count) {
+    private void startWritingFd(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd, Long count) {
+        startRwFd(ssb, time, tid, fd, count, ATTRIBUTE_WRITE, fToWrite);
+    }
+
+    private void writeToFd(ITmfStateSystemBuilder ssb, long time, Integer tid, long count) {
+        FdRequestWithPools fd = fToWrite.remove(tid);
+        // No write was done
+        if (fd == null) {
+            return;
+        }
         rwFromFd(ssb, time, tid, fd, count, ATTRIBUTE_WRITE);
     }
 
-    private static void rwFromFd(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd, Long count, String attribute) {
+    private void readFromFd(ITmfStateSystemBuilder ssb, long time, Integer tid, long count) {
+        FdRequestWithPools fd = fToRead.remove(tid);
+        // No read was done
+        if (fd == null) {
+            return;
+        }
+        rwFromFd(ssb, time, tid, fd, count, ATTRIBUTE_READ);
+    }
+
+    private static void rwFromFd(ITmfStateSystemBuilder ssb, long time, Integer tid, FdRequestWithPools fd, Long count, String attribute) {
+        Long validFd = isValidFileDescriptor(ssb, tid, fd.fFd);
+
+        // Complete the attribute that are for pools and recycle those pools
+        ssb.updateOngoingState(count > 0 ? count : (Object) null, fd.fFdPoolQuark);
+        fd.fFdPool.recycle(fd.fFdPoolQuark, time);
+        ssb.updateOngoingState(count > 0 ? count : (Object) null, fd.fTidPoolQuark);
+        fd.fTidPool.recycle(fd.fTidPoolQuark, time);
+
+        if (count <= 0) {
+            // Return if the count < 0
+            return;
+        }
+
+        if (validFd == null) {
+            // The file is not opened in the state system, open it for this
+            // thread
+            openFile(ssb, time, tid, fd.fFd, null);
+        }
         try {
-            // Add the read specific to this file
-            int fdQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), ATTRIBUTE_FDTBL, String.valueOf(fd), attribute);
+            // Add the io specific to this file
+            int fdQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), ATTRIBUTE_FDTBL, String.valueOf(fd.fFd), attribute);
             StateSystemBuilderUtils.incrementAttributeLong(ssb, time, fdQuark, count);
 
-            // Add the read for this thread
+            // Add the io for this thread
             int tidReadQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), attribute);
             StateSystemBuilderUtils.incrementAttributeLong(ssb, time, tidReadQuark, count);
+        } catch (StateValueTypeException | AttributeNotFoundException e) {
+            Activator.getInstance().logError(e.getMessage(), e);
+        }
+    }
+
+    private void startRwFd(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd, Long count, String attribute, Map<Integer, @Nullable FdRequestWithPools> tidMap) {
+        try {
+            // Many threads can share the same fd table, so there can be multiple io requests on the same fd
+            // Add the io request under the proper fd attribute
+            int fdQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), ATTRIBUTE_FDTBL, String.valueOf(fd), attribute);
+            TmfAttributePool fdPool = fPools.computeIfAbsent(fdQuark, q -> new TmfAttributePool(ssb, q));
+            int availableFdQuark = fdPool.getAvailable();
+            ssb.modifyAttribute(time, count, availableFdQuark);
+
+            // Add the io request for this thread
+            int tidReadQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), attribute);
+            StateSystemBuilderUtils.incrementAttributeLong(ssb, time, tidReadQuark, count);
+            TmfAttributePool tidPool = fPools.computeIfAbsent(tidReadQuark, q -> new TmfAttributePool(ssb, q));
+            int availableIoQuark = tidPool.getAvailable();
+            ssb.modifyAttribute(time, count, availableIoQuark);
+
+            tidMap.put(tid, new FdRequestWithPools(fd, fdPool, availableFdQuark, tidPool, availableIoQuark));
+
         } catch (StateValueTypeException | AttributeNotFoundException e) {
             Activator.getInstance().logError(e.getMessage(), e);
         }
@@ -435,8 +539,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         if (pid == null || fd == null || filename == null) {
             return;
         }
-        int fdQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(pid), String.valueOf(fd));
-        ssb.updateOngoingState(filename, fdQuark);
+        openFile(ssb, -1, tid, fd, filename);
     }
 
     @Override

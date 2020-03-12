@@ -10,4 +10,4 @@
  *******************************************************************************/
 
 @org.eclipse.jdt.annotation.NonNullByDefault
-package org.eclipse.tracecompass.incubator.internal.kernel.core.io;
+package org.eclipse.tracecompass.incubator.kernel.core.io.tests;

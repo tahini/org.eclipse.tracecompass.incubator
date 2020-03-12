@@ -9,5 +9,13 @@
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
 
-@org.eclipse.jdt.annotation.NonNullByDefault
-package org.eclipse.tracecompass.incubator.internal.kernel.core.io;
+package org.eclipse.tracecompass.incubator.kernel.core.io.tests;
+
+/**
+ * Test the IO state system content
+ *
+ * @author Geneviève Bastien
+ */
+public class IoStateProviderTest {
+
+}

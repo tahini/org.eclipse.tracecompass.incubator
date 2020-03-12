@@ -19,6 +19,13 @@
             name="%view.contextswitch"
             restorable="true">
       </view>
+       <view
+            category="org.eclipse.linuxtools.tmf.ui.views.category"
+            class="org.eclipse.tracecompass.incubator.kernel.ui.views.io.perprocess.IoPerProcessXYView"
+            id="org.eclipse.tracecompass.incubator.kernel.ui.io.per.process.xyview"
+            name="%view.ioperprocess"
+            restorable="true">
+      </view>
    </extension>
    <extension
          point="org.eclipse.linuxtools.tmf.core.analysis">
@@ -34,6 +41,13 @@
             id="org.eclipse.tracecompass.incubator.kernel.ui.contextswitch">
          <analysisModuleClass
                class="org.eclipse.tracecompass.analysis.os.linux.core.contextswitch.KernelContextSwitchAnalysis">
+         </analysisModuleClass>
+      </output>
+      <output
+            class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
+            id="org.eclipse.tracecompass.incubator.kernel.ui.io.per.process.xyview">
+         <analysisModuleClass
+               class="org.eclipse.tracecompass.incubator.internal.kernel.core.fileaccess.FileAccessAnalysis">
          </analysisModuleClass>
       </output>
    </extension>
