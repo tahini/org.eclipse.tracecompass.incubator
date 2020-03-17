@@ -16,7 +16,6 @@ import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.tracecompass.tmf.ui.viewers.TmfViewer;
 import org.eclipse.tracecompass.tmf.ui.viewers.tree.AbstractSelectTreeViewer;
@@ -49,19 +48,8 @@ public class TreeXyView extends TmfChartView {
 
     private static final class TreeXyViewer extends AbstractSelectTreeViewer {
 
-        private final class TreeXyLabelProvider extends AbstractSelectTreeViewer.TreeLabelProvider {
-            @Override
-            public @Nullable Image getColumnImage(@Nullable Object element, int columnIndex) {
-                if (columnIndex == 1 && element instanceof TmfTreeViewerEntry && isChecked(element)) {
-                    return getLegendImage(((TmfTreeViewerEntry) element).getName());
-                }
-                return null;
-            }
-        }
-
         public TreeXyViewer(Composite parent) {
             super(parent, 1, DATA_PROVIDER_ID);
-            setLabelProvider(new TreeXyLabelProvider());
         }
 
         @Override

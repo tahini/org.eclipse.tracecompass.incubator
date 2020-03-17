@@ -14,11 +14,13 @@ package org.eclipse.tracecompass.incubator.internal.trace.server.jersey.rest.cor
 import java.io.IOException;
 
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.tracecompass.tmf.core.model.xy.ISeriesModel;
 import org.eclipse.tracecompass.tmf.core.model.xy.ITmfXyModel;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.google.common.collect.Maps;
 
 /**
  * Serializer for XY model {@link ITmfXyModel}
@@ -43,7 +45,7 @@ public class XYModelSerializer extends StdSerializer<@NonNull ITmfXyModel> {
     public void serialize(@NonNull ITmfXyModel value, JsonGenerator gen, SerializerProvider provider) throws IOException {
         gen.writeStartObject();
         gen.writeStringField("title", value.getTitle()); //$NON-NLS-1$
-        gen.writeObjectField("series", value.getData()); //$NON-NLS-1$
+        gen.writeObjectField("series", Maps.uniqueIndex(value.getSeriesData(), ISeriesModel::getId)); //$NON-NLS-1$
         gen.writeEndObject();
     }
 

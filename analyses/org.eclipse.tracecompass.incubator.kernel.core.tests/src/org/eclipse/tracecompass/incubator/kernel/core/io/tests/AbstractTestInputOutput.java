@@ -22,11 +22,11 @@ import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelAnalysisModule;
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelTidAspect;
-import org.eclipse.tracecompass.analysis.os.linux.core.tests.Activator;
 import org.eclipse.tracecompass.analysis.os.linux.core.tests.stubs.trace.KernelEventLayoutStub;
 import org.eclipse.tracecompass.analysis.os.linux.core.tests.stubs.trace.TmfXmlKernelTraceStub;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
 import org.eclipse.tracecompass.incubator.internal.kernel.core.fileaccess.FileAccessAnalysis;
+import org.eclipse.tracecompass.incubator.kernel.core.tests.ActivatorTest;
 import org.eclipse.tracecompass.tmf.core.event.TmfEvent;
 import org.eclipse.tracecompass.tmf.core.exceptions.TmfTraceException;
 import org.eclipse.tracecompass.tmf.core.signal.TmfTraceOpenedSignal;
@@ -43,7 +43,7 @@ import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
  */
 public class AbstractTestInputOutput {
 
-    private static final String IO_FILE_PATH = "testfiles/traces/";
+    private static final String IO_FILE_PATH = "testfiles/traces/iotrace.xml";
 
     private static class IOKernelEventLayout extends KernelEventLayoutStub {
         @Override
@@ -111,15 +111,13 @@ public class AbstractTestInputOutput {
      * Setup the trace for the tests and return the InputOutputAnalysisModule,
      * not executed.
      *
-     * @param fileName
-     *            The file name of the trace to open
      * @return The input output analysis module
      */
-    protected FileAccessAnalysis setUp(String fileName) {
+    protected FileAccessAnalysis setUp() {
         TmfXmlKernelTraceStub trace = new TmfXmlKernelTraceStub();
         trace.addEventAspect(KernelTidAspect.INSTANCE);
         trace.setKernelEventLayout(EVENT_LAYOUT);
-        IPath filePath = Activator.getAbsoluteFilePath(IO_FILE_PATH + fileName);
+        IPath filePath = ActivatorTest.getAbsoluteFilePath(IO_FILE_PATH);
         IStatus status = trace.validate(null, filePath.toOSString());
         if (!status.isOK()) {
             fail(status.getException().getMessage());

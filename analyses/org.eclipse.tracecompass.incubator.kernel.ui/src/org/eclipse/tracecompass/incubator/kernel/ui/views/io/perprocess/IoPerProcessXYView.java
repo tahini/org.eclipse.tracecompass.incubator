@@ -61,14 +61,14 @@ public class IoPerProcessXYView extends TmfChartView {
 
     private static final class TreeXyViewer extends AbstractSelectTreeViewer {
 
-        private final class TreeXyLabelProvider extends AbstractSelectTreeViewer.TreeLabelProvider {
+        private final class TreeXyLabelProvider extends AbstractSelectTreeViewer.DataProviderTreeLabelProvider {
             @Override
             public @Nullable Image getColumnImage(@Nullable Object element, int columnIndex) {
                 if (columnIndex == 1 && element instanceof TmfTreeViewerEntry && isChecked(element)) {
                     TmfGenericTreeEntry<TmfTreeDataModel> entry = (TmfGenericTreeEntry<TmfTreeDataModel>) element;
                     if (!entry.hasChildren()) {
                         // ensures that only leaf nodes return images
-                        return getLegendImage(getFullPath(entry));
+                        return getLegendImage(entry.getModel().getId());
                     }
                 }
                 return null;

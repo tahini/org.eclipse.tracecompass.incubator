@@ -517,14 +517,13 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
             // Add the io request for this thread
             int tidReadQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), attribute);
-            StateSystemBuilderUtils.incrementAttributeLong(ssb, time, tidReadQuark, count);
             TmfAttributePool tidPool = fPools.computeIfAbsent(tidReadQuark, q -> new TmfAttributePool(ssb, q));
             int availableIoQuark = tidPool.getAvailable();
             ssb.modifyAttribute(time, count, availableIoQuark);
 
             tidMap.put(tid, new FdRequestWithPools(fd, fdPool, availableFdQuark, tidPool, availableIoQuark));
 
-        } catch (StateValueTypeException | AttributeNotFoundException e) {
+        } catch (StateValueTypeException e) {
             Activator.getInstance().logError(e.getMessage(), e);
         }
     }

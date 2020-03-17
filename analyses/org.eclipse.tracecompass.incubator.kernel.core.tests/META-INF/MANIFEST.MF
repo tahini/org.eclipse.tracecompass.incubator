@@ -5,6 +5,8 @@ Bundle-Vendor: %Bundle-Vendor
 Bundle-SymbolicName: org.eclipse.tracecompass.incubator.kernel.core.tests
 Bundle-Version: 0.0.1.qualifier
 Bundle-Localization: plugin
+Bundle-Activator: org.eclipse.tracecompass.incubator.kernel.core.tests.ActivatorTest
+Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.core.resources,
@@ -16,7 +18,8 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.tracecompass.analysis.os.linux.core,
  org.eclipse.tracecompass.statesystem.core,
  org.eclipse.tracecompass.tmf.core,
- org.eclipse.tracecompass.tmf.core.tests
+ org.eclipse.tracecompass.tmf.core.tests,
+ org.eclipse.tracecompass.statesystem.core.tests
 Export-Package: org.eclipse.tracecompass.incubator.kernel.core.io.tests,
  org.eclipse.tracecompass.incubator.kernel.core.tests
 Automatic-Module-Name: org.eclipse.tracecompass.incubator.kernel.core.tests
