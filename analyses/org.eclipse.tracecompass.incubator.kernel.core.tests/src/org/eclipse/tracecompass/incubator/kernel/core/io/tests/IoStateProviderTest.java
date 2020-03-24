@@ -24,13 +24,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.incubator.internal.kernel.core.fileaccess.FileAccessAnalysis;
+import org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoAnalysis;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.statesystem.core.tests.shared.utils.StateIntervalStub;
 import org.eclipse.tracecompass.statesystem.core.tests.shared.utils.StateSystemTestUtils;
 import org.eclipse.tracecompass.tmf.core.tests.shared.TmfTestHelper;
-import org.junit.After;
 import org.junit.Test;
 
 /**
@@ -43,20 +42,14 @@ public class IoStateProviderTest extends AbstractTestInputOutput {
     private static final String STATE_SYSTEM_PATH = "testfiles/stateSystem/expectedIoStateProvider";
 
     /**
-     * Delete the trace at the end of the test
-     */
-    @After
-    public void afterTest() {
-        super.deleteTrace();
-    }
-
-    /**
      * Test that the analysis executes without problems
-     * @throws IOException Exception thrown by test files
+     *
+     * @throws IOException
+     *             Exception thrown by test files
      */
     @Test
     public void testAnalysisExecution() throws IOException {
-        FileAccessAnalysis module = setUp();
+        IoAnalysis module = getModule();
         /* Make sure the analysis hasn't run yet */
         assertNull(module.getStateSystem());
 
@@ -82,18 +75,17 @@ public class IoStateProviderTest extends AbstractTestInputOutput {
             String[] values = valuesString.split(",");
             assertTrue(values.length % 2 == 0);
 
-
             ITmfStateInterval last = null;
             List<ITmfStateInterval> intervals = new ArrayList<>();
             for (int j = 0; j < values.length; j = j + 2) {
                 String timeString = values[j];
-                String valueString = values[j+1];
+                String valueString = values[j + 1];
                 int intervalStart = Integer.parseInt(timeString);
                 // Add a null interval at the beginning if necessary
                 if (last == null && intervalStart != startTime) {
                     intervals.add(new StateIntervalStub(startTime, intervalStart - 1, (Object) null));
                 }
-                int intervalEnd = (j+2 < values.length) ? Integer.parseInt(values[j+2]) - 1 : endTime;
+                int intervalEnd = (j + 2 < values.length) ? Integer.parseInt(values[j + 2]) - 1 : endTime;
                 last = new StateIntervalStub(intervalStart, intervalEnd, convertData(valueString, dataType));
                 intervals.add(last);
             }
@@ -106,7 +98,7 @@ public class IoStateProviderTest extends AbstractTestInputOutput {
         if (valueString.equals("null")) {
             return null;
         }
-        switch(dataType) {
+        switch (dataType) {
         case "long":
             return Long.parseLong(valueString);
         case "int":
@@ -119,6 +111,5 @@ public class IoStateProviderTest extends AbstractTestInputOutput {
         }
         return null;
     }
-
 
 }

@@ -57,6 +57,16 @@
 <field name="cpu" value="0" type="int" />
 <field name="ret" value="4096" type="long" />
 </event>
+<event timestamp="60" name="syscall_entry_writev">
+<field name="cpu" value="0" type="int" />
+<field name="fd" value="3" type="long" />
+<field name="vec" value="123123" type="long" />
+<field name="vlen" value="1" type="long" />
+</event>
+<event timestamp="65" name="syscall_exit_writev">
+<field name="cpu" value="0" type="int" />
+<field name="ret" value="1024" type="long" />
+</event>
 <event timestamp="70" name="syscall_entry_read">
 <field name="cpu" value="0" type="int" />
 <field name="fd" value="3" type="long" />

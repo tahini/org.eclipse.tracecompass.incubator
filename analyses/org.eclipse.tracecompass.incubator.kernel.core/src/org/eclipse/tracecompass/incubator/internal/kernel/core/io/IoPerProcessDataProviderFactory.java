@@ -16,7 +16,6 @@ import java.util.Collections;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.incubator.internal.kernel.core.fileaccess.FileAccessAnalysis;
 import org.eclipse.tracecompass.internal.tmf.core.model.DataProviderDescriptor;
 import org.eclipse.tracecompass.internal.tmf.core.model.xy.TmfTreeXYCompositeDataProvider;
 import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderDescriptor;
@@ -54,7 +53,7 @@ public class IoPerProcessDataProviderFactory implements IDataProviderFactory {
 
     @Override
     public Collection<IDataProviderDescriptor> getDescriptors(@NonNull ITmfTrace trace) {
-        FileAccessAnalysis module = TmfTraceUtils.getAnalysisModuleOfClass(trace, FileAccessAnalysis.class, FileAccessAnalysis.ID);
+        IoAnalysis module = TmfTraceUtils.getAnalysisModuleOfClass(trace, IoAnalysis.class, IoAnalysis.ID);
         return module != null ? Collections.singletonList(DESCRIPTOR) : Collections.emptyList();
     }
 

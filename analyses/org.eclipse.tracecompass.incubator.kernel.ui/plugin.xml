@@ -47,7 +47,7 @@
             class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
             id="org.eclipse.tracecompass.incubator.kernel.ui.io.per.process.xyview">
          <analysisModuleClass
-               class="org.eclipse.tracecompass.incubator.internal.kernel.core.fileaccess.FileAccessAnalysis">
+               class="org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoAnalysis">
          </analysisModuleClass>
       </output>
    </extension>

@@ -15,6 +15,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.util.Objects;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
@@ -25,7 +26,7 @@ import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelTidAspect;
 import org.eclipse.tracecompass.analysis.os.linux.core.tests.stubs.trace.KernelEventLayoutStub;
 import org.eclipse.tracecompass.analysis.os.linux.core.tests.stubs.trace.TmfXmlKernelTraceStub;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
-import org.eclipse.tracecompass.incubator.internal.kernel.core.fileaccess.FileAccessAnalysis;
+import org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoAnalysis;
 import org.eclipse.tracecompass.incubator.kernel.core.tests.ActivatorTest;
 import org.eclipse.tracecompass.tmf.core.event.TmfEvent;
 import org.eclipse.tracecompass.tmf.core.exceptions.TmfTraceException;
@@ -34,6 +35,8 @@ import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
+import org.junit.After;
+import org.junit.Before;
 
 /**
  * Abstract for InputOuput test classes with utility methods to setup and tear
@@ -80,6 +83,7 @@ public class AbstractTestInputOutput {
     private static final IKernelAnalysisEventLayout EVENT_LAYOUT = new IOKernelEventLayout();
 
     private @Nullable ITmfTrace fTrace;
+    private @Nullable IoAnalysis fModule;
 
     private static void deleteSuppFiles(ITmfTrace trace) {
         /* Remove supplementary files */
@@ -97,9 +101,10 @@ public class AbstractTestInputOutput {
     }
 
     /**
-     * Clean up
+     * Delete the trace at the end of the test
      */
-    protected void deleteTrace() {
+    @After
+    public void deleteTrace() {
         ITmfTrace trace = fTrace;
         if (trace != null) {
             deleteSuppFiles(trace);
@@ -110,10 +115,9 @@ public class AbstractTestInputOutput {
     /**
      * Setup the trace for the tests and return the InputOutputAnalysisModule,
      * not executed.
-     *
-     * @return The input output analysis module
      */
-    protected FileAccessAnalysis setUp() {
+    @Before
+    public void setUp() {
         TmfXmlKernelTraceStub trace = new TmfXmlKernelTraceStub();
         trace.addEventAspect(KernelTidAspect.INSTANCE);
         trace.setKernelEventLayout(EVENT_LAYOUT);
@@ -138,8 +142,26 @@ public class AbstractTestInputOutput {
         kernelMod.schedule();
         kernelMod.waitForCompletion();
 
-        FileAccessAnalysis module = TmfTraceUtils.getAnalysisModuleOfClass(trace, FileAccessAnalysis.class, FileAccessAnalysis.ID);
+        IoAnalysis module = TmfTraceUtils.getAnalysisModuleOfClass(trace, IoAnalysis.class, IoAnalysis.ID);
         assertNotNull(module);
-        return module;
+        fModule = module;
+    }
+
+    /**
+     * Get the trace
+     *
+     * @return The trace being tested
+     */
+    protected ITmfTrace getTrace() {
+        return Objects.requireNonNull(fTrace, "This method should not be called before initialization");
+    }
+
+    /**
+     * Get the analysis module
+     *
+     * @return The input output analysis module
+     */
+    protected IoAnalysis getModule() {
+        return Objects.requireNonNull(fModule, "This method should not be called before initialization");
     }
 }
