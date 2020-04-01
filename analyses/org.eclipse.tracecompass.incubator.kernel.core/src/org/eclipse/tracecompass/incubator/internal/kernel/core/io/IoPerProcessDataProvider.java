@@ -174,7 +174,7 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
                 return 0.0;
             }
             Object value = interval.getValue();
-           return (value instanceof Number) ? ((Number) value).doubleValue() : 0.0;
+            return (value instanceof Number) ? ((Number) value).doubleValue() : 0.0;
         }
 
         private @Nullable
@@ -302,7 +302,6 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
         }
 
         // Put all intervals in a map, there shouldn't be too many, we'll handle them later
-
         Map<Integer, Set<ITmfStateInterval>> intervals = new HashMap<>();
         try {
             for (ITmfStateInterval interval : ss.query2D(quarksToQuery, times)) {

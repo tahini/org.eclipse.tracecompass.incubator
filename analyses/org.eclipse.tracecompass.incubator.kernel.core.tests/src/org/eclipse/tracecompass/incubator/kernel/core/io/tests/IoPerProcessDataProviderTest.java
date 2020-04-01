@@ -65,7 +65,7 @@ public class IoPerProcessDataProviderTest extends AbstractTestInputOutput {
      *             or a malformed or unmappable byte sequence is read
      */
     @Test
-    public void testFlameGraphDataProviderAllItems() throws IOException {
+    public void testIoDataProvider() throws IOException {
         IoAnalysis module = getModule();
         assertTrue(TmfTestHelper.executeAnalysis(module));
 
@@ -92,7 +92,7 @@ public class IoPerProcessDataProviderTest extends AbstractTestInputOutput {
         long increment = Long.parseLong(testParameters[2]);
 
         ImmutableList.Builder<Long> timeBuilder = ImmutableList.builder();
-        for (long i = start; i < end; i = i + increment) {
+        for (long i = start; i <= end; i = i + increment) {
             timeBuilder.add(i);
         }
 

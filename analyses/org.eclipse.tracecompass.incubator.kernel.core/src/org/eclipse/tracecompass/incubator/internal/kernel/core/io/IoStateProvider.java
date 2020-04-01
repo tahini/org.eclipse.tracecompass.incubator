@@ -14,6 +14,7 @@ package org.eclipse.tracecompass.incubator.internal.kernel.core.io;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
@@ -38,16 +39,19 @@ import com.google.common.collect.ImmutableList;
  * File Descriptor State Provider
  * </p>
  * <p>
- * This allows handling of generic file descriptors with common operations
- * </p>
- * <p>
- * Common elements
- * </p>
+ * In the state system, there are 3 root attributes, with the following
+ * structure
  * <ul>
- * <li>read</li>
- * <li>write</li>
- * <li>close</li>
+ * <li>TID: This section contains the information for each thread: the
+ * read/write requests for each. The FDTBL sub-attribute contains the quark of
+ * the file descriptor table, that can be shared between multiple threads</li>
+ * <li>FDTBL: This is an attribute pool that contains a list of all file
+ * descriptor tables. They have their own attribute instead of being under the
+ * threads because some threads can share the same fd table. Each thread has a
+ * link to the attribute for the correct fd table.</li>
+ * <li>RES: Contains the files</li>
  * </ul>
+ * </p>
  *
  * @author Matthew Khouzam
  */
@@ -89,6 +93,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
     private static final Collection<String> WRITE_SYSCALLS = ImmutableList.of("write", "sendmsg", "sendto", "writev", "pwrite", "pwrite64", "pwritev");   //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$//$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$ //$NON-NLS-7$
     private static final Collection<String> CLOSE_SYSCALL = ImmutableList.of("close"); //$NON-NLS-1$
     private static final Collection<String> READ_WRITE_SYSCALLS = ImmutableList.of("splice", "senfile64");  //$NON-NLS-1$//$NON-NLS-2$
+    private static final Collection<String> CLONE_SYSCALLS = ImmutableList.of("clone");  //$NON-NLS-1$
     private static final String LTTNG_STATEDUMP_FILE_DESCRIPTOR = "lttng_statedump_file_descriptor"; //$NON-NLS-1$
 
 
@@ -122,6 +127,8 @@ public class IoStateProvider extends AbstractTmfStateProvider {
     private final Map<Integer, Long> fClosing = new HashMap<>();
     /* Map a quark to attribute pool */
     private final Map<Integer, TmfAttributePool> fPools = new HashMap<>();
+    private AtomicInteger fFdCount = new AtomicInteger(0);
+
 
     @FunctionalInterface
     private interface EventConsumer {
@@ -187,6 +194,10 @@ public class IoStateProvider extends AbstractTmfStateProvider {
             addEventHandler(getLayout().eventSyscallEntryPrefix() + syscall, this::closeBegin);
             addEventHandler(getLayout().eventSyscallExitPrefix() + syscall, this::closeEnd);
         }
+        for (String syscall : CLONE_SYSCALLS) {
+            addEventHandler(getLayout().eventSyscallEntryPrefix() + syscall, this::cloneBegin);
+            addEventHandler(getLayout().eventSyscallExitPrefix() + syscall, this::cloneEnd);
+        }
         addEventHandler(LTTNG_STATEDUMP_FILE_DESCRIPTOR, this::statedumpHandle);
     }
 
@@ -237,17 +248,19 @@ public class IoStateProvider extends AbstractTmfStateProvider {
      *
      * @param ssb
      *            State system
+     * @param time
      * @param tid
      *            the TID that owns the file descriptor
      * @param fd
      *            the file descriptor
      * @return the file descriptor or null if invalid
      */
-    protected static final @Nullable Long isValidFileDescriptor(ITmfStateSystem ssb, Integer tid, @Nullable Long fd) {
+    protected final @Nullable Long isValidFileDescriptor(ITmfStateSystemBuilder ssb, long time, Integer tid, @Nullable Long fd) {
         if (fd == null) {
             return null;
         }
-        int tidFileQuark = ssb.optQuarkAbsolute(ATTRIBUTE_TID, String.valueOf(tid), ATTRIBUTE_FDTBL, String.valueOf(fd));
+        int fdTblQuark = getFdTblQuarkFor(ssb, time, tid);
+        int tidFileQuark = ssb.optQuarkRelative(fdTblQuark, String.valueOf(fd));
         if (tidFileQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
             return null;
         }
@@ -305,7 +318,8 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         if (oldFd == null) {
             return;
         }
-        int oldFdQuark = ssb.optQuarkAbsolute(ATTRIBUTE_TID, String.valueOf(tid), ATTRIBUTE_FDTBL, String.valueOf(oldFd));
+        int fdTblQuark = getFdTblQuarkFor(ssb, event.getTimestamp().toNanos(), tid);
+        int oldFdQuark = ssb.optQuarkRelative(fdTblQuark, String.valueOf(oldFd));
         // Get the file to dup
         String filename = UNKNOWN_FILE;
         if (oldFdQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
@@ -328,7 +342,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         // Close the previous fd if required, then add the new file
         long time = event.getTimestamp().toNanos();
         closeFile(ssb, time, tid, newFd);
-        openFile(ssb, event.getTimestamp().toNanos(), tid, newFd, filename);
+        openFile(ssb, time, tid, newFd, filename);
     }
 
     /**
@@ -411,7 +425,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
     private void closeBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
         Long fd = (event.getContent().getFieldValue(Long.class, FIELD_DESCRIPTOR));
-        fd = isValidFileDescriptor(ssb, tid, fd);
+        fd = isValidFileDescriptor(ssb, event.getTimestamp().toNanos(), tid, fd);
         if (fd == null) {
             return;
         }
@@ -431,20 +445,67 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         }
     }
 
-    private static void closeFile(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd) {
-        int fdQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), ATTRIBUTE_FDTBL, String.valueOf(fd));
+    /**
+     * @param ssb
+     * @param event
+     * @param tid
+     */
+    private void cloneBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
+
+    }
+
+    /**
+     * @param ssb
+     * @param event
+     * @param tid
+     */
+    private void cloneEnd(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
+
+    }
+
+    /**
+     * @param tid
+     */
+    private void statedumpHandle(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
+        Long pid = (event.getContent().getFieldValue(Long.class, FIELD_PID));
+        Long fd = (event.getContent().getFieldValue(Long.class, FIELD_DESCRIPTOR));
+        String filename = (event.getContent().getFieldValue(String.class, FIELD_FILENAME));
+        if (pid == null || fd == null || filename == null) {
+            return;
+        }
+        openFile(ssb, -1, tid, fd, filename);
+    }
+
+    private void closeFile(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd) {
+        int fdTblQuark = getFdTblQuarkFor(ssb, time, tid);
+        int fdQuark = ssb.getQuarkRelativeAndAdd(fdTblQuark, String.valueOf(fd));
         ssb.removeAttribute(time, fdQuark);
 
         // TODO Close the file for this thread in the Resources section
     }
 
-    private static void openFile(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd, @Nullable String filename) {
-        int fdQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), ATTRIBUTE_FDTBL, String.valueOf(fd));
+    private void openFile(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd, @Nullable String filename) {
+        int fdTblQuark = getFdTblQuarkFor(ssb, time, tid);
+        int fdQuark = ssb.getQuarkRelativeAndAdd(fdTblQuark, String.valueOf(fd));
         if (time < 0) {
             ssb.updateOngoingState(filename, fdQuark);
         } else {
             ssb.modifyAttribute(time, filename != null ? filename : UNKNOWN_FILE, fdQuark);
         }
+    }
+
+    private int getFdTblQuarkFor(ITmfStateSystemBuilder ssb, long time, Integer tid) {
+        // The fdtbl quark under the tid contains the quark of the actual file descriptor table
+        int tidFdQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), ATTRIBUTE_FDTBL);
+        Object fdTblQuarkObj = ssb.queryOngoing(tidFdQuark);
+        if (fdTblQuarkObj instanceof Integer) {
+            return ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_FDTBL, String.valueOf(fdTblQuarkObj));
+        }
+        // The file descriptor table does not exist yet, add it
+        int fdTblNumber = fFdCount.getAndIncrement();
+        int fdTblQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_FDTBL, String.valueOf(fdTblNumber));
+        ssb.modifyAttribute(time, fdTblNumber, tidFdQuark);
+        return fdTblQuark;
     }
 
     private void startReadingFd(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd, Long count) {
@@ -473,8 +534,8 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         rwFromFd(ssb, time, tid, fd, count, ATTRIBUTE_READ);
     }
 
-    private static void rwFromFd(ITmfStateSystemBuilder ssb, long time, Integer tid, FdRequestWithPools fd, Long count, String attribute) {
-        Long validFd = isValidFileDescriptor(ssb, tid, fd.fFd);
+    private void rwFromFd(ITmfStateSystemBuilder ssb, long time, Integer tid, FdRequestWithPools fd, Long count, String attribute) {
+        Long validFd = isValidFileDescriptor(ssb, time, tid, fd.fFd);
 
         // Complete the attribute that are for pools and recycle those pools
         ssb.updateOngoingState(count > 0 ? count : (Object) null, fd.fFdPoolQuark);
@@ -494,7 +555,8 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         }
         try {
             // Add the io specific to this file
-            int fdQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), ATTRIBUTE_FDTBL, String.valueOf(fd.fFd), attribute);
+            int fdTblQuark = getFdTblQuarkFor(ssb, time, tid);
+            int fdQuark = ssb.getQuarkRelativeAndAdd(fdTblQuark, String.valueOf(fd.fFd), attribute);
             StateSystemBuilderUtils.incrementAttributeLong(ssb, time, fdQuark, count);
 
             // Add the io for this thread
@@ -509,7 +571,8 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         try {
             // Many threads can share the same fd table, so there can be multiple io requests on the same fd
             // Add the io request under the proper fd attribute
-            int fdQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), ATTRIBUTE_FDTBL, String.valueOf(fd), attribute);
+            int fdTblQuark = getFdTblQuarkFor(ssb, time, tid);
+            int fdQuark = ssb.getQuarkRelativeAndAdd(fdTblQuark, String.valueOf(fd), attribute);
             TmfAttributePool fdPool = fPools.computeIfAbsent(fdQuark, q -> new TmfAttributePool(ssb, q));
             int availableFdQuark = fdPool.getAvailable();
             ssb.modifyAttribute(time, count, availableFdQuark);
@@ -525,19 +588,6 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         } catch (StateValueTypeException e) {
             Activator.getInstance().logError(e.getMessage(), e);
         }
-    }
-
-    /**
-     * @param tid
-     */
-    private void statedumpHandle(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
-        Long pid = (event.getContent().getFieldValue(Long.class, FIELD_PID));
-        Long fd = (event.getContent().getFieldValue(Long.class, FIELD_DESCRIPTOR));
-        String filename = (event.getContent().getFieldValue(String.class, FIELD_FILENAME));
-        if (pid == null || fd == null || filename == null) {
-            return;
-        }
-        openFile(ssb, -1, tid, fd, filename);
     }
 
     @Override
