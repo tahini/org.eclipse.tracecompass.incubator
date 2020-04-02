@@ -14,8 +14,10 @@ package org.eclipse.tracecompass.incubator.internal.kernel.core.io;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.os.linux.core.event.aspect.LinuxTidAspect;
@@ -86,7 +88,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
     /** Various syscall names for different purposes */
     private static final Collection<String> OPEN_FROM_DISK = ImmutableList.of("open", "openat");  //$NON-NLS-1$//$NON-NLS-2$
-    private static final Collection<String> OPEN_FROM_NET = ImmutableList.of("socket"); //$NON-NLS-1$
+    private static final Collection<String> OPEN_FROM_NET = ImmutableList.of("socket", "accept", "accept4", "connect"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
     private static final Collection<String> DUP_SYSCALLS = ImmutableList.of("fcntl", "dup", "dup2", "dup3");   //$NON-NLS-1$//$NON-NLS-2$//$NON-NLS-3$ //$NON-NLS-4$
     private static final Collection<String> SYNC_SYSCALLS = ImmutableList.of("sync", "sync_file_range", "fsync", "fdatasync");  //$NON-NLS-1$ //$NON-NLS-2$//$NON-NLS-3$ //$NON-NLS-4$
     private static final Collection<String> READ_SYSCALLS = ImmutableList.of("read", "recvmsg", "recvfrom", "readv", "pread", "pread64", "preadv"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$ //$NON-NLS-7$
@@ -94,8 +96,6 @@ public class IoStateProvider extends AbstractTmfStateProvider {
     private static final Collection<String> CLOSE_SYSCALL = ImmutableList.of("close"); //$NON-NLS-1$
     private static final Collection<String> READ_WRITE_SYSCALLS = ImmutableList.of("splice", "senfile64");  //$NON-NLS-1$//$NON-NLS-2$
     private static final Collection<String> CLONE_SYSCALLS = ImmutableList.of("clone");  //$NON-NLS-1$
-    private static final String LTTNG_STATEDUMP_FILE_DESCRIPTOR = "lttng_statedump_file_descriptor"; //$NON-NLS-1$
-
 
     /** Event fieLD names */
     private static final String FIELD_FILENAME = "filename"; //$NON-NLS-1$
@@ -106,6 +106,12 @@ public class IoStateProvider extends AbstractTmfStateProvider {
     private static final String FIELD_FDIN = "fd_in"; //$NON-NLS-1$
     private static final String FIELD_FDOUT = "fd_out"; //$NON-NLS-1$
     private static final String FIELD_LEN = "len"; //$NON-NLS-1$
+    private static final String FIELD_CLONE_FLAGS = "clone_flags"; //$NON-NLS-1$
+    private static final String FIELD_CMD = "cmd"; //$NON-NLS-1$
+    private static final String FIELD_STATEDUMP_FILE_TABLE = "file_table_address"; //$NON-NLS-1$
+    private static final long CLONE_FILES_FLAG = 0x400;
+    private static final long FCNTL_CMD_DUP = 0;
+    private static final long FCNTL_CMD_DUP_CLOEXEC = 1030;
 
     private static final String UNKNOWN_FILE = "<unknown>"; //$NON-NLS-1$
 
@@ -125,8 +131,14 @@ public class IoStateProvider extends AbstractTmfStateProvider {
     private final Map<Integer, String> fOpening = new HashMap<>();
     /* Map a TID to the file descriptor being closed */
     private final Map<Integer, Long> fClosing = new HashMap<>();
+    /* Map a TID to the file descriptor connecting */
+    private final Map<Integer, Long> fConnecting = new HashMap<>();
     /* Map a quark to attribute pool */
     private final Map<Integer, TmfAttributePool> fPools = new HashMap<>();
+    /* Map a TID to whether to share the file table (true) or not (false) */
+    private final Map<Integer, Boolean> fCloning = new HashMap<>();
+    /* Map a file table address from statedump to a quark */
+    private final Map<Long, Integer> fFdTblAddresses = new HashMap<>();
     private AtomicInteger fFdCount = new AtomicInteger(0);
 
 
@@ -198,7 +210,14 @@ public class IoStateProvider extends AbstractTmfStateProvider {
             addEventHandler(getLayout().eventSyscallEntryPrefix() + syscall, this::cloneBegin);
             addEventHandler(getLayout().eventSyscallExitPrefix() + syscall, this::cloneEnd);
         }
-        addEventHandler(LTTNG_STATEDUMP_FILE_DESCRIPTOR, this::statedumpHandle);
+        String statedumpFileEvent = fLayout.eventStatedumpFileDescriptor();
+        if (statedumpFileEvent != null) {
+            addEventHandler(statedumpFileEvent, this::statedumpHandle);
+        }
+        String statedumpStateEvent = fLayout.eventStatedumpProcessState();
+        if (statedumpStateEvent != null) {
+            addEventHandler(statedumpStateEvent, this::statedumpProcessHandle);
+        }
     }
 
     /**
@@ -242,20 +261,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         return fLayout;
     }
 
-    /**
-     * Check if a file descriptor is valid. Has it been opened? if not, let's
-     * ignore it for now.
-     *
-     * @param ssb
-     *            State system
-     * @param time
-     * @param tid
-     *            the TID that owns the file descriptor
-     * @param fd
-     *            the file descriptor
-     * @return the file descriptor or null if invalid
-     */
-    protected final @Nullable Long isValidFileDescriptor(ITmfStateSystemBuilder ssb, long time, Integer tid, @Nullable Long fd) {
+    private final @Nullable Long isValidFileDescriptor(ITmfStateSystemBuilder ssb, long time, Integer tid, @Nullable Long fd) {
         if (fd == null) {
             return null;
         }
@@ -290,13 +296,37 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
     }
 
+    private static String getV4Or6Address(ITmfEvent event) {
+        Object v4addr = event.getContent().getFieldValue(Object.class, "v4addr");
+        Object v6addr = event.getContent().getFieldValue(Object.class, "v6addr");
+        Integer family = event.getContent().getFieldValue(Integer.class, "family");
+        String socketFamily = LinuxSocketFamily.getSocketFamily(family != null ? family : 0);
+        String connectTo = UNKNOWN_FILE;
+        if ((v4addr instanceof long[]) && (v6addr instanceof long[])) {
+            long[] addr4 = (long[]) v4addr;
+            long[] addr6 = (long[]) v6addr;
+            connectTo = Objects.requireNonNull(addr4.length != 0 ? StringUtils.join(addr4, '.') : (addr6.length != 0) ? StringUtils.join(addr6, ':') : UNKNOWN_FILE);
+        }
+        return connectTo + ':' + ' ' + socketFamily;
+    }
+
     /**
      * @param ssb
      * @param event
      * @param tid
      */
     private void netBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
-        // TODO Support network IO
+        if (event.getName().contains("connect")) { //$NON-NLS-1$
+            // Connect a socket to some server
+            Long fd = event.getContent().getFieldValue(Long.class, FIELD_DESCRIPTOR);
+            if (fd == null) {
+                // Invalid FD return
+                return;
+            }
+            fOpening.put(tid, getV4Or6Address(event));
+            fConnecting.put(tid, fd);
+        }
+
     }
 
     /**
@@ -305,7 +335,28 @@ public class IoStateProvider extends AbstractTmfStateProvider {
      * @param tid
      */
     private void netEnd(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
-        // TODO Support network IO
+        Long ret = event.getContent().getFieldValue(Long.class, fLayout.fieldSyscallRet());
+        if (ret == null || ret < 0) {
+            // Error or no info, return
+            return;
+        }
+        if (event.getName().contains("socket")) { //$NON-NLS-1$
+            // This is just a socket being opened, save the fd
+            openFile(ssb, event.getTimestamp().toNanos(), tid, ret, "Socket"); //$NON-NLS-1$
+        }
+        if (event.getName().contains("connect")) { //$NON-NLS-1$
+            // This is just a socket being opened, save the fd
+            Long fd = fConnecting.get(tid);
+            String serverAddr = fOpening.get(tid);
+            if (fd != null && serverAddr != null) {
+                openFile(ssb, event.getTimestamp().toNanos(), tid, fd, serverAddr);
+            }
+        }
+        if (event.getName().contains("accept")) { //$NON-NLS-1$
+            // A new socket has been created for direct communication
+            String serverAddr = getV4Or6Address(event);
+            openFile(ssb, event.getTimestamp().toNanos(), tid, ret, serverAddr);
+        }
     }
 
     private void dupBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
@@ -314,7 +365,15 @@ public class IoStateProvider extends AbstractTmfStateProvider {
             // Maybe it's the dup syscall with the fildes field
             oldFd = event.getContent().getFieldValue(Long.class, FIELD_FILDES);
         }
-        // TODO Handle the fcntl syscall
+        if (oldFd == null) {
+            // Maybe it's the fcntl system call with dup
+            Long fd = event.getContent().getFieldValue(Long.class, FIELD_DESCRIPTOR);
+            Long cmd = event.getContent().getFieldValue(Long.class, FIELD_CMD);
+            if (fd != null && cmd != null &&
+                    ((cmd & FCNTL_CMD_DUP) == 1 || (cmd & FCNTL_CMD_DUP_CLOEXEC) == 1)) {
+                oldFd = fd;
+            }
+        }
         if (oldFd == null) {
             return;
         }
@@ -336,6 +395,11 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         // ret is the new fd, whether for a dup, dup2 or dup3 call
         Long newFd = event.getContent().getFieldValue(Long.class, fLayout.fieldSyscallRet());
         if (newFd == null || newFd < 0) {
+            return;
+        }
+
+        // If it's the fcntl system call, it may not be a dup, so ignore the filename is null
+        if (event.getName().contains("fcntl") && filename == null) { //$NON-NLS-1$
             return;
         }
 
@@ -447,11 +511,20 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
     /**
      * @param ssb
-     * @param event
-     * @param tid
      */
     private void cloneBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
-
+        // The clone system call has a flag which tells whether to share the
+        // file table with the parent or not
+        Long flags = event.getContent().getFieldValue(Long.class, FIELD_CLONE_FLAGS);
+        if (flags == null) {
+            return;
+        }
+        /*
+         * If the CLONE_FILES flag is set, then the file descriptor table will
+         * be shared with the child, so we put true, otherwise false will copy
+         * the file descriptor table
+         */
+        fCloning.put(tid, (flags & CLONE_FILES_FLAG) == 0 ? false : true);
     }
 
     /**
@@ -460,7 +533,40 @@ public class IoStateProvider extends AbstractTmfStateProvider {
      * @param tid
      */
     private void cloneEnd(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
-
+        try {
+            Long ret = (event.getContent().getFieldValue(Long.class, getLayout().fieldSyscallRet()));
+            Boolean cloneFiles = fCloning.remove(tid);
+            if (ret == null || cloneFiles == null || ret <= 0) {
+                return;
+            }
+            long time = event.getTimestamp().toNanos();
+            int parentFdTblQuark = getFdTblQuarkFor(ssb, time, tid);
+            // ret is the thread ID of the child
+            if (cloneFiles) {
+                // Simply point the fdtbl of the child to that of the parent
+                String fdTblId = ssb.getAttributeName(parentFdTblQuark);
+                try {
+                    int fdTblNb = Integer.parseInt(fdTblId);
+                    int tidFdTblQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(ret), ATTRIBUTE_FDTBL);
+                    ssb.modifyAttribute(time, fdTblNb, tidFdTblQuark);
+                } catch (NumberFormatException e) {
+                    // wrong fd table
+                }
+                return;
+            }
+            // Otherwise, copy all the files from the parent to the child
+            int childFdTblQuark = getFdTblQuarkFor(ssb, time, ret.intValue());
+            for (Integer fdQuark : ssb.getSubAttributes(parentFdTblQuark, false)) {
+                Object currentFile = ssb.queryOngoing(fdQuark);
+                if (currentFile != null) {
+                    // Copy this file to the child fd table
+                    int childFdQuark = ssb.getQuarkRelativeAndAdd(childFdTblQuark, ssb.getAttributeName(fdQuark));
+                    ssb.modifyAttribute(time, currentFile, childFdQuark);
+                }
+            }
+        } catch (StateValueTypeException e) {
+            Activator.getInstance().logError(e.getMessage(), e);
+        }
     }
 
     /**
@@ -468,12 +574,81 @@ public class IoStateProvider extends AbstractTmfStateProvider {
      */
     private void statedumpHandle(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
         Long pid = (event.getContent().getFieldValue(Long.class, FIELD_PID));
+        Long fileTblAddress = event.getContent().getFieldValue(Long.class, FIELD_STATEDUMP_FILE_TABLE);
         Long fd = (event.getContent().getFieldValue(Long.class, FIELD_DESCRIPTOR));
         String filename = (event.getContent().getFieldValue(String.class, FIELD_FILENAME));
-        if (pid == null || fd == null || filename == null) {
+        if ((pid == null && fileTblAddress == null) || fd == null || filename == null) {
             return;
         }
-        openFile(ssb, -1, tid, fd, filename);
+
+        // Pre 2.12 have the pid field not null, simply open the file for this thread
+        if (pid != null) {
+            openFile(ssb, -1, pid.intValue(), fd, filename);
+            return;
+        }
+
+        // LTTng 2.12+ have the file table address field, add this file to that file table
+        Integer tblAddressQuark = fFdTblAddresses.get(fileTblAddress);
+        if (tblAddressQuark == null) {
+            // No process statedump has advertised this file table address, we
+            // wouldn't know which process it's for, log an error and return
+            Activator.getInstance().logWarning("Statedump file descriptor has an address field which has not been declared. Make sure to enable the lttng_statedump_process_state event, or maybe there are lost events?"); //$NON-NLS-1$
+            return;
+        }
+
+        // Add this file descriptor
+        int fdQuark = ssb.getQuarkRelativeAndAdd(tblAddressQuark, String.valueOf(fd));
+        ssb.updateOngoingState(filename, fdQuark);
+    }
+
+    /**
+     * @param tid
+     */
+    private void statedumpProcessHandle(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
+        // As of LTTng 2.12, a field file_table_address has been added and the
+        // fd statedump uses this field
+        Long fileTblAddress = event.getContent().getFieldValue(Long.class, FIELD_STATEDUMP_FILE_TABLE);
+        Long procTid = event.getContent().getFieldValue(Long.class, getLayout().fieldTid());
+        if (procTid == null || fileTblAddress == null) {
+            // Older version of lttng or no tid, ignore
+            return;
+        }
+        Integer fdTblQuark = fFdTblAddresses.get(fileTblAddress);
+        if (fdTblQuark != null) {
+            // This file table already exists from another process, just add the link to the current statedumped thread
+            String fdTblId = ssb.getAttributeName(fdTblQuark);
+            try {
+                int fdTblInt = Integer.parseInt(fdTblId);
+                int tidFdTblQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(procTid), ATTRIBUTE_FDTBL);
+                Object currentTblId = ssb.queryOngoing(tidFdTblQuark);
+                if (currentTblId == null) {
+                    ssb.updateOngoingState(fdTblInt, tidFdTblQuark);
+                } else {
+                    // FIXME: There can be running file requests for the thread that
+                    // should be merged with the new file table
+                    ssb.modifyAttribute(event.getTimestamp().toNanos(), fdTblInt, tidFdTblQuark);
+                }
+            } catch (NumberFormatException e) {
+                Activator.getInstance().logError("The file table ID is not an integer: " + fdTblId); //$NON-NLS-1$
+            }
+            return;
+        }
+        int fdTblId = fFdCount.getAndIncrement();
+        fdTblQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_FDTBL, String.valueOf(fdTblId));
+        // Save the table address quark so file descriptor statedump can use it
+        fFdTblAddresses.put(fileTblAddress, fdTblQuark);
+
+        // Add a link to the file table number in the statedumped process
+        int tidFdTblQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(procTid), ATTRIBUTE_FDTBL);
+        Object currentTblId = ssb.queryOngoing(tidFdTblQuark);
+        if (currentTblId == null) {
+            ssb.updateOngoingState(fdTblId, tidFdTblQuark);
+        } else {
+            // FIXME: There can be running file requests for the thread that
+            // should be merged with the new file table
+            ssb.modifyAttribute(event.getTimestamp().toNanos(), fdTblId, tidFdTblQuark);
+        }
+
     }
 
     private void closeFile(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd) {

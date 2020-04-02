@@ -78,6 +78,16 @@ public class AbstractTestInputOutput {
         public @NonNull String eventCompatSyscallExitPrefix() {
             return "syscall_compat_exit_";
         }
+
+        @Override
+        public @NonNull String eventStatedumpProcessState() {
+            return "statedump_process_state";
+        }
+
+        @Override
+        public @NonNull String eventStatedumpFileDescriptor() {
+            return "statedump_file_descriptor";
+        }
     }
 
     private static final IKernelAnalysisEventLayout EVENT_LAYOUT = new IOKernelEventLayout();

@@ -26,6 +26,7 @@ import java.util.TreeSet;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.analysis.os.linux.core.model.OsStrings;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
 import org.eclipse.tracecompass.incubator.analysis.core.model.ModelManager;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.Disk;
@@ -38,6 +39,7 @@ import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderParameterUtils;
 import org.eclipse.tracecompass.tmf.core.model.CommonStatusMessage;
 import org.eclipse.tracecompass.tmf.core.model.YModel;
+import org.eclipse.tracecompass.tmf.core.model.timegraph.IElementResolver;
 import org.eclipse.tracecompass.tmf.core.model.tree.ITmfTreeDataModel;
 import org.eclipse.tracecompass.tmf.core.model.tree.ITmfTreeDataProvider;
 import org.eclipse.tracecompass.tmf.core.model.tree.TmfTreeDataModel;
@@ -50,6 +52,9 @@ import org.eclipse.tracecompass.tmf.core.response.ITmfResponse.Status;
 import org.eclipse.tracecompass.tmf.core.response.TmfModelResponse;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
+
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 
 /**
  *
@@ -69,6 +74,30 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
     private static final Comparator<ITmfStateInterval> INTERVAL_COMPARATOR = Comparator.comparing(ITmfStateInterval::getStartTime);
 
     private final Map<Integer, String> fQuarkToString = new HashMap<>();
+
+
+    // Data model class that has metadata
+    private static final class IoTreeDataModel extends TmfTreeDataModel implements IElementResolver {
+
+        private Multimap<String, Object> fMetadata;
+
+        public IoTreeDataModel(Long id, long parentId, String name, String tid) {
+            super(id, parentId, name);
+            fMetadata = HashMultimap.create();
+            try {
+                int intTid = Integer.parseInt(tid);
+                fMetadata.put(OsStrings.tid(), intTid);
+            } catch (NumberFormatException e) {
+                // Nothing to do, can't be parsed to int
+            }
+        }
+
+        @Override
+        public Multimap<String, Object> getMetadata() {
+            return fMetadata;
+        }
+
+    }
 
     /**
      * Inline class to encapsulate all the values required to build a series.
@@ -240,21 +269,26 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
         long rootId = getId(ITmfStateSystem.ROOT_ATTRIBUTE);
         entryList.add(new TmfTreeDataModel(rootId, -1, Collections.singletonList(traceName)));
         for (Integer quark : ss.getQuarks(IoStateProvider.ATTRIBUTE_TID, "*")) { //$NON-NLS-1$
-            String tid = ss.getAttributeName(quark);
-            tid = resolveThreadName(tid, ss.getCurrentEndTime());
-            Long id = getId(quark);
-            entryList.add(new TmfTreeDataModel(id, rootId, tid));
             int readQuark = ss.optQuarkRelative(quark, IoStateProvider.ATTRIBUTE_READ);
+            int writeQuark = ss.optQuarkRelative(quark, IoStateProvider.ATTRIBUTE_WRITE);
+            if (readQuark == ITmfStateSystem.INVALID_ATTRIBUTE && writeQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
+                // Do not display threads that have no read/write
+                continue;
+            }
+
+            String tid = ss.getAttributeName(quark);
+            String tidName = resolveThreadName(tid, ss.getCurrentEndTime());
+            Long id = getId(quark);
+            entryList.add(new IoTreeDataModel(id, rootId, tidName, tid));
             if (readQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
                 Long readId = getId(readQuark);
-                entryList.add(new TmfTreeDataModel(readId, id, READ_TITLE));
-                fQuarkToString.put(readQuark, traceName + '/' + tid + '/' + READ_TITLE);
+                entryList.add(new IoTreeDataModel(readId, id, READ_TITLE, tid));
+                fQuarkToString.put(readQuark, traceName + '/' + tidName + '/' + READ_TITLE);
             }
-            int writeQuark = ss.optQuarkRelative(quark, IoStateProvider.ATTRIBUTE_WRITE);
             if (writeQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
                 Long writeId = getId(writeQuark);
-                entryList.add(new TmfTreeDataModel(writeId, id, WRITE_TITLE));
-                fQuarkToString.put(writeQuark, traceName + '/' + tid + '/' + WRITE_TITLE);
+                entryList.add(new IoTreeDataModel(writeId, id, WRITE_TITLE, tid));
+                fQuarkToString.put(writeQuark, traceName + '/' + tidName + '/' + WRITE_TITLE);
             }
         }
         return new TmfTreeModel<>(Collections.emptyList(), entryList);

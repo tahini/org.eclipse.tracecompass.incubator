@@ -27,6 +27,42 @@
 <field name="next_tid" value="5" type="long" />
 <field name="next_prio" value="20" type="long" />
 </event>
+<event timestamp="4" name="statedump_file_descriptor">
+<field name="cpu" value="1" type="int" />
+<field name="pid" value="10" type="long" />
+<field name="fd" value="1" type="long" />
+<field name="filename" value="/some/file/for/this/thread" type="string" />
+</event>
+<event timestamp="5" name="statedump_file_descriptor">
+<field name="cpu" value="1" type="int" />
+<field name="pid" value="10" type="long" />
+<field name="fd" value="2" type="long" />
+<field name="filename" value="/some/other/file/for/this/thread" type="string" />
+</event>
+<event timestamp="6" name="statedump_process_state">
+<field name="cpu" value="1" type="int" />
+<field name="pid" value="20" type="long" />
+<field name="tid" value="20" type="long" />
+<field name="file_table_address" value="1234" type="long" />
+</event>
+<event timestamp="7" name="statedump_file_descriptor">
+<field name="cpu" value="1" type="int" />
+<field name="file_table_address" value="1234" type="long" />
+<field name="fd" value="1" type="long" />
+<field name="filename" value="/file/for/tbl/address" type="string" />
+</event>
+<event timestamp="8" name="statedump_file_descriptor">
+<field name="cpu" value="1" type="int" />
+<field name="file_table_address" value="1234" type="long" />
+<field name="fd" value="2" type="long" />
+<field name="filename" value="/file/for/tbl/address/2" type="string" />
+</event>
+<event timestamp="9" name="statedump_process_state">
+<field name="cpu" value="1" type="int" />
+<field name="pid" value="20" type="long" />
+<field name="tid" value="21" type="long" />
+<field name="file_table_address" value="1234" type="long" />
+</event>
 <event timestamp="20" name="syscall_entry_openat">
 <field name="cpu" value="0" type="int" />
 <field name="filename" value="/mnt/thisIsMyTest" type="string" />
@@ -162,5 +198,31 @@
 <event timestamp="175" name="syscall_exit_close">
 <field name="cpu" value="0" type="int" />
 <field name="ret" value="0" type="long" />
+</event>
+<event timestamp="180" name="sched_switch">
+<field name="cpu" value="1" type="int" />
+<field name="prev_comm" value="proc5" type="string" />
+<field name="prev_tid" value="5" type="long" />
+<field name="prev_prio" value="20" type="long" />
+<field name="prev_state" value="0" type="long" />
+<field name="next_comm" value="proc20" type="string" />
+<field name="next_tid" value="20" type="long" />
+<field name="next_prio" value="20" type="long" />
+</event>
+<event timestamp="185" name="syscall_entry_clone">
+<field name="cpu" value="1" type="int" />
+<field name="clone_flags" value="1024" type="long" />
+</event>
+<event timestamp="190" name="syscall_exit_clone">
+<field name="cpu" value="1" type="int" />
+<field name="ret" value="22" type="long" />
+</event>
+<event timestamp="195" name="syscall_entry_clone">
+<field name="cpu" value="1" type="int" />
+<field name="clone_flags" value="2048" type="long" />
+</event>
+<event timestamp="200" name="syscall_exit_clone">
+<field name="cpu" value="1" type="int" />
+<field name="ret" value="23" type="long" />
 </event>
 </trace>
