@@ -27,7 +27,7 @@ Export-Package: org.eclipse.tracecompass.incubator.internal.kernel.core;x-friend
  org.eclipse.tracecompass.incubator.internal.kernel.core.fileaccess;x-friends:="org.eclipse.tracecompass.incubator.kernel.ui",
  org.eclipse.tracecompass.incubator.internal.kernel.core.filedescriptor;x-friends:="org.eclipse.tracecompass.incubator.kernel.ui",
  org.eclipse.tracecompass.incubator.internal.kernel.core.inputoutput;x-friends:="org.eclipse.tracecompass.incubator.kernel.ui",
- org.eclipse.tracecompass.incubator.internal.kernel.core.io;x-friends:="org.eclipse.tracecompass.incubator.kernel.core.tests"
+ org.eclipse.tracecompass.incubator.internal.kernel.core.io;x-friends:="org.eclipse.tracecompass.incubator.kernel.core.tests,org.eclipse.tracecompass.incubator.kernel.core.tests,org.eclipse.tracecompass.incubator.kernel.ui"
 Automatic-Module-Name: org.eclipse.tracecompass.incubator.kernel.core
 Import-Package: com.google.common.collect,
  org.apache.commons.lang3

@@ -30,6 +30,7 @@ import org.eclipse.tracecompass.analysis.os.linux.core.model.OsStrings;
 import org.eclipse.tracecompass.incubator.analysis.core.model.IHostModel;
 import org.eclipse.tracecompass.incubator.analysis.core.model.ModelManager;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.Disk;
+import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.IODataPalette;
 import org.eclipse.tracecompass.internal.tmf.core.model.TmfXyResponseFactory;
 import org.eclipse.tracecompass.internal.tmf.core.model.tree.AbstractTreeDataProvider;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
@@ -38,6 +39,10 @@ import org.eclipse.tracecompass.statesystem.core.exceptions.TimeRangeException;
 import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderParameterUtils;
 import org.eclipse.tracecompass.tmf.core.model.CommonStatusMessage;
+import org.eclipse.tracecompass.tmf.core.model.IOutputStyleProvider;
+import org.eclipse.tracecompass.tmf.core.model.OutputElementStyle;
+import org.eclipse.tracecompass.tmf.core.model.OutputStyleModel;
+import org.eclipse.tracecompass.tmf.core.model.StyleProperties;
 import org.eclipse.tracecompass.tmf.core.model.YModel;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.IElementResolver;
 import org.eclipse.tracecompass.tmf.core.model.tree.ITmfTreeDataModel;
@@ -52,8 +57,11 @@ import org.eclipse.tracecompass.tmf.core.response.ITmfResponse.Status;
 import org.eclipse.tracecompass.tmf.core.response.TmfModelResponse;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
+import org.eclipse.tracecompass.tmf.core.util.Pair;
 
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 
 /**
@@ -62,7 +70,7 @@ import com.google.common.collect.Multimap;
  * @author Geneviève Bastien
  */
 @SuppressWarnings("restriction")
-public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysis, TmfTreeDataModel> implements ITmfTreeXYDataProvider<TmfTreeDataModel> {
+public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysis, TmfTreeDataModel> implements ITmfTreeXYDataProvider<TmfTreeDataModel>, IOutputStyleProvider {
 
     /**
      * Provider unique ID.
@@ -70,6 +78,24 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
     public static final String ID = "org.eclipse.tracecompass.incubator.kernel.core.io.per.process"; //$NON-NLS-1$
     private static final String READ_TITLE = "Read";
     private static final String WRITE_TITLE = "Write";
+    private static final double SECONDS_PER_NANOSECOND = 1E-9;
+
+    private static final String BASE_STYLE = "base"; //$NON-NLS-1$
+    private static final Map<String, OutputElementStyle> STATE_MAP;
+    private static final List<Pair<String, String>> COLOR_LIST = IODataPalette.getColors();
+    private static final List<String> SUPPORTED_STYLES = ImmutableList.of(
+            StyleProperties.SeriesStyle.SOLID,
+            StyleProperties.SeriesStyle.DASH,
+            StyleProperties.SeriesStyle.DOT,
+            StyleProperties.SeriesStyle.DASHDOT,
+            StyleProperties.SeriesStyle.DASHDOTDOT);
+
+    static {
+        // Create the base style
+        ImmutableMap.Builder<@NonNull String, @NonNull OutputElementStyle> builder = new ImmutableMap.Builder<>();
+        builder.put(BASE_STYLE, new OutputElementStyle(null, ImmutableMap.of(StyleProperties.SERIES_TYPE, StyleProperties.SeriesType.LINE, StyleProperties.WIDTH, 1.0f, StyleProperties.OPACITY, 1.0f)));
+        STATE_MAP = builder.build();
+    }
 
     private static final Comparator<ITmfStateInterval> INTERVAL_COMPARATOR = Comparator.comparing(ITmfStateInterval::getStartTime);
 
@@ -81,8 +107,8 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
 
         private Multimap<String, Object> fMetadata;
 
-        public IoTreeDataModel(Long id, long parentId, String name, String tid) {
-            super(id, parentId, name);
+        public IoTreeDataModel(Long id, long parentId, String name, String tid, @Nullable String color, @Nullable String seriesStyle) {
+            super(id, parentId, Collections.singletonList(name), color != null, makeStyle(color, seriesStyle));
             fMetadata = HashMultimap.create();
             try {
                 int intTid = Integer.parseInt(tid);
@@ -90,6 +116,19 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
             } catch (NumberFormatException e) {
                 // Nothing to do, can't be parsed to int
             }
+        }
+
+        private static @Nullable OutputElementStyle makeStyle(@Nullable String color, @Nullable String seriesStyle) {
+            if (color == null || seriesStyle == null) {
+                return null;
+            }
+            return new OutputElementStyle(BASE_STYLE, ImmutableMap.of(
+                    StyleProperties.COLOR, color,
+                    StyleProperties.SERIES_STYLE, seriesStyle));
+        }
+
+        public IoTreeDataModel(Long id, long parentId, String name, String tid) {
+            this(id, parentId, name, tid, null, null);
         }
 
         @Override
@@ -173,7 +212,7 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
             }
 
             // Compute the new value
-            fValues[currentIndex] = (valueAtTime - fPrevCount) / deltaT;
+            fValues[currentIndex] = (valueAtTime - fPrevCount) / (deltaT * SECONDS_PER_NANOSECOND);
             fPrevCount = valueAtTime;
         }
 
@@ -268,6 +307,7 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
         String traceName = Objects.requireNonNull(getTrace().getName());
         long rootId = getId(ITmfStateSystem.ROOT_ATTRIBUTE);
         entryList.add(new TmfTreeDataModel(rootId, -1, Collections.singletonList(traceName)));
+        int i = 0;
         for (Integer quark : ss.getQuarks(IoStateProvider.ATTRIBUTE_TID, "*")) { //$NON-NLS-1$
             int readQuark = ss.optQuarkRelative(quark, IoStateProvider.ATTRIBUTE_READ);
             int writeQuark = ss.optQuarkRelative(quark, IoStateProvider.ATTRIBUTE_WRITE);
@@ -276,20 +316,25 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
                 continue;
             }
 
+            // Get read and write color for this disk
+            Pair<String, String> pair = COLOR_LIST.get(i % COLOR_LIST.size());
+            String seriesStyle = SUPPORTED_STYLES.get((i / COLOR_LIST.size()) % SUPPORTED_STYLES.size());
+
             String tid = ss.getAttributeName(quark);
             String tidName = resolveThreadName(tid, ss.getCurrentEndTime());
             Long id = getId(quark);
             entryList.add(new IoTreeDataModel(id, rootId, tidName, tid));
             if (readQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
                 Long readId = getId(readQuark);
-                entryList.add(new IoTreeDataModel(readId, id, READ_TITLE, tid));
+                entryList.add(new IoTreeDataModel(readId, id, READ_TITLE, tid, pair.getFirst(), seriesStyle));
                 fQuarkToString.put(readQuark, traceName + '/' + tidName + '/' + READ_TITLE);
             }
             if (writeQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
                 Long writeId = getId(writeQuark);
-                entryList.add(new IoTreeDataModel(writeId, id, WRITE_TITLE, tid));
+                entryList.add(new IoTreeDataModel(writeId, id, WRITE_TITLE, tid, pair.getSecond(), seriesStyle));
                 fQuarkToString.put(writeQuark, traceName + '/' + tidName + '/' + WRITE_TITLE);
             }
+            i++;
         }
         return new TmfTreeModel<>(Collections.emptyList(), entryList);
     }
@@ -387,6 +432,11 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
         }
         Collections.sort(times);
         return times;
+    }
+
+    @Override
+    public TmfModelResponse<OutputStyleModel> fetchStyle(Map<String, Object> fetchParameters, @Nullable IProgressMonitor monitor) {
+        return new TmfModelResponse<>(new OutputStyleModel(STATE_MAP), ITmfResponse.Status.COMPLETED, CommonStatusMessage.COMPLETED);
     }
 
 }

@@ -18,6 +18,7 @@ import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.tracecompass.common.core.format.DataSpeedWithUnitFormat;
 import org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoPerProcessDataProvider;
 import org.eclipse.tracecompass.tmf.core.model.tree.TmfTreeDataModel;
 import org.eclipse.tracecompass.tmf.ui.viewers.TmfViewer;
@@ -30,6 +31,7 @@ import org.eclipse.tracecompass.tmf.ui.viewers.xycharts.TmfXYChartViewer;
 import org.eclipse.tracecompass.tmf.ui.viewers.xycharts.linecharts.TmfFilteredXYChartViewer;
 import org.eclipse.tracecompass.tmf.ui.viewers.xycharts.linecharts.TmfXYChartSettings;
 import org.eclipse.tracecompass.tmf.ui.views.TmfChartView;
+import org.swtchart.Chart;
 
 import com.google.common.collect.ImmutableList;
 
@@ -56,7 +58,10 @@ public class IoPerProcessXYView extends TmfChartView {
     @Override
     protected TmfXYChartViewer createChartViewer(@Nullable Composite parent) {
         TmfXYChartSettings settings = new TmfXYChartSettings(null, null, null, 1);
-        return new TmfFilteredXYChartViewer(parent, settings, IoPerProcessDataProvider.ID);
+        TmfFilteredXYChartViewer chartViewer = new TmfFilteredXYChartViewer(parent, settings, IoPerProcessDataProvider.ID);
+        Chart chart = chartViewer.getSwtChart();
+        chart.getAxisSet().getYAxis(0).getTick().setFormat(DataSpeedWithUnitFormat.getInstance());
+        return chartViewer;
     }
 
     private static final class TreeXyViewer extends AbstractSelectTreeViewer {

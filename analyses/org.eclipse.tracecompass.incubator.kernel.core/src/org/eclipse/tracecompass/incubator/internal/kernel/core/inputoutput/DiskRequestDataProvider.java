@@ -139,7 +139,6 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
         private final long fId;
         /** This series' sector quark. public because final */
         private final int fMainQuark;
-        private final int fSectorQuark;
         private final int fSizeQuark;
 
         /**
@@ -155,16 +154,12 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
         private RequestBuilder(Long id, Integer quark, ITmfStateSystem ss) {
             fId = id;
             fMainQuark = quark;
-            fSectorQuark = ss.optQuarkRelative(quark, Attributes.CURRENT_REQUEST);
             fSizeQuark = ss.optQuarkRelative(quark, Attributes.REQUEST_SIZE);
         }
 
         private List<Integer> getQuarks() {
             List<Integer> quarks = new ArrayList<>();
             quarks.add(fMainQuark);
-            if (fSectorQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
-                quarks.add(fSectorQuark);
-            }
             if (fSizeQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
                 quarks.add(fSizeQuark);
             }
@@ -203,23 +198,15 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
                     applyFilterAndAddState(states, timeGraphState, fId, predicates, monitor);
                 } else {
                     // There should be one sector interval per request
-                    Long sector = 0L;
-                    if (fSectorQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
-                        ITmfStateInterval sectorInterval = findInterval(intervals.get(fSectorQuark), startTime);
-                        Object sectorObj = sectorInterval == null ? null : sectorInterval.getValue();
-                        if (sectorObj instanceof Long) {
-                            sector = (Long) sectorObj;
-                        }
-                    }
                     if (fSizeQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
-                        ITimeGraphState timeGraphState = new TimeGraphState(startTime, duration, "0x" + Long.toHexString(sector), getStyleFor(IoOperationType.fromNumber((Integer) value), null)); //$NON-NLS-1$
+                        ITimeGraphState timeGraphState = new TimeGraphState(startTime, duration, null, getStyleFor(IoOperationType.fromNumber((Integer) value), null));
                         applyFilterAndAddState(states, timeGraphState, fId, predicates, monitor);
                     } else {
                         long time = startTime;
                         while (time < mainInterval.getEndTime()) {
                             // Add a request for each size
                             ITmfStateInterval sizeInterval = findInterval(intervals.get(fSizeQuark), time);
-                            ITimeGraphState timeGraphState = new TimeGraphState(startTime, duration, "0x" + Long.toHexString(sector), getStyleFor(IoOperationType.fromNumber((Integer) value), sizeInterval == null ? null : (Integer) sizeInterval.getValue())); //$NON-NLS-1$
+                            ITimeGraphState timeGraphState = new TimeGraphState(startTime, duration, null, getStyleFor(IoOperationType.fromNumber((Integer) value), sizeInterval == null ? null : (Integer) sizeInterval.getValue()));
                             applyFilterAndAddState(states, timeGraphState, fId, predicates, monitor);
 
                             if (sizeInterval == null) {
@@ -335,7 +322,6 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
         }
 
         // Put all intervals in a map, there shouldn't be too many, we'll handle them later
-
         Map<Integer, Set<ITmfStateInterval>> intervals = new HashMap<>();
         try {
             for (ITmfStateInterval interval : ss.query2D(quarksToQuery, times)) {

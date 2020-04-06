@@ -21,7 +21,6 @@ import org.swtchart.Range;
  * @author Houssem Daoud
  * @since 2.0
  */
-
 public class LatencyDistributionViewer extends TmfXYChartViewer {
 
     @SuppressWarnings("javadoc")
