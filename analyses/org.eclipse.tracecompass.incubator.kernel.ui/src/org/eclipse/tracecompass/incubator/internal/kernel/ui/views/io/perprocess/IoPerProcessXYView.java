@@ -9,7 +9,7 @@
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
 
-package org.eclipse.tracecompass.incubator.kernel.ui.views.io.perprocess;
+package org.eclipse.tracecompass.incubator.internal.kernel.ui.views.io.perprocess;
 
 import java.util.Comparator;
 import java.util.Objects;

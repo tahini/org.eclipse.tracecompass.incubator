@@ -21,7 +21,7 @@
       </view>
        <view
             category="org.eclipse.linuxtools.tmf.ui.views.category"
-            class="org.eclipse.tracecompass.incubator.kernel.ui.views.io.perprocess.IoPerProcessXYView"
+            class="org.eclipse.tracecompass.incubator.internal.kernel.ui.views.io.perprocess.IoPerProcessXYView"
             id="org.eclipse.tracecompass.incubator.kernel.ui.io.per.process.xyview"
             name="%view.ioperprocess"
             restorable="true">
