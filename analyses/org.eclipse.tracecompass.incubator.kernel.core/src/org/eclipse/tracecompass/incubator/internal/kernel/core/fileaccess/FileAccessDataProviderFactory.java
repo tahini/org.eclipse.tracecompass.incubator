@@ -13,6 +13,7 @@ package org.eclipse.tracecompass.incubator.internal.kernel.core.fileaccess;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoAnalysis;
 import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderFactory;
 import org.eclipse.tracecompass.tmf.core.model.tree.ITmfTreeDataModel;
 import org.eclipse.tracecompass.tmf.core.model.tree.ITmfTreeDataProvider;
@@ -29,7 +30,7 @@ public class FileAccessDataProviderFactory implements IDataProviderFactory {
 
     @Override
     public @Nullable ITmfTreeDataProvider<? extends ITmfTreeDataModel> createProvider(@NonNull ITmfTrace trace) {
-        FileAccessAnalysis module = TmfTraceUtils.getAnalysisModuleOfClass(trace, FileAccessAnalysis.class, FileAccessAnalysis.ID);
+        IoAnalysis module = TmfTraceUtils.getAnalysisModuleOfClass(trace, IoAnalysis.class, IoAnalysis.ID);
         if (module != null) {
             module.schedule();
             return new FileAccessDataProvider(trace, module);

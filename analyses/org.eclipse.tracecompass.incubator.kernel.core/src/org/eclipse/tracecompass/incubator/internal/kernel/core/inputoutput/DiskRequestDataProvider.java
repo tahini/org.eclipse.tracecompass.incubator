@@ -107,11 +107,11 @@ public class DiskRequestDataProvider extends AbstractTimeGraphDataProvider<Input
         // Put the request types
         builder.put(READ_STYLE, new OutputElementStyle(null, ImmutableMap.of(
                 StyleProperties.STYLE_NAME, READ_STYLE,
-                StyleProperties.BACKGROUND_COLOR, X11ColorUtils.toHexColor(0, 0, 200),
+                StyleProperties.BACKGROUND_COLOR, Objects.requireNonNull(X11ColorUtils.toHexColor("blue")), //$NON-NLS-1$
                 StyleProperties.COLOR, blackColor)));
         builder.put(WRITE_STYLE, new OutputElementStyle(null, ImmutableMap.of(
                 StyleProperties.STYLE_NAME, WRITE_STYLE,
-                StyleProperties.BACKGROUND_COLOR, X11ColorUtils.toHexColor(200, 0, 0),
+                StyleProperties.BACKGROUND_COLOR, Objects.requireNonNull(X11ColorUtils.toHexColor("red")), //$NON-NLS-1$
                 StyleProperties.COLOR, blackColor)));
         builder.put(FLUSH_STYLE, new OutputElementStyle(null, ImmutableMap.of(
                 StyleProperties.STYLE_NAME, FLUSH_STYLE,

@@ -279,6 +279,13 @@ public class IoStateProvider extends AbstractTmfStateProvider {
     private void openBegin(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
         String filename = event.getContent().getFieldValue(String.class, FIELD_FILENAME);
         fOpening.put(tid, filename != null ? filename : UNKNOWN_FILE);
+
+        if (filename != null) {
+            // Prepare the file access quark and save a temporary value, to be
+            // udpated in case of failure
+            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(RESOURCES, filename, String.valueOf(tid));
+            ssb.modifyAttribute(event.getTimestamp().toNanos(), 0L, fileTidQuark);
+        }
     }
 
     private void openEnd(ITmfStateSystemBuilder ssb, ITmfEvent event, Integer tid) {
@@ -288,11 +295,27 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         if (ret == null) {
             return;
         }
+        long time = event.getTimestamp().toNanos();
 
-        if (ret > 0) {
-            openFile(ssb, event.getTimestamp().toNanos(), tid, ret, filename);
+        if (ret >= 0) {
+            openFile(ssb, time, tid, ret, filename);
         }
-        // TODO: Do something about erroneous opens?
+
+        // Add the file to the resources section, whether there was an error or not
+        if (filename != null) {
+            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(RESOURCES, filename, String.valueOf(tid));
+            if (ret < 0) {
+                // There was an error opening the file, put the return value in
+                // this file's resource
+                ssb.updateOngoingState(ret, fileTidQuark);
+                ssb.modifyAttribute(time, null, fileTidQuark);
+            } else {
+                // successful open, reset fd to null for before, and update the
+                // fd at current time
+                ssb.updateOngoingState((Object) null, fileTidQuark);
+                ssb.modifyAttribute(time, ret, fileTidQuark);
+            }
+        }
 
     }
 
@@ -584,7 +607,10 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         // Pre 2.12 have the pid field not null, simply open the file for this thread
         if (pid != null) {
             openFile(ssb, -1, pid.intValue(), fd, filename);
-            return;
+            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(RESOURCES, filename, String.valueOf(tid));
+            // successful open, reset fd to null for before, and update the
+            // fd at current time
+            ssb.updateOngoingState(fd, fileTidQuark);
         }
 
         // LTTng 2.12+ have the file table address field, add this file to that file table
@@ -599,6 +625,10 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         // Add this file descriptor
         int fdQuark = ssb.getQuarkRelativeAndAdd(tblAddressQuark, String.valueOf(fd));
         ssb.updateOngoingState(filename, fdQuark);
+
+        // TODO Handle the RES section when the statedump has the file table
+        // address, we'll need to find the corresponding pid/tid
+
     }
 
     /**
@@ -656,7 +686,14 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         int fdQuark = ssb.getQuarkRelativeAndAdd(fdTblQuark, String.valueOf(fd));
         ssb.removeAttribute(time, fdQuark);
 
-        // TODO Close the file for this thread in the Resources section
+        // Close the file for this thread in the Resources section
+        Object filename = ssb.queryOngoing(fdQuark);
+        if (filename instanceof String) {
+            int fileTidQuark = ssb.optQuarkAbsolute(RESOURCES, String.valueOf(filename), String.valueOf(tid));
+            if (fileTidQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+                ssb.modifyAttribute(time, null, fileTidQuark);
+            }
+        }
     }
 
     private void openFile(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd, @Nullable String filename) {
