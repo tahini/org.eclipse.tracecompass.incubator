@@ -48,6 +48,10 @@
          id="org.eclipse.tracecompass.incubator.kernel.core.io.per.process">
       </dataProviderFactory>
       <dataProviderFactory
+         class="org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoAccessDataProviderFactory"
+         id="org.eclipse.tracecompass.incubator.kernel.core.io.access.dataprovider">
+      </dataProviderFactory>
+      <dataProviderFactory
          class="org.eclipse.tracecompass.incubator.internal.kernel.core.inputoutput.DiskRequestDataProviderFactory"
          id="org.eclipse.tracecompass.incubator.kernel.core.inputoutput.DiskRequestDataProvider">
       </dataProviderFactory>

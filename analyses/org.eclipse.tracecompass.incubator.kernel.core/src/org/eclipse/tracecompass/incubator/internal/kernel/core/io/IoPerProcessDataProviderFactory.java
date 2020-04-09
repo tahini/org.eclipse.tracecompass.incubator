@@ -37,8 +37,8 @@ public class IoPerProcessDataProviderFactory implements IDataProviderFactory {
 
     private static final IDataProviderDescriptor DESCRIPTOR = new DataProviderDescriptor.Builder()
             .setId(IoPerProcessDataProvider.ID)
-            .setName("Example XY data provider") //$NON-NLS-1$
-            .setDescription("This is an example of a XY data provider using a state system analysis as a source of data") //$NON-NLS-1$
+            .setName("Io Per Process Data Provider") //$NON-NLS-1$
+            .setDescription("Shows the IO (read/write) per process in time") //$NON-NLS-1$
             .setProviderType(ProviderType.TREE_TIME_XY)
             .build();
 

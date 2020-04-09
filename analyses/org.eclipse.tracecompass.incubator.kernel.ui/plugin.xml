@@ -26,6 +26,13 @@
             name="%view.ioperprocess"
             restorable="true">
       </view>
+       <view
+            category="org.eclipse.linuxtools.tmf.ui.views.category"
+            class="org.eclipse.tracecompass.incubator.internal.kernel.ui.views.io.perprocess.IoByProcessView"
+            id="org.eclipse.tracecompass.incubator.kernel.ui.io.per.process.multiview"
+            name="Multi View per process"
+            restorable="true">
+      </view>
       <view
             category="org.eclipse.linuxtools.lttng2.ui.views.category"
             class="org.eclipse.tracecompass.incubator.internal.kernel.ui.views.io.diskrequests.DiskRequestsView"
@@ -71,6 +78,13 @@
       <output
             class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
             id="org.eclipse.tracecompass.incubator.kernel.ui.io.per.process.xyview">
+         <analysisModuleClass
+               class="org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoAnalysis">
+         </analysisModuleClass>
+      </output>
+      <output
+            class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
+            id="org.eclipse.tracecompass.incubator.kernel.ui.io.per.process.multiview">
          <analysisModuleClass
                class="org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoAnalysis">
          </analysisModuleClass>

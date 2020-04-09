@@ -704,6 +704,15 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         } else {
             ssb.modifyAttribute(time, filename != null ? filename : UNKNOWN_FILE, fdQuark);
         }
+
+        // Add the file to the resources section, whether there was an error or not
+        if (filename != null) {
+            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(RESOURCES, filename, String.valueOf(tid));
+            // successful open, reset fd to null for before, and update the
+            // fd at current time
+            ssb.updateOngoingState((Object) null, fileTidQuark);
+            ssb.modifyAttribute(time, fd, fileTidQuark);
+        }
     }
 
     private int getFdTblQuarkFor(ITmfStateSystemBuilder ssb, long time, Integer tid) {
