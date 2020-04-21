@@ -162,10 +162,14 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
          * @param length
          *            desired length of the series
          */
-        private SeriesBuilder(long id, int sectorQuark, List<Integer> list, int length) {
+        private SeriesBuilder(long id, int sectorQuark, Integer currentOpQuark, int length) {
             fId = id;
             fMainQuark = sectorQuark;
-            fRunning = list;
+            if (currentOpQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
+                fRunning = Collections.emptyList();
+            } else {
+                fRunning = Collections.singletonList(currentOpQuark);
+            }
             fValues = new double[length];
             fPrevCount = -1;
         }
@@ -370,7 +374,7 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
         for (Entry<Long, Integer> entry : selectedEntries.entrySet()) {
             // Add only quarks that can be displayed, ie, those in the fQuarkToString map
             if (fQuarkToString.containsKey(entry.getValue())) {
-                SeriesBuilder seriesBuilder = new SeriesBuilder(entry.getKey(), entry.getValue(), ss.getSubAttributes(entry.getValue(), false), times.size());
+                SeriesBuilder seriesBuilder = new SeriesBuilder(entry.getKey(), entry.getValue(), ss.optQuarkRelative(entry.getValue(), IoStateProvider.ATTRIBUTE_CURRENT), times.size());
                 builders.add(seriesBuilder);
                 quarksToQuery.addAll(seriesBuilder.getQuarks());
             }

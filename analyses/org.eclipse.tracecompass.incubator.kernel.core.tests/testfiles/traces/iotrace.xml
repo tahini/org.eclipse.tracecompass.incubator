@@ -43,6 +43,8 @@
 <field name="cpu" value="1" type="int" />
 <field name="pid" value="20" type="long" />
 <field name="tid" value="20" type="long" />
+<field name="ppid" value="1" type="long" />
+<field name="status" value="1" type="long" />
 <field name="file_table_address" value="1234" type="long" />
 </event>
 <event timestamp="7" name="statedump_file_descriptor">
@@ -61,6 +63,8 @@
 <field name="cpu" value="1" type="int" />
 <field name="pid" value="20" type="long" />
 <field name="tid" value="21" type="long" />
+<field name="ppid" value="1" type="long" />
+<field name="status" value="1" type="long" />
 <field name="file_table_address" value="1234" type="long" />
 </event>
 <event timestamp="20" name="syscall_entry_openat">

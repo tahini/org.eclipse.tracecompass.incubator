@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,6 +32,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLog;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.FlowScopeLogBuilder;
+import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.IODataPalette;
 import org.eclipse.tracecompass.internal.tmf.core.model.AbstractStateSystemAnalysisDataProvider;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.StateSystemUtils;
@@ -40,7 +40,6 @@ import org.eclipse.tracecompass.statesystem.core.exceptions.StateSystemDisposedE
 import org.eclipse.tracecompass.statesystem.core.exceptions.TimeRangeException;
 import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderParameterUtils;
-import org.eclipse.tracecompass.tmf.core.dataprovider.X11ColorUtils;
 import org.eclipse.tracecompass.tmf.core.model.CommonStatusMessage;
 import org.eclipse.tracecompass.tmf.core.model.IOutputStyleProvider;
 import org.eclipse.tracecompass.tmf.core.model.OutputElementStyle;
@@ -59,12 +58,15 @@ import org.eclipse.tracecompass.tmf.core.response.ITmfResponse;
 import org.eclipse.tracecompass.tmf.core.response.ITmfResponse.Status;
 import org.eclipse.tracecompass.tmf.core.response.TmfModelResponse;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
+import org.eclipse.tracecompass.tmf.core.util.Pair;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
 
 /**
@@ -74,6 +76,8 @@ import com.google.common.collect.TreeMultimap;
  * <p>
  * Shows per-file access
  * </p>
+ *
+ * TODO Support multiple TID selection as the tree allows it
  *
  * @author Matthew Khouzam
  */
@@ -91,8 +95,8 @@ public class IoAccessDataProvider extends AbstractStateSystemAnalysisDataProvide
 
     private static final Logger LOGGER = TraceCompassLog.getLogger(IoAccessDataProvider.class);
 
-    private static final String META_IO_NAME = "Meta IO"; //$NON-NLS-1$
-    private static final String IO_NAME = "IO"; //$NON-NLS-1$
+    private static final String READ_STYLE = "Read"; //$NON-NLS-1$
+    private static final String WRITE_STYLE = "Write"; //$NON-NLS-1$
 
     /* The map of basic styles */
     private static final Map<String, OutputElementStyle> STATE_MAP;
@@ -105,12 +109,15 @@ public class IoAccessDataProvider extends AbstractStateSystemAnalysisDataProvide
     static {
         /* Build three different styles to use as examples */
         ImmutableMap.Builder<String, OutputElementStyle> builder = new ImmutableMap.Builder<>();
-
-        builder.put(META_IO_NAME, new OutputElementStyle(null, ImmutableMap.of(StyleProperties.STYLE_NAME, META_IO_NAME,
-                StyleProperties.BACKGROUND_COLOR, String.valueOf(X11ColorUtils.toHexColor(174, 123, 131)))));
-        builder.put(IO_NAME, new OutputElementStyle(null, ImmutableMap.of(StyleProperties.STYLE_NAME, IO_NAME,
-                StyleProperties.BACKGROUND_COLOR, String.valueOf(X11ColorUtils.toHexColor(140, 180, 165)))));
+        List<Pair<String, String>> COLOR_LIST = IODataPalette.getColors();
+        Pair<String, String> colorPair = COLOR_LIST.get(0);
+        builder.put(READ_STYLE, new OutputElementStyle(null, ImmutableMap.of(StyleProperties.STYLE_NAME, READ_STYLE,
+                StyleProperties.BACKGROUND_COLOR, colorPair.getFirst())));
+        builder.put(WRITE_STYLE, new OutputElementStyle(null, ImmutableMap.of(StyleProperties.STYLE_NAME, WRITE_STYLE,
+                StyleProperties.BACKGROUND_COLOR, colorPair.getSecond())));
         STATE_MAP = builder.build();
+        STYLE_MAP.put(READ_STYLE, new OutputElementStyle(READ_STYLE));
+        STYLE_MAP.put(WRITE_STYLE, new OutputElementStyle(WRITE_STYLE));
     }
 
     private IoAnalysis fAnalysisModule;
@@ -159,7 +166,7 @@ public class IoAccessDataProvider extends AbstractStateSystemAnalysisDataProvide
         try (FlowScopeLog scope = new FlowScopeLogBuilder(LOGGER, Level.FINE, "AbstractTimeGraphDataProvider#fetchRowModel") //$NON-NLS-1$
                 .setCategory(getClass().getSimpleName()).build()) {
 
-            TimeGraphModel models = getRowModel(ss, fetchParameters, monitor, times, selectedItems);
+            TimeGraphModel models = getRowModel(ss, fetchParameters, monitor, selectedItems);
             if (models == null) {
                 if (monitor != null && monitor.isCanceled()) {
                     return new TmfModelResponse<>(null, ITmfResponse.Status.CANCELLED, CommonStatusMessage.TASK_CANCELLED);
@@ -174,15 +181,17 @@ public class IoAccessDataProvider extends AbstractStateSystemAnalysisDataProvide
         }
     }
 
-    private @Nullable TimeGraphModel getRowModel(ITmfStateSystem ss, Map<String, Object> parameters, @Nullable IProgressMonitor monitor, List<Long> times, List<Long> selectedItems) throws StateSystemDisposedException {
-        Object tidParam = parameters.get(TID_PARAM);
-        if (!(tidParam instanceof Integer)) {
+    private @Nullable TimeGraphModel getRowModel(ITmfStateSystem ss, Map<String, Object> parameters, @Nullable IProgressMonitor monitor, List<Long> selectedItems) throws StateSystemDisposedException {
+
+        List<ITmfStateInterval> currentOperations = new ArrayList<>();
+        Multimap<String, @NonNull ITmfStateInterval> fds = HashMultimap.create();
+        boolean gotData = fillQueryIntervals(ss, parameters, monitor, true, currentOperations, fds);
+        if (!gotData || (monitor != null && monitor.isCanceled())) {
             return new TimeGraphModel(Collections.emptyList());
         }
 
-        // First, get the list of fds that correspond to the files being requested
-        // Maps the file quark to the ID
-        Map<Integer, Long> fdQuarkToId = new HashMap<>();
+        // Prepare the set of file names being requested
+        Map<String, Long> files = new HashMap<>();
         for (Long selectedItem : selectedItems) {
             // Look in the "Resources" section to find the quark for the thread
             // for each requested file
@@ -190,89 +199,35 @@ public class IoAccessDataProvider extends AbstractStateSystemAnalysisDataProvide
             if (filename == null) {
                 continue;
             }
-            int fileQuark = ss.optQuarkAbsolute(IoStateProvider.RESOURCES, filename, String.valueOf(tidParam));
-            if (fileQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
-                fdQuarkToId.put(fileQuark, selectedItem);
+            files.put(filename, selectedItem);
+        }
+
+        // Filter the file descriptor intervals being accessed. Only those from
+        // requested files will remain
+        Multimap<String, @NonNull ITmfStateInterval> filterFds = HashMultimap.create();
+        for (Entry<String, ITmfStateInterval> entry : fds.entries()) {
+            ITmfStateInterval interval = entry.getValue();
+            if (files.containsKey(String.valueOf(interval.getValue()))) {
+                filterFds.put(entry.getKey(), entry.getValue());
             }
         }
 
-        Map<ITmfStateInterval, Long> fdIntervals = new HashMap<>();
-        Set<Long> queryFds = new TreeSet<>();
-        for (ITmfStateInterval interval : ss.query2D(fdQuarkToId.keySet(), times)) {
-            // Get the fds for the files that belong to this thread. A file can be opened more than once with different FDs, so we need to get them all
-            Object value = interval.getValue();
-            if (value instanceof Long) {
-                queryFds.add((Long) value);
-                fdIntervals.put(interval, Objects.requireNonNull(fdQuarkToId.get(interval.getAttribute())));
-            }
-        }
-        if (monitor != null && monitor.isCanceled()) {
-            return null;
-        }
-        if (queryFds.isEmpty()) {
-            return new TimeGraphModel(Collections.emptyList());
-        }
-
-        // Get the right file table for this thread
-        int fdTblQuark = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_TID, String.valueOf(tidParam), IoStateProvider.ATTRIBUTE_FDTBL);
-        if (fdTblQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
-            return new TimeGraphModel(Collections.emptyList());
-        }
-
-        ITmfStateInterval fdLink = StateSystemUtils.queryUntilNonNullValue(ss, fdTblQuark, times.get(0), times.get(times.size() - 1));
-        if (fdLink == null) {
-            // No file descriptor table for this time range, return empty
-            return new TimeGraphModel(Collections.emptyList());
-        }
-
-        fdTblQuark = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_FDTBL, String.valueOf(fdLink.getValue()));
-        if (fdTblQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
-            // For some reason, the fd table is not available, just return empty list
-            return new TimeGraphModel(Collections.emptyList());
-        }
-
-        // Get the fd quarks, and read/write to query rw data for the requested files
-        List<Integer> toQuery = new ArrayList<>();
-        Map<Integer, Long> rwToFd = new HashMap<>();
-        for (Long queryFd : queryFds) {
-            int fdQuark = ss.optQuarkRelative(fdTblQuark, String.valueOf(queryFd));
-            if (fdQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
-                continue;
-            }
-            // Also get the running read/write attributes for this, that's where the information we're looking for is stored
-            int rwQuark = ss.optQuarkRelative(fdQuark, IoStateProvider.ATTRIBUTE_READ);
-            if (rwQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
-                List<Integer> rwAttributes = ss.getSubAttributes(rwQuark, false);
-                toQuery.addAll(rwAttributes);
-                rwAttributes.forEach(rw -> rwToFd.put(rw, queryFd));
-            }
-            rwQuark = ss.optQuarkRelative(fdQuark, IoStateProvider.ATTRIBUTE_WRITE);
-            if (rwQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
-                List<Integer> rwAttributes = ss.getSubAttributes(rwQuark, false);
-                toQuery.addAll(rwAttributes);
-                rwAttributes.forEach(rw -> rwToFd.put(rw, queryFd));
-            }
-        }
-
+        // For each rw operation, find if it is for one of the requested files and add the interval for that file
         TreeMultimap<Long, ITmfStateInterval> intervals = TreeMultimap.create(Comparator.naturalOrder(),
-              Comparator.comparing(ITmfStateInterval::getStartTime));
-        for (ITmfStateInterval interval : ss.query2D(toQuery, times)) {
-            Object value = interval.getValue();
-            if (value == null) {
+                Comparator.comparing(ITmfStateInterval::getStartTime));
+        for (ITmfStateInterval rwInterval : currentOperations) {
+            Object fdObj = rwInterval.getValue();
+            if (!(fdObj instanceof Long)) {
+                // Not a proper file descriptor
                 continue;
             }
-            // Add this rw state to the right ID
-            Long fd = Objects.requireNonNull(rwToFd.get(interval.getAttribute()));
-            // If this file descriptor is in the range of one of the files requested, add it to the right ID
-            for (Entry<ITmfStateInterval, Long> intervalEntry : fdIntervals.entrySet()) {
-                ITmfStateInterval fdInterval = intervalEntry.getKey();
-                if (fd.equals(fdInterval.getValue()) &&
-                        interval.getStartTime() >= fdInterval.getStartTime() &&
-                        interval.getEndTime() <= fdInterval.getEndTime()) {
-                    // Add this state to ID
-                    Long id = intervalEntry.getValue();
-                    intervals.put(id, fdInterval);
-                    break;
+            Collection<@NonNull ITmfStateInterval> fileNameIntervals = Objects.requireNonNull(filterFds.get(String.valueOf(fdObj)));
+            ITmfStateInterval overlapping = findOverlapping(rwInterval, fileNameIntervals);
+            if (overlapping != null) {
+                // This interval is for one of the files, find which and add a state for it
+                Long id = files.get(String.valueOf(overlapping.getValue()));
+                if (id != null) {
+                    intervals.put(id, rwInterval);
                 }
             }
         }
@@ -283,11 +238,19 @@ public class IoAccessDataProvider extends AbstractStateSystemAnalysisDataProvide
             for (ITmfStateInterval interval : entryIntervals.getValue()) {
                 long startTime = interval.getStartTime();
                 long duration = interval.getEndTime() - startTime + 1;
-                states.add(new TimeGraphState(startTime, duration, ((Long) interval.getValueLong()).intValue()));
+                states.add(new TimeGraphState(startTime, duration, null, getStyleFor(ss, interval)));
             }
             rows.add(new TimeGraphRowModel(entryIntervals.getKey(), states));
         }
         return new TimeGraphModel(rows);
+    }
+
+    private static @Nullable OutputElementStyle getStyleFor(ITmfStateSystem ss, ITmfStateInterval interval) {
+        String operation = ss.getAttributeName(ss.getParentAttributeQuark(interval.getAttribute()));
+        if (operation.equals(IoStateProvider.ATTRIBUTE_READ)) {
+            return STYLE_MAP.get(READ_STYLE);
+        }
+        return STYLE_MAP.get(WRITE_STYLE);
     }
 
     @Override
@@ -321,73 +284,25 @@ public class IoAccessDataProvider extends AbstractStateSystemAnalysisDataProvide
 
     private TmfTreeModel<TimeGraphEntryModel> getTree(ITmfStateSystem ss, Map<String, Object> parameters, @Nullable IProgressMonitor monitor) throws StateSystemDisposedException {
 
-        Object tidParam = parameters.get(TID_PARAM);
-        if (!(tidParam instanceof Integer)) {
+        List<ITmfStateInterval> currentOperations = new ArrayList<>();
+        Multimap<String, @NonNull ITmfStateInterval> fds = HashMultimap.create();
+        boolean gotData = fillQueryIntervals(ss, parameters, monitor, false, currentOperations, fds);
+        if (!gotData || (monitor != null && monitor.isCanceled())) {
             return new TmfTreeModel<>(Collections.emptyList(), Collections.emptyList());
         }
 
-        Integer selectedTid = (Integer) tidParam;
-        List<Long> times = DataProviderParameterUtils.extractTimeRequested(parameters);
-        if (times == null || times.isEmpty()) {
-            // No time specified
-            return new TmfTreeModel<>(Collections.emptyList(), Collections.emptyList());
-        }
-        long start = Long.MAX_VALUE;
-        long end = 0;
-        for (Long time : times) {
-            start = Math.min(start, time);
-            end = Math.max(start, time);
-        }
-
-        int fdTblQuark = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_TID, String.valueOf(selectedTid), IoStateProvider.ATTRIBUTE_FDTBL);
-        if (fdTblQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
-            return new TmfTreeModel<>(Collections.emptyList(), Collections.emptyList());
-        }
-
-        ITmfStateInterval fdLink = StateSystemUtils.queryUntilNonNullValue(ss, fdTblQuark, start, end);
-        if (fdLink == null) {
-            // No file descriptor table for this time range, return empty
-            return new TmfTreeModel<>(Collections.emptyList(), Collections.emptyList());
-        }
-
-        fdTblQuark = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_FDTBL, String.valueOf(fdLink.getValue()));
-        if (fdTblQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
-            // For some reason, the fd table is not available, just return empty list
-            return new TmfTreeModel<>(Collections.emptyList(), Collections.emptyList());
-        }
-
-        // Return entries
-        List<Integer> toQuery = new ArrayList<>();
-        List<Integer> subAttributes = ss.getSubAttributes(fdTblQuark, false);
         Set<String> files = new HashSet<>();
-        toQuery.addAll(subAttributes);
-        for (ITmfStateInterval interval : ss.query2D(subAttributes, start, end)) {
-            if (monitor != null && monitor.isCanceled()) {
-                return new TmfTreeModel<>(Collections.emptyList(), Collections.emptyList());
-            }
-            if (interval.getValue() == null) {
+        // For each rw operation, find the file descriptor interval that matches the file name
+        for (ITmfStateInterval rwInterval : currentOperations) {
+            Object fdObj = rwInterval.getValue();
+            if (!(fdObj instanceof Long)) {
+                // Not a proper file descriptor
                 continue;
             }
-
-            Object filename = interval.getValue();
-            // Did we read/write this file in this period? If any of the read/write sub-attribute has a non null value, then it's been accessed
-            List<Integer> queryQuarks = new ArrayList<>();
-            int rwQuark = ss.optQuarkRelative(interval.getAttribute(), IoStateProvider.ATTRIBUTE_READ);
-            if (rwQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
-                queryQuarks.add(rwQuark);
-                queryQuarks.addAll(ss.getSubAttributes(rwQuark, false));
-            }
-            rwQuark = ss.optQuarkRelative(interval.getAttribute(), IoStateProvider.ATTRIBUTE_WRITE);
-            if (rwQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
-                queryQuarks.add(rwQuark);
-                queryQuarks.addAll(ss.getSubAttributes(rwQuark, false));
-            }
-
-            for (ITmfStateInterval subInterval : ss.query2D(queryQuarks, interval.getStartTime(), interval.getEndTime())) {
-                if (subInterval.getValue() != null) {
-                    files.add(String.valueOf(filename));
-                    break;
-                }
+            Collection<@NonNull ITmfStateInterval> fileNameIntervals = Objects.requireNonNull(fds.get(String.valueOf(fdObj)));
+            ITmfStateInterval overlapping = findOverlapping(rwInterval, fileNameIntervals);
+            if (overlapping != null) {
+                files.add(String.valueOf(overlapping.getValue()));
             }
         }
 
@@ -398,6 +313,98 @@ public class IoAccessDataProvider extends AbstractStateSystemAnalysisDataProvide
         }
 
         return new TmfTreeModel<>(Collections.emptyList(), builder.build());
+    }
+
+    private static boolean fillQueryIntervals(ITmfStateSystem ss, Map<String, Object> parameters, @Nullable IProgressMonitor monitor, boolean discrete, List<ITmfStateInterval> currentOperations, Multimap<String, ITmfStateInterval> fds) throws IndexOutOfBoundsException, TimeRangeException, StateSystemDisposedException {
+        Object tidParam = parameters.get(TID_PARAM);
+        if (!(tidParam instanceof Integer)) {
+            return false;
+        }
+
+        Integer selectedTid = (Integer) tidParam;
+        List<Long> times = DataProviderParameterUtils.extractTimeRequested(parameters);
+        if (times == null || times.isEmpty()) {
+            // No time specified
+            return false;
+        }
+        long start = Long.MAX_VALUE;
+        long end = 0;
+        for (Long time : times) {
+            start = Math.min(start, time);
+            end = Math.max(start, time);
+        }
+        start = Math.max(start, ss.getStartTime());
+        end = Math.min(end, ss.getCurrentEndTime());
+
+        // First, get the file descriptor table quark for this thread, all the
+        // rest can be 2d queried
+        int fdTblQuark = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_TID, String.valueOf(selectedTid), IoStateProvider.ATTRIBUTE_FDTBL);
+        if (fdTblQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
+            return false;
+        }
+
+        ITmfStateInterval fdLink = StateSystemUtils.queryUntilNonNullValue(ss, fdTblQuark, start, end);
+        if (fdLink == null) {
+            // No file descriptor table for this time range, return empty
+            return false;
+        }
+
+        fdTblQuark = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_FDTBL, String.valueOf(fdLink.getValue()));
+        if (fdTblQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
+            // For some reason, the fd table is not available, just return empty list
+            return false;
+        }
+
+        /*
+         * Get the attributes to query: they will be
+         *
+         * 1- The file descriptors under the thread's FD table, they contain the
+         * resource name
+         *
+         * 2- The CURRENT and FD attributes under the current thread to get the
+         * current read/write operations
+         */
+        List<Integer> toQuery = new ArrayList<>();
+        toQuery.addAll(ss.getSubAttributes(fdTblQuark, false));
+        int readFd = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_TID, String.valueOf(selectedTid), IoStateProvider.ATTRIBUTE_READ, IoStateProvider.ATTRIBUTE_FD);
+        addIfExist(toQuery, readFd);
+        int writeFd = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_TID, String.valueOf(selectedTid), IoStateProvider.ATTRIBUTE_WRITE, IoStateProvider.ATTRIBUTE_FD);
+        addIfExist(toQuery, writeFd);
+
+        Iterable<ITmfStateInterval> query2d = discrete ? ss.query2D(toQuery, times) : ss.query2D(toQuery, start, end);
+        for (ITmfStateInterval interval : query2d) {
+            if (monitor != null && monitor.isCanceled()) {
+                return false;
+            }
+            if (interval.getValue() == null) {
+                continue;
+            }
+
+            if (interval.getAttribute() == readFd || interval.getAttribute() == writeFd) {
+                // Save the current operations in a list
+                currentOperations.add(interval);
+            } else {
+                // Put the filename intervals in a map by file descriptor
+                fds.put(ss.getAttributeName(interval.getAttribute()), interval);
+            }
+        }
+        return true;
+
+    }
+
+    private static @Nullable ITmfStateInterval findOverlapping(ITmfStateInterval rwInterval, Collection<ITmfStateInterval> intervals) {
+        for (ITmfStateInterval interval : intervals) {
+            if (!(interval.getStartTime() > rwInterval.getEndTime() || interval.getEndTime() < rwInterval.getStartTime())) {
+                return interval;
+            }
+        }
+        return null;
+    }
+
+    private static void addIfExist(List<Integer> toQuery, int quark) {
+        if (quark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+            toQuery.add(quark);
+        }
     }
 
     /**

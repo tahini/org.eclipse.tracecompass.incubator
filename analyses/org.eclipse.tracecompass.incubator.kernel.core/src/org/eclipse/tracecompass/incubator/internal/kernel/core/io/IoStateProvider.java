@@ -45,15 +45,44 @@ import com.google.common.collect.ImmutableList;
  * structure
  * <ul>
  * <li>TID: This section contains the information for each thread: the
- * read/write requests for each. The FDTBL sub-attribute contains the quark of
- * the file descriptor table, that can be shared between multiple threads</li>
+ * read/write requests for each. The FDTBL sub-attribute contains the internal
+ * of the file descriptor table, that can be shared between multiple threads.
+ * The READ and WRITE sub-attributes contain the amount of bytes having been
+ * read/written so far. Each have an FD and Current sub-attributes for
+ * respectively the fd of the file being read and amount of data involved.</li>
  * <li>FDTBL: This is an attribute pool that contains a list of all file
  * descriptor tables. They have their own attribute instead of being under the
  * threads because some threads can share the same fd table. Each thread has a
- * link to the attribute for the correct fd table.</li>
+ * link to the attribute for the correct fd table. For each table, there is a
+ * list of file descriptor, under which is an attribute pool for all
+ * reads/writes</li>
  * <li>RES: Contains the files</li>
  * </ul>
  * </p>
+ *
+ * <pre>
+ * TID
+ *  | - <TID>
+ *       | - FDTBL   -> internal ID of the FD tbl, under the FDTBL attribute
+ *       | - READ    -> Total amount of data having been read by the thread
+ *             | - CURRENT  -> Amount of data read in that request
+ *             | - FD       -> File descriptor of the current request
+ *       | - WRITE   -> Total amount of data having been written by the thread
+ *             | - CURRENT  -> Amount of data written in that request
+ *             | - FD       -> File descriptor of the current request
+ * FDTBL
+ *  | - <Some increment ID for each table>
+ *       | - <file descriptor>  -> Resource name
+ *             | - READ     -> Total amount of data having been read from this table
+ *                  | - <pool id> -> Current amount of data being read
+ *             | - WRITE    -> Total amount of data having been written by this table
+ *                  | - <pool id> -> Current amount of data being written
+ * RES
+ *  | - <resource name>
+ *        | - <TID>  -> file descriptor
+ * </pre>
+ *
+ * FIXME: A file could have multiple file descriptor from the same thread
  *
  * @author Matthew Khouzam
  */
@@ -85,6 +114,14 @@ public class IoStateProvider extends AbstractTmfStateProvider {
      * Write entry
      */
     public static final String ATTRIBUTE_WRITE = "WRITE"; //$NON-NLS-1$
+    /**
+     * Current data being written/read attribute
+     */
+    public static final String ATTRIBUTE_CURRENT = "CURRENT"; //$NON-NLS-1$
+    /**
+     * File descriptor attribute
+     */
+    public static final String ATTRIBUTE_FD = "FD"; //$NON-NLS-1$
 
     /** Various syscall names for different purposes */
     private static final Collection<String> OPEN_FROM_DISK = ImmutableList.of("open", "openat");  //$NON-NLS-1$//$NON-NLS-2$
@@ -115,7 +152,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
     private static final String UNKNOWN_FILE = "<unknown>"; //$NON-NLS-1$
 
-    private static final int VERSION = 3;
+    private static final int VERSION = 1;
 
 
 
@@ -151,16 +188,12 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
         private final Long fFd;
         private final Integer fFdPoolQuark;
-        private final Integer fTidPoolQuark;
         private final TmfAttributePool fFdPool;
-        private final TmfAttributePool fTidPool;
 
-        public FdRequestWithPools(Long fd, TmfAttributePool fdPool, Integer fdPoolQuark, TmfAttributePool tidPool, Integer tidPoolQuark) {
+        public FdRequestWithPools(Long fd, TmfAttributePool fdPool, Integer fdPoolQuark) {
             fFd = fd;
             fFdPool = fdPool;
             fFdPoolQuark = fdPoolQuark;
-            fTidPool = tidPool;
-            fTidPoolQuark = tidPoolQuark;
         }
     }
 
@@ -611,6 +644,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
             // successful open, reset fd to null for before, and update the
             // fd at current time
             ssb.updateOngoingState(fd, fileTidQuark);
+            return;
         }
 
         // LTTng 2.12+ have the file table address field, add this file to that file table
@@ -758,16 +792,23 @@ public class IoStateProvider extends AbstractTmfStateProvider {
     private void rwFromFd(ITmfStateSystemBuilder ssb, long time, Integer tid, FdRequestWithPools fd, Long count, String attribute) {
         Long validFd = isValidFileDescriptor(ssb, time, tid, fd.fFd);
 
-        // Complete the attribute that are for pools and recycle those pools
+        // Complete the attribute for the fd pool and recycle it
         ssb.updateOngoingState(count > 0 ? count : (Object) null, fd.fFdPoolQuark);
         fd.fFdPool.recycle(fd.fFdPoolQuark, time);
-        ssb.updateOngoingState(count > 0 ? count : (Object) null, fd.fTidPoolQuark);
-        fd.fTidPool.recycle(fd.fTidPoolQuark, time);
+        // Update the current request for the thread
+        int currentTidQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), attribute);
+        int currentDataQuark = ssb.getQuarkRelativeAndAdd(currentTidQuark, ATTRIBUTE_CURRENT);
+        ssb.updateOngoingState(count > 0 ? count : (Object) null, currentDataQuark);
+        ssb.removeAttribute(time, currentDataQuark);
 
+        int currentFdQuark = ssb.getQuarkRelativeAndAdd(currentTidQuark, ATTRIBUTE_FD);
         if (count <= 0) {
             // Return if the count < 0
+            ssb.updateOngoingState((Object) null, currentFdQuark);
+            ssb.removeAttribute(time, currentFdQuark);
             return;
         }
+        ssb.removeAttribute(time, currentFdQuark);
 
         if (validFd == null) {
             // The file is not opened in the state system, open it for this
@@ -779,10 +820,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
             int fdTblQuark = getFdTblQuarkFor(ssb, time, tid);
             int fdQuark = ssb.getQuarkRelativeAndAdd(fdTblQuark, String.valueOf(fd.fFd), attribute);
             StateSystemBuilderUtils.incrementAttributeLong(ssb, time, fdQuark, count);
-
-            // Add the io for this thread
-            int tidReadQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), attribute);
-            StateSystemBuilderUtils.incrementAttributeLong(ssb, time, tidReadQuark, count);
+            StateSystemBuilderUtils.incrementAttributeLong(ssb, time, currentTidQuark, count);
         } catch (StateValueTypeException e) {
             Activator.getInstance().logError(e.getMessage(), e);
         }
@@ -798,13 +836,14 @@ public class IoStateProvider extends AbstractTmfStateProvider {
             int availableFdQuark = fdPool.getAvailable();
             ssb.modifyAttribute(time, count, availableFdQuark);
 
-            // Add the io request for this thread
-            int tidReadQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), attribute);
-            TmfAttributePool tidPool = fPools.computeIfAbsent(tidReadQuark, q -> new TmfAttributePool(ssb, q));
-            int availableIoQuark = tidPool.getAvailable();
-            ssb.modifyAttribute(time, count, availableIoQuark);
+            // Add the current io request for this thread
+            int currentTidQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_TID, String.valueOf(tid), attribute);
+            int currentDataQuark = ssb.getQuarkRelativeAndAdd(currentTidQuark, ATTRIBUTE_CURRENT);
+            ssb.modifyAttribute(time, count, currentDataQuark);
+            int currentFdQuark = ssb.getQuarkRelativeAndAdd(currentTidQuark, ATTRIBUTE_FD);
+            ssb.modifyAttribute(time, fd, currentFdQuark);
 
-            tidMap.put(tid, new FdRequestWithPools(fd, fdPool, availableFdQuark, tidPool, availableIoQuark));
+            tidMap.put(tid, new FdRequestWithPools(fd, fdPool, availableFdQuark));
 
         } catch (StateValueTypeException e) {
             Activator.getInstance().logError(e.getMessage(), e);
