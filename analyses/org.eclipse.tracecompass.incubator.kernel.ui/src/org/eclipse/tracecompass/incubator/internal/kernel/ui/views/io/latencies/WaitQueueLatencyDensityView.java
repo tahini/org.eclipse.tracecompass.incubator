@@ -9,14 +9,18 @@
 
 package org.eclipse.tracecompass.incubator.internal.kernel.ui.views.io.latencies;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.tracecompass.analysis.timing.core.segmentstore.ISegmentStoreProvider;
 import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.density.AbstractSegmentStoreDensityView;
 import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.density.AbstractSegmentStoreDensityViewer;
 import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.table.AbstractSegmentStoreTableViewer;
 import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.table.SegmentStoreTableViewer;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.InputOutputAnalysisModule;
+import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
+import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 
 /**
  * System Call Density view
@@ -24,7 +28,7 @@ import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.Inpu
  * @author Matthew Khouzam
  * @author Marc-Andre Laperle
  */
-public class IoLatencyDensityView extends AbstractSegmentStoreDensityView {
+public class WaitQueueLatencyDensityView extends AbstractSegmentStoreDensityView {
 
     /** The view's ID */
     public static final String ID = "org.eclipse.tracecompass.analysis.os.linux.views.io.density"; //$NON-NLS-1$
@@ -32,18 +36,35 @@ public class IoLatencyDensityView extends AbstractSegmentStoreDensityView {
     /**
      * Constructs a new density view.
      */
-    public IoLatencyDensityView() {
+    public WaitQueueLatencyDensityView() {
         super(ID);
+    }
+
+    private static @Nullable ISegmentStoreProvider getSegmentStoreProvider(ITmfTrace trace) {
+        InputOutputAnalysisModule module = TmfTraceUtils.getAnalysisModuleOfClass(trace, InputOutputAnalysisModule.class, InputOutputAnalysisModule.ID);
+        return (module != null) ? module.getWaitingQueueSegmentStore() : null;
     }
 
     @Override
     protected AbstractSegmentStoreTableViewer createSegmentStoreTableViewer(Composite parent) {
-        return new SegmentStoreTableViewer(new TableViewer(parent, SWT.FULL_SELECTION | SWT.VIRTUAL), InputOutputAnalysisModule.ID, false);
+        return new SegmentStoreTableViewer(new TableViewer(parent, SWT.FULL_SELECTION | SWT.VIRTUAL), InputOutputAnalysisModule.ID, false) {
+
+            @Override
+            protected @Nullable ISegmentStoreProvider getSegmentStoreProvider(ITmfTrace trace) {
+                return WaitQueueLatencyDensityView.getSegmentStoreProvider(trace);
+            }
+
+        };
     }
 
     @Override
     protected AbstractSegmentStoreDensityViewer createSegmentStoreDensityViewer(Composite parent) {
-        return new IoLatencyDensityViewer(parent);
+        return new AbstractSegmentStoreDensityViewer(parent) {
+            @Override
+            protected @Nullable ISegmentStoreProvider getSegmentStoreProvider(ITmfTrace trace) {
+                return WaitQueueLatencyDensityView.getSegmentStoreProvider(trace);
+            }
+        };
     }
 
 }

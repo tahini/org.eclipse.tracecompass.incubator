@@ -55,6 +55,14 @@
          class="org.eclipse.tracecompass.incubator.internal.kernel.core.inputoutput.DiskRequestDataProviderFactory"
          id="org.eclipse.tracecompass.incubator.kernel.core.inputoutput.DiskRequestDataProvider">
       </dataProviderFactory>
+      <dataProviderFactory
+            class="org.eclipse.tracecompass.incubator.internal.kernel.core.inputoutput.WaitQueueStatsDataProviderFactory"
+            id="org.eclipse.tracecompass.kernel.core.inputoutput.waitqueuestatistics">
+      </dataProviderFactory>
+      <dataProviderFactory
+            class="org.eclipse.tracecompass.incubator.internal.kernel.core.inputoutput.ExecQueueStatsDataProviderFactory"
+            id="org.eclipse.tracecompass.kernel.core.inputoutput.execqueuestatistics">
+      </dataProviderFactory>
    </extension>
 
 </plugin>
