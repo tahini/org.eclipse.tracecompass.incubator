@@ -88,16 +88,16 @@ public class IoByProcessView extends TmfView implements ITmfTimeAligned, ITimeRe
 
     private @NonNull TimeGraphColorScheme fColorScheme = new TimeGraphColorScheme();
 
-    private Composite fMainComposite;
-    private SashForm fSashForm;
-    private Composite fTopRowLeftFiller;
-    private Composite fTopRowRightFiller;
-    private Composite fBottomRowLeftFiller;
-    private Composite fBottomRowRightFiller;
+    private @Nullable Composite fMainComposite;
+    private @Nullable SashForm fSashForm;
+    private @Nullable Composite fTopRowLeftFiller;
+    private @Nullable Composite fTopRowRightFiller;
+    private @Nullable Composite fBottomRowLeftFiller;
+    private @Nullable Composite fBottomRowRightFiller;
     private @Nullable ITimeDataProvider fTimeProvider = null;
 
-    private TimeGraphScale fTopTimeScaleCtrl;
-    private TimeGraphScale fBottomTimeScaleCtrl;
+    private @Nullable TimeGraphScale fTopTimeScaleCtrl;
+    private @Nullable TimeGraphScale fBottomTimeScaleCtrl;
     private boolean fTopTimeScaleVisible = true;
     private boolean fBottomTimeScaleVisible = true;
 
