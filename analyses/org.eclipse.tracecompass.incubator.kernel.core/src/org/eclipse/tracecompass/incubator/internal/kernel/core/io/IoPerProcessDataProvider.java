@@ -65,7 +65,9 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 
 /**
- *
+ * Data provider for an XY chart where the tree shows the various threads, with
+ * sub-entries of read/write and the XY data returns the I/O throughput for the
+ * entries.
  *
  * @author Geneviève Bastien
  */
@@ -100,7 +102,6 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
     private static final Comparator<ITmfStateInterval> INTERVAL_COMPARATOR = Comparator.comparing(ITmfStateInterval::getStartTime);
 
     private final Map<Integer, String> fQuarkToString = new HashMap<>();
-
 
     // Data model class that has metadata
     private static final class IoTreeDataModel extends TmfTreeDataModel implements IElementResolver {
@@ -249,10 +250,10 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
             return (value instanceof Number) ? ((Number) value).doubleValue() : 0.0;
         }
 
-        private @Nullable
-        static ITmfStateInterval findInterval(Set<ITmfStateInterval> intervals, long time) {
+        private static @Nullable ITmfStateInterval findInterval(Set<ITmfStateInterval> intervals, long time) {
             for (ITmfStateInterval interval : intervals) {
-                // Intervals are sorted, return if interval has start time later than time, the interval is not there
+                // Intervals are sorted, return if interval has start time later
+                // than time, the interval is not there
                 if (interval.getStartTime() > time) {
                     return null;
                 }
@@ -292,7 +293,6 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
         IoAnalysis module = TmfTraceUtils.getAnalysisModuleOfClass(trace, IoAnalysis.class, IoAnalysis.ID);
         return module != null ? new IoPerProcessDataProvider(trace, module) : null;
     }
-
 
     @Override
     public String getId() {
@@ -372,7 +372,8 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
         boolean complete = ss.waitUntilBuilt(0) || times.get(times.size() - 1) <= currentEnd;
 
         for (Entry<Long, Integer> entry : selectedEntries.entrySet()) {
-            // Add only quarks that can be displayed, ie, those in the fQuarkToString map
+            // Add only quarks that can be displayed, ie, those in the
+            // fQuarkToString map
             if (fQuarkToString.containsKey(entry.getValue())) {
                 SeriesBuilder seriesBuilder = new SeriesBuilder(entry.getKey(), entry.getValue(), ss.optQuarkRelative(entry.getValue(), IoStateProvider.ATTRIBUTE_CURRENT), times.size());
                 builders.add(seriesBuilder);
@@ -384,7 +385,8 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
             nativeTimes[i] = times.get(i);
         }
 
-        // Put all intervals in a map, there shouldn't be too many, we'll handle them later
+        // Put all intervals in a map, there shouldn't be too many, we'll handle
+        // them later
         Map<Integer, Set<ITmfStateInterval>> intervals = new HashMap<>();
         try {
             for (ITmfStateInterval interval : ss.query2D(quarksToQuery, times)) {

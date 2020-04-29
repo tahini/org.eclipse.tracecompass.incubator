@@ -80,6 +80,7 @@ import com.google.common.collect.ImmutableList;
  * RES
  *  | - <resource name>
  *        | - <TID>  -> file descriptor
+ *             | - OPERATION  -> what operation is being done: read/write
  * </pre>
  *
  * FIXME: A file could have multiple file descriptor from the same thread
@@ -100,7 +101,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
     /**
      * Resources field in state system
      */
-    public static final String RESOURCES = "RES"; //$NON-NLS-1$
+    public static final String ATTRIBUTE_RESOURCES = "RES"; //$NON-NLS-1$
     /**
      * TID field in state system
      */
@@ -122,6 +123,10 @@ public class IoStateProvider extends AbstractTmfStateProvider {
      * File descriptor attribute
      */
     public static final String ATTRIBUTE_FD = "FD"; //$NON-NLS-1$
+    /**
+     * Operation attribute
+     */
+    public static final String ATTRIBUTE_OPERATION = "OPERATION"; //$NON-NLS-1$
 
     /** Various syscall names for different purposes */
     private static final Collection<String> OPEN_FROM_DISK = ImmutableList.of("open", "openat");  //$NON-NLS-1$//$NON-NLS-2$
@@ -316,7 +321,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         if (filename != null) {
             // Prepare the file access quark and save a temporary value, to be
             // udpated in case of failure
-            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(RESOURCES, filename, String.valueOf(tid));
+            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_RESOURCES, filename, String.valueOf(tid));
             ssb.modifyAttribute(event.getTimestamp().toNanos(), 0L, fileTidQuark);
         }
     }
@@ -332,22 +337,12 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
         if (ret >= 0) {
             openFile(ssb, time, tid, ret, filename);
-        }
-
-        // Add the file to the resources section, whether there was an error or not
-        if (filename != null) {
-            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(RESOURCES, filename, String.valueOf(tid));
-            if (ret < 0) {
-                // There was an error opening the file, put the return value in
-                // this file's resource
-                ssb.updateOngoingState(ret, fileTidQuark);
-                ssb.modifyAttribute(time, null, fileTidQuark);
-            } else {
-                // successful open, reset fd to null for before, and update the
-                // fd at current time
-                ssb.updateOngoingState((Object) null, fileTidQuark);
-                ssb.modifyAttribute(time, ret, fileTidQuark);
-            }
+        } else if (filename != null) {
+            // There was an error opening the file, put the return value in
+            // this file's resource
+            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_RESOURCES, filename, String.valueOf(tid));
+            ssb.updateOngoingState(ret, fileTidQuark);
+            ssb.removeAttribute(time, fileTidQuark);
         }
 
     }
@@ -640,7 +635,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         // Pre 2.12 have the pid field not null, simply open the file for this thread
         if (pid != null) {
             openFile(ssb, -1, pid.intValue(), fd, filename);
-            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(RESOURCES, filename, String.valueOf(tid));
+            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_RESOURCES, filename, String.valueOf(tid));
             // successful open, reset fd to null for before, and update the
             // fd at current time
             ssb.updateOngoingState(fd, fileTidQuark);
@@ -717,15 +712,15 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
     private void closeFile(ITmfStateSystemBuilder ssb, long time, Integer tid, Long fd) {
         int fdTblQuark = getFdTblQuarkFor(ssb, time, tid);
+        String filename = getFilename(ssb, fd, fdTblQuark);
         int fdQuark = ssb.getQuarkRelativeAndAdd(fdTblQuark, String.valueOf(fd));
         ssb.removeAttribute(time, fdQuark);
 
         // Close the file for this thread in the Resources section
-        Object filename = ssb.queryOngoing(fdQuark);
-        if (filename instanceof String) {
-            int fileTidQuark = ssb.optQuarkAbsolute(RESOURCES, String.valueOf(filename), String.valueOf(tid));
+        if (filename != null) {
+            int fileTidQuark = ssb.optQuarkAbsolute(ATTRIBUTE_RESOURCES, filename, String.valueOf(tid));
             if (fileTidQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
-                ssb.modifyAttribute(time, null, fileTidQuark);
+                ssb.removeAttribute(time, fileTidQuark);
             }
         }
     }
@@ -741,7 +736,7 @@ public class IoStateProvider extends AbstractTmfStateProvider {
 
         // Add the file to the resources section, whether there was an error or not
         if (filename != null) {
-            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(RESOURCES, filename, String.valueOf(tid));
+            int fileTidQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_RESOURCES, filename, String.valueOf(tid));
             // successful open, reset fd to null for before, and update the
             // fd at current time
             ssb.updateOngoingState((Object) null, fileTidQuark);
@@ -801,6 +796,19 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         ssb.updateOngoingState(count > 0 ? count : (Object) null, currentDataQuark);
         ssb.removeAttribute(time, currentDataQuark);
 
+        // End this operation in the RESOURCES tree
+        int fdTblQuark = getFdTblQuarkFor(ssb, time, tid);
+        String filename = getFilename(ssb, fd.fFd, fdTblQuark);
+        if (filename != null) {
+            int resQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_RESOURCES, filename, String.valueOf(tid), ATTRIBUTE_OPERATION);
+            if (count <= 0) {
+                // The operation did not succeed
+                ssb.updateOngoingState((Object) null, resQuark);
+            } else {
+                ssb.removeAttribute(time, resQuark);
+            }
+        }
+
         int currentFdQuark = ssb.getQuarkRelativeAndAdd(currentTidQuark, ATTRIBUTE_FD);
         if (count <= 0) {
             // Return if the count < 0
@@ -817,7 +825,6 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         }
         try {
             // Add the io specific to this file
-            int fdTblQuark = getFdTblQuarkFor(ssb, time, tid);
             int fdQuark = ssb.getQuarkRelativeAndAdd(fdTblQuark, String.valueOf(fd.fFd), attribute);
             StateSystemBuilderUtils.incrementAttributeLong(ssb, time, fdQuark, count);
             StateSystemBuilderUtils.incrementAttributeLong(ssb, time, currentTidQuark, count);
@@ -843,11 +850,29 @@ public class IoStateProvider extends AbstractTmfStateProvider {
             int currentFdQuark = ssb.getQuarkRelativeAndAdd(currentTidQuark, ATTRIBUTE_FD);
             ssb.modifyAttribute(time, fd, currentFdQuark);
 
+            // Record this operation in the RESOURCES tree
+            String filename = getFilename(ssb, fd, fdTblQuark);
+            if (filename != null) {
+                int resQuark = ssb.getQuarkAbsoluteAndAdd(ATTRIBUTE_RESOURCES, filename, String.valueOf(tid), ATTRIBUTE_OPERATION);
+                ssb.modifyAttribute(time, attribute, resQuark);
+            }
+
             tidMap.put(tid, new FdRequestWithPools(fd, fdPool, availableFdQuark));
 
         } catch (StateValueTypeException e) {
             Activator.getInstance().logError(e.getMessage(), e);
         }
+    }
+
+    private @Nullable
+    static String getFilename(ITmfStateSystemBuilder ssb, long fd, Integer fdTblQuark) {
+        int fileQuark = ssb.getQuarkRelativeAndAdd(fdTblQuark, String.valueOf(fd));
+        Object currentFileName = ssb.queryOngoing(fileQuark);
+        if (!(currentFileName instanceof String)) {
+            return null;
+        }
+        String fileName = (String) currentFileName;
+        return fileName.equals(UNKNOWN_FILE) ? null : fileName;
     }
 
     @Override

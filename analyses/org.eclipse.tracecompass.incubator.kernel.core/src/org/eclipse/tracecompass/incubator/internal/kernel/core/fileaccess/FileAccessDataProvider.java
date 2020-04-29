@@ -235,7 +235,7 @@ public class FileAccessDataProvider extends AbstractTimeGraphDataProvider<@NonNu
         try {
             ITmfStateInterval current = ss.querySingleState(start, quark);
 
-            int resQuark = ss.optQuarkAbsolute(IoStateProvider.RESOURCES);
+            int resQuark = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_RESOURCES);
             if (resQuark == ITmfStateSystem.INVALID_ATTRIBUTE) {
                 return new TmfModelResponse<>(retMap, ITmfResponse.Status.FAILED, "Bizarre quark value for the file resources"); //$NON-NLS-1$
             }
@@ -282,7 +282,7 @@ public class FileAccessDataProvider extends AbstractTimeGraphDataProvider<@NonNu
         long rootId = getId(ITmfStateSystem.ROOT_ATTRIBUTE);
         ITmfTrace trace = getTrace();
         builder.add(new TimeGraphEntryModel(rootId, -1, String.valueOf(trace.getName()), ss.getStartTime(), ss.getCurrentEndTime()));
-        int resourcesQuark = ss.optQuarkAbsolute(IoStateProvider.RESOURCES);
+        int resourcesQuark = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_RESOURCES);
         if (resourcesQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
             addResources(ss, builder, resourcesQuark, rootId, selectedTids);
         }

@@ -34,3 +34,9 @@ TID,22,FDTBL:int:190,1
 TID,23,FDTBL:int:200,4
 FDTBL,4,1:string:200,/file/for/tbl/address
 FDTBL,4,2:string:200,/file/for/tbl/address/2
+RES,/mnt/thisIsMyTest,2:long:20,null,25,3,95,null
+RES,/mnt/thisIsMyTest,2,OPERATION:string:40,null,50,WRITE,55,null,60,WRITE,65,null,70,null,80,READ,85,null
+RES,/mnt/ImGonnaReadThisFile,4:long:120,null,125,3,165,null
+RES,/mnt/ImGonnaReadThisFile,4,OPERATION:string:140,null,150,READ,155,null
+RES,/mnt/ImGonnaWriteToThisFile,4:long:130,null,135,4,175,null
+RES,/mnt/ImGonnaWriteToThisFile,4,OPERATION:string:140,null,150,WRITE,155,null
