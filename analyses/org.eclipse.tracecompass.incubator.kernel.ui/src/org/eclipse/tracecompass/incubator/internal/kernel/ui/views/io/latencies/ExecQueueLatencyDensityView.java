@@ -9,9 +9,6 @@
 
 package org.eclipse.tracecompass.incubator.internal.kernel.ui.views.io.latencies;
 
-import java.util.function.Function;
-
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.SWT;
@@ -22,8 +19,6 @@ import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.density.Ab
 import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.table.AbstractSegmentStoreTableViewer;
 import org.eclipse.tracecompass.analysis.timing.ui.views.segmentstore.table.SegmentStoreTableViewer;
 import org.eclipse.tracecompass.internal.analysis.os.linux.core.inputoutput.InputOutputAnalysisModule;
-import org.eclipse.tracecompass.segmentstore.core.ISegment;
-import org.eclipse.tracecompass.segmentstore.core.segment.interfaces.INamedSegment;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 
@@ -65,15 +60,15 @@ public class ExecQueueLatencyDensityView extends AbstractSegmentStoreDensityView
     @Override
     protected AbstractSegmentStoreDensityViewer createSegmentStoreDensityViewer(Composite parent) {
         return new AbstractSegmentStoreDensityViewer(parent) {
-            @Override
-            protected @Nullable Function<@NonNull ISegment, @NonNull String> getSubSeriesFunction() {
-                return segment -> {
-                    if (segment instanceof INamedSegment) {
-                        return ((INamedSegment) segment).getName();
-                    }
-                    return "Unknown"; //$NON-NLS-1$
-                };
-            }
+//            @Override
+//            protected @Nullable Function<@NonNull ISegment, @NonNull String> getSubSeriesFunction() {
+//                return segment -> {
+//                    if (segment instanceof INamedSegment) {
+//                        return ((INamedSegment) segment).getName();
+//                    }
+//                    return "Unknown"; //$NON-NLS-1$
+//                };
+//            }
 
             @Override
             protected @Nullable ISegmentStoreProvider getSegmentStoreProvider(ITmfTrace trace) {
