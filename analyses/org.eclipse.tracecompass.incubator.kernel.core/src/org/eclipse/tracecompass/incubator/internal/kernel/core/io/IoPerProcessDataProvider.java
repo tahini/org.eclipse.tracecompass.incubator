@@ -16,12 +16,15 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.annotation.NonNull;
@@ -301,16 +304,34 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
 
     @Override
     protected boolean isCacheable() {
-        return true;
+        return false;
     }
 
     @Override
     protected TmfTreeModel<TmfTreeDataModel> getTree(ITmfStateSystem ss, Map<String, Object> fetchParameters, @Nullable IProgressMonitor monitor) throws StateSystemDisposedException {
         // Make an entry for each base quark
-        List<TmfTreeDataModel> entryList = new ArrayList<>();
+        Set<TmfTreeDataModel> entryList = new LinkedHashSet<>();
         String traceName = Objects.requireNonNull(getTrace().getName());
         long rootId = getId(ITmfStateSystem.ROOT_ATTRIBUTE);
         entryList.add(new TmfTreeDataModel(rootId, -1, Collections.singletonList(traceName)));
+
+        List<Long> times = DataProviderParameterUtils.extractTimeRequested(fetchParameters);
+        if (times == null) {
+            times = Collections.emptyList();
+        }
+        long start = Long.MAX_VALUE;
+        long end = 0;
+        for (Long time : times) {
+            start = Math.min(start, time);
+            end = Math.max(end, time);
+        }
+        start = Math.max(start, ss.getStartTime());
+        end = Math.min(end, ss.getCurrentEndTime());
+
+        // Prepare the quarks to query: The read/write attributes for all
+        // threads and the current operation quark
+        Map<Integer, TmfTreeDataModel> allModels = new HashMap<>();
+        List<Integer> quarksToQuery = new ArrayList<>();
         int i = 0;
         for (Integer quark : ss.getQuarks(IoStateProvider.ATTRIBUTE_TID, "*")) { //$NON-NLS-1$
             int readQuark = ss.optQuarkRelative(quark, IoStateProvider.ATTRIBUTE_READ);
@@ -327,20 +348,55 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
             String tid = ss.getAttributeName(quark);
             String tidName = resolveThreadName(tid, ss.getCurrentEndTime());
             Long id = getId(quark);
-            entryList.add(new IoTreeDataModel(id, rootId, tidName, tid));
+            allModels.put(quark, new IoTreeDataModel(id, rootId, tidName, tid));
             if (readQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+                quarksToQuery.add(readQuark);
+                int currentQuark = ss.optQuarkRelative(readQuark, IoStateProvider.ATTRIBUTE_CURRENT);
+                if (currentQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+                    quarksToQuery.add(currentQuark);
+                }
                 Long readId = getId(readQuark);
-                entryList.add(new IoTreeDataModel(readId, id, READ_TITLE, tid, pair.getFirst(), seriesStyle));
+                allModels.put(readQuark, new IoTreeDataModel(readId, id, READ_TITLE, tid, pair.getFirst(), seriesStyle));
                 fQuarkToString.put(readQuark, traceName + '/' + tidName + '/' + READ_TITLE);
             }
+
             if (writeQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+                quarksToQuery.add(writeQuark);
+                int currentQuark = ss.optQuarkRelative(writeQuark, IoStateProvider.ATTRIBUTE_CURRENT);
+                if (currentQuark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+                    quarksToQuery.add(currentQuark);
+                }
                 Long writeId = getId(writeQuark);
-                entryList.add(new IoTreeDataModel(writeId, id, WRITE_TITLE, tid, pair.getSecond(), seriesStyle));
+                allModels.put(writeQuark, new IoTreeDataModel(writeId, id, WRITE_TITLE, tid, pair.getSecond(), seriesStyle));
                 fQuarkToString.put(writeQuark, traceName + '/' + tidName + '/' + WRITE_TITLE);
             }
             i++;
         }
-        return new TmfTreeModel<>(Collections.emptyList(), entryList);
+
+        long endTime = end;
+
+        // Remove attributes with a null value that span over the time range
+        Iterable<ITmfStateInterval> intervals = StreamSupport.stream(ss.query2D(quarksToQuery, Collections.singleton(start)).spliterator(), false)
+                .filter(interval -> !(interval.getValue() == null && interval.getEndTime() > endTime))
+                .collect(Collectors.toList());
+
+        for (ITmfStateInterval interval : intervals) {
+            // Add only the entries for this range
+            int quark = interval.getAttribute();
+            if (ss.getAttributeName(quark).equals(IoStateProvider.ATTRIBUTE_CURRENT)) {
+                quark = ss.getParentAttributeQuark(quark);
+            } else {
+                // Its the total count interval. If the interval spans the full
+                // range, nothing happened
+                if (interval.getEndTime() > endTime) {
+                    continue;
+                }
+            }
+            entryList.add(Objects.requireNonNull(allModels.get(ss.getParentAttributeQuark(quark))));
+            entryList.add(Objects.requireNonNull(allModels.get(quark)));
+        }
+
+        return new TmfTreeModel<>(Collections.emptyList(), new ArrayList<>(entryList));
     }
 
     private @Nullable String resolveThreadName(String tidStr, long time) {
