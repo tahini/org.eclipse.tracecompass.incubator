@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,12 +75,32 @@ public class IoAccessDataProviderTest extends AbstractTestInputOutput {
 
         IoAccessDataProvider provider = new IoAccessDataProvider(getTrace(), module);
 
-        Map<Long, TimeGraphEntryModel> idsToEntries = assertAndGetTree(provider, "expectedIoAccessTree", ImmutableMap.of("tid", 4));
+        Map<Long, TimeGraphEntryModel> idsToEntries = assertAndGetTree(provider, "expectedIoAccessTree", ImmutableMap.of(IoAccessDataProvider.SELECTED_TID_PARAM, Collections.singleton(4)));
 
-        assertRowsRequests(provider, idsToEntries, "expectedIoAccessRows", ImmutableMap.of("tid", 4));
+        assertRowsRequests(provider, idsToEntries, "expectedIoAccessRows");
     }
 
-    private static void assertRowsRequests(IoAccessDataProvider provider, Map<Long, TimeGraphEntryModel> idsToEntries, String testFile, ImmutableMap<String, Object> additionalParameters) throws IOException {
+    /**
+     * Test the {@link IoAccessDataProvider} for the test callstack, with all
+     * items separately
+     *
+     * @throws IOException
+     *             if an I/O error occurs reading from the expected value file
+     *             or a malformed or unmappable byte sequence is read
+     */
+    @Test
+    public void testIoDataProviderMultipleTids() throws IOException {
+        IoAnalysis module = getModule();
+        assertTrue(TmfTestHelper.executeAnalysis(module));
+
+        IoAccessDataProvider provider = new IoAccessDataProvider(getTrace(), module);
+
+        Map<Long, TimeGraphEntryModel> idsToEntries = assertAndGetTree(provider, "expectedIoAccessMultiTree", ImmutableMap.of(IoAccessDataProvider.SELECTED_TID_PARAM, ImmutableList.of(2, 4)));
+
+        assertRowsRequests(provider, idsToEntries, "expectedIoAccessMultiRows");
+    }
+
+    private static void assertRowsRequests(IoAccessDataProvider provider, Map<Long, TimeGraphEntryModel> idsToEntries, String testFile) throws IOException {
         // Read the lines of the test file
         List<String> expectedStrings = Files.readAllLines(Paths.get(EXPECTED_FILE_PATH + testFile));
         // First line contains the data to test: start, end, increment
@@ -108,7 +129,7 @@ public class IoAccessDataProviderTest extends AbstractTestInputOutput {
             expectedData.put(entry.getId(), split[1]);
         }
 
-        TmfModelResponse<TimeGraphModel> rowResponse = provider.fetchRowModel(prepareRowParameters(idBuilder.build(), timeBuilder.build(), additionalParameters), null);
+        TmfModelResponse<TimeGraphModel> rowResponse = provider.fetchRowModel(prepareRowParameters(idBuilder.build(), timeBuilder.build()), null);
         assertNotNull(rowResponse);
         assertEquals(ITmfResponse.Status.COMPLETED, rowResponse.getStatus());
         TimeGraphModel model = rowResponse.getModel();
@@ -147,11 +168,10 @@ public class IoAccessDataProviderTest extends AbstractTestInputOutput {
         }
     }
 
-    private static Map<String, Object> prepareRowParameters(Set<Long> ids, List<Long> requestedTimes, ImmutableMap<String, Object> additionalParameters) {
+    private static Map<String, Object> prepareRowParameters(Set<Long> ids, List<Long> requestedTimes) {
         Builder<String, Object> builder = ImmutableMap.builder();
         builder.put(DataProviderParameterUtils.REQUESTED_TIME_KEY, requestedTimes);
         builder.put(DataProviderParameterUtils.REQUESTED_ITEMS_KEY, ids);
-        builder.putAll(additionalParameters);
         return builder.build();
     }
 

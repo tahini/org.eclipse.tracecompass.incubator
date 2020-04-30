@@ -62,6 +62,8 @@ import org.eclipse.tracecompass.tmf.core.response.ITmfResponse.Status;
 import org.eclipse.tracecompass.tmf.core.response.TmfModelResponse;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.ImmutableMap;
@@ -117,7 +119,8 @@ public class FileAccessDataProvider extends AbstractTimeGraphDataProvider<@NonNu
 
     private static final int OFFSET = 100000;
     private static final AtomicInteger STRING_VALUE = new AtomicInteger(OFFSET);
-    private Map<String, Integer> fileIds = new HashMap<>();
+    private Map<String, Integer> fFileIds = new HashMap<>();
+    private BiMap<Long, Integer> fIdToEntry = HashBiMap.create();
 
     /**
      * Constructor
@@ -199,7 +202,6 @@ public class FileAccessDataProvider extends AbstractTimeGraphDataProvider<@NonNu
                 applyFilterAndAddState(eventList, value, entry.getKey(), predicates, monitor);
             }
             rows.add(new TimeGraphRowModel(entry.getKey(), eventList));
-
         }
         return new TimeGraphModel(rows);
     }
@@ -295,8 +297,8 @@ public class FileAccessDataProvider extends AbstractTimeGraphDataProvider<@NonNu
 
         String ramFiles = "in memory"; //$NON-NLS-1$
         boolean hasMemfile = false;
-        int ramHash = fileIds.computeIfAbsent(ramFiles, a -> STRING_VALUE.incrementAndGet());
-        long ramId = getId(ramHash);
+        int ramHash = fFileIds.computeIfAbsent(ramFiles, a -> STRING_VALUE.incrementAndGet());
+        long ramId = getStringEntryId(ramHash);
         TimeGraphEntryModel ramElement = new TimeGraphEntryModel(ramId, parentId, ramFiles, ss.getStartTime(), ss.getCurrentEndTime());
 
         for (Integer fileQuark : fileQuarks) {
@@ -313,11 +315,11 @@ public class FileAccessDataProvider extends AbstractTimeGraphDataProvider<@NonNu
                     String[] segments = name.split(File.separator);
                     StringBuilder sb = new StringBuilder();
                     long parent = parentId;
-                    builder.add(new FileEntryModel(getId(fileIds.computeIfAbsent(File.separator, a -> STRING_VALUE.incrementAndGet())), parentId, File.separator, ss.getStartTime(), ss.getCurrentEndTime(), false, Type.Directory));
+                    builder.add(new FileEntryModel(getStringEntryId(fFileIds.computeIfAbsent(File.separator, a -> STRING_VALUE.incrementAndGet())), parentId, File.separator, ss.getStartTime(), ss.getCurrentEndTime(), false, Type.Directory));
                     for (int i = 0; i < segments.length - 1; i++) {
                         sb.append('/').append(segments[i]);
                         String fileName = sb.toString();
-                        Long fileId = getId(fileIds.computeIfAbsent(fileName, a -> STRING_VALUE.incrementAndGet()));
+                        Long fileId = getId(fFileIds.computeIfAbsent(fileName, a -> STRING_VALUE.incrementAndGet()));
                         builder.add(new FileEntryModel(fileId, parent, segments[i] + File.separator, ss.getStartTime(), ss.getCurrentEndTime(), false, Type.Directory));
                         parent = fileId;
                     }
@@ -345,6 +347,10 @@ public class FileAccessDataProvider extends AbstractTimeGraphDataProvider<@NonNu
                 }
             }
         }
+    }
+
+    private long getStringEntryId(int value) {
+        return fIdToEntry.inverse().computeIfAbsent(value, q -> getEntryId());
     }
 
     private static @Nullable String getThreadName(int tid, long time, ITmfTrace trace) {

@@ -12,7 +12,9 @@ package org.eclipse.tracecompass.incubator.internal.kernel.ui.views.io.perproces
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
@@ -28,10 +30,14 @@ import org.eclipse.tracecompass.incubator.internal.tmf.ui.multiview.ui.view.time
 import org.eclipse.tracecompass.incubator.internal.tmf.ui.multiview.ui.view.xychart.ChartMultiViewer;
 import org.eclipse.tracecompass.internal.provisional.tmf.ui.widgets.timegraph.BaseDataProviderTimeGraphPresentationProvider;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderParameterUtils;
+import org.eclipse.tracecompass.tmf.core.model.timegraph.IElementResolver;
 import org.eclipse.tracecompass.tmf.core.signal.TmfDataModelSelectedSignal;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSignalHandler;
+import org.eclipse.tracecompass.tmf.core.signal.TmfSignalManager;
+import org.eclipse.tracecompass.tmf.core.signal.TmfWindowRangeUpdatedSignal;
 import org.eclipse.tracecompass.tmf.ui.viewers.TmfViewer;
 import org.eclipse.tracecompass.tmf.ui.viewers.tree.AbstractSelectTreeViewer;
+import org.eclipse.tracecompass.tmf.ui.viewers.tree.TmfGenericTreeEntry;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.ITimeDataProvider;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.TimeGraphColorScheme;
 
@@ -54,6 +60,7 @@ public class IoByProcessView extends AbstractMultiView {
 
 
     private @Nullable Integer fSelectedTid = null;
+    private Set<Integer> fCheckedTids = new HashSet<>();
 
     private @Nullable BaseDataProviderTimeGraphMultiViewer fTgViewer = null;
 
@@ -94,6 +101,44 @@ public class IoByProcessView extends AbstractMultiView {
         }
     }
 
+    public class IoAccessTimeGraphViewer extends BaseDataProviderTimeGraphMultiViewer {
+
+        public IoAccessTimeGraphViewer(Composite composite) {
+            super(composite, new BaseDataProviderTimeGraphPresentationProvider(), getViewSite(), IoAccessDataProvider.ID);
+            TmfSignalManager.register(this);
+        }
+
+        @Override
+        public void dispose() {
+            TmfSignalManager.deregister(this);
+            super.dispose();
+        }
+
+        @Override
+        protected @NonNull Map<@NonNull String, @NonNull Object> getFetchTreeParameters() {
+            Integer tid = fSelectedTid;
+            Set<Integer> tids = new HashSet<>(fCheckedTids);
+            if (tid != null) {
+                tids.add(tid);
+            }
+            ITimeDataProvider timeProvider = IoByProcessView.this.getTimeProvider();
+            if (tids.isEmpty() || timeProvider == null) {
+                return Collections.emptyMap();
+            }
+            return ImmutableMap.of(IoAccessDataProvider.SELECTED_TID_PARAM, tids,
+                    DataProviderParameterUtils.REQUESTED_TIME_KEY, ImmutableList.of(timeProvider.getTime0(), timeProvider.getTime1()));
+        }
+
+        @Override
+        @TmfSignalHandler
+        public void windowRangeUpdated(@Nullable TmfWindowRangeUpdatedSignal signal) {
+            // FIXME There's a lot more requests than should be, I think
+            if (fSelectedTid != null) {
+                triggerRebuild();
+            }
+        }
+    }
+
     @Override
     protected void partControlCreated(Composite mainComposite, SashForm sashForm) {
         // Add an XY lane:
@@ -101,7 +146,19 @@ public class IoByProcessView extends AbstractMultiView {
         TmfViewer leftChildViewer = chartViewer.getLeftChildViewer();
         if (leftChildViewer instanceof AbstractSelectTreeViewer) {
             ((AbstractSelectTreeViewer) leftChildViewer).addTreeListener(entries -> {
-                // Do something with the entries
+                Set<Object> tids = new HashSet<>();
+                entries.stream().filter(e -> e instanceof TmfGenericTreeEntry<?>)
+                        .map(e -> ((TmfGenericTreeEntry<?>) e).getModel())
+                        .filter(m -> m instanceof IElementResolver)
+                        .map(m -> ((IElementResolver) m).getMetadata().get(OsStrings.tid()))
+                        .forEach(t -> tids.addAll(t));
+                fCheckedTids.clear();
+                for (Object tid : tids) {
+                    if (tid instanceof Integer) {
+                        fCheckedTids.add((Integer) tid);
+                    }
+                }
+
             });
         }
         fSignalSource = leftChildViewer;
@@ -110,33 +167,8 @@ public class IoByProcessView extends AbstractMultiView {
         Composite composite = new Composite(sashForm, SWT.NONE);
         composite.setLayout(new FillLayout());
         composite.setBackground(getColorScheme().getColor(TimeGraphColorScheme.BACKGROUND));
-        BaseDataProviderTimeGraphMultiViewer tgViewer = new BaseDataProviderTimeGraphMultiViewer(
-                composite, new BaseDataProviderTimeGraphPresentationProvider(), getViewSite(), IoAccessDataProvider.ID) {
+        BaseDataProviderTimeGraphMultiViewer tgViewer = new IoAccessTimeGraphViewer(composite);
 
-            @Override
-            protected @NonNull Map<@NonNull String, @NonNull Object> getFetchTreeParameters() {
-                Integer tid = fSelectedTid;
-                ITimeDataProvider timeProvider = IoByProcessView.this.getTimeProvider();
-                if (tid == null || timeProvider == null) {
-                    return Collections.emptyMap();
-                }
-                return ImmutableMap.of(IoAccessDataProvider.TID_PARAM, tid,
-                        DataProviderParameterUtils.REQUESTED_TIME_KEY, ImmutableList.of(timeProvider.getTime0(), timeProvider.getTime1()));
-            }
-
-            @Override
-            protected Map<String, Object> getFetchRowModelParameters(long start, long end,
-                    long resolution, boolean fullSearch, Collection<Long> items) {
-
-                Map<String, Object> parameters = super.getFetchRowModelParameters(start, end, resolution, fullSearch, items);
-                Integer tid = fSelectedTid;
-                if (tid != null) {
-                    parameters.put(IoAccessDataProvider.TID_PARAM, tid);
-                }
-                return parameters;
-            }
-
-        };
         tgViewer.init();
         addLane(tgViewer);
         fTgViewer  = tgViewer;

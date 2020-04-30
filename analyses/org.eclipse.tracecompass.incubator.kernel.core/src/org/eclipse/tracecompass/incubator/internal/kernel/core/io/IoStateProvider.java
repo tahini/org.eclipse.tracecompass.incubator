@@ -11,8 +11,10 @@
 
 package org.eclipse.tracecompass.incubator.internal.kernel.core.io;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -356,9 +358,17 @@ public class IoStateProvider extends AbstractTmfStateProvider {
         if ((v4addr instanceof long[]) && (v6addr instanceof long[])) {
             long[] addr4 = (long[]) v4addr;
             long[] addr6 = (long[]) v6addr;
-            connectTo = Objects.requireNonNull(addr4.length != 0 ? StringUtils.join(addr4, '.') : (addr6.length != 0) ? StringUtils.join(addr6, ':') : UNKNOWN_FILE);
+            connectTo = Objects.requireNonNull(addr4.length != 0 ? longArrayToString(addr4, '.') : (addr6.length != 0) ? longArrayToString(addr6, ':') : UNKNOWN_FILE);
         }
         return connectTo + ':' + ' ' + socketFamily;
+    }
+
+    private static String longArrayToString(long[] array, char separator) {
+        List<Long> list = new ArrayList<>();
+        for (long l : array) {
+            list.add(Long.valueOf(l));
+        }
+        return StringUtils.join(list, separator);
     }
 
     /**
