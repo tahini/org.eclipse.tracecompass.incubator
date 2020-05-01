@@ -180,6 +180,7 @@ public class IoAccessDataProvider extends AbstractStateSystemAnalysisDataProvide
             return new TmfModelResponse<>(models, complete ? Status.COMPLETED : Status.RUNNING,
                     complete ? CommonStatusMessage.COMPLETED : CommonStatusMessage.RUNNING);
         } catch (StateSystemDisposedException | TimeRangeException | IndexOutOfBoundsException e) {
+            e.printStackTrace();
             return new TmfModelResponse<>(null, Status.FAILED, String.valueOf(e.getMessage()));
         }
     }
@@ -193,30 +194,25 @@ public class IoAccessDataProvider extends AbstractStateSystemAnalysisDataProvide
         }
 
         // Prepare the set of file names being requested
-        Map<Pair<Integer, String>, Long> files = new HashMap<>();
+        Map<Integer, Long> quarkToId = new HashMap<>();
         for (Long selectedItem : selectedItems) {
-            // Look in the "Resources" section to find the quark for the thread
-            // for each requested file
+
             Pair<Integer, String> filename = fIdToFile.get(selectedItem);
             if (filename == null) {
                 continue;
             }
-            files.put(filename, selectedItem);
-        }
-
-        if (files.isEmpty()) {
-            return new TimeGraphModel(Collections.emptyList());
-        }
-
-        // Get the current quark for each file, under the resources section
-        Map<Integer, Long> quarkToId = new HashMap<>();
-        for (Entry<Pair<Integer, String>, Long> fileEntry : files.entrySet()) {
-            Pair<Integer, String> key = fileEntry.getKey();
-            int quark = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_RESOURCES, key.getSecond(), String.valueOf(key.getFirst()), IoStateProvider.ATTRIBUTE_OPERATION);
-            if (quark != ITmfStateSystem.INVALID_ATTRIBUTE) {
+            // Look in the "Resources" section to find the quark for the thread
+            // for each requested file
+            int quark = ss.optQuarkAbsolute(IoStateProvider.ATTRIBUTE_RESOURCES, filename.getSecond(), String.valueOf(filename.getFirst()), IoStateProvider.ATTRIBUTE_OPERATION);
+            if (quark == ITmfStateSystem.INVALID_ATTRIBUTE) {
                 // No data for this file, ignore
+                continue;
             }
-            quarkToId.put(quark, fileEntry.getValue());
+            quarkToId.put(quark, selectedItem);
+        }
+
+        if (quarkToId.isEmpty()) {
+            return new TimeGraphModel(Collections.emptyList());
         }
 
         // Query the operations intervals for the files
