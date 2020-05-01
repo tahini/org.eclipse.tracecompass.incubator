@@ -26,6 +26,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.tracecompass.internal.tmf.ui.Messages;
 import org.eclipse.tracecompass.internal.tmf.ui.views.LockRangeDialog;
+import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderDescriptor;
 import org.eclipse.ui.IViewSite;
 
 /**
@@ -52,8 +53,8 @@ public class ActionsChartMultiViewer extends ChartMultiViewer implements ISelect
      * @param viewSite
      *            MultiView' site
      */
-    public ActionsChartMultiViewer(Composite parent, String providerId, IViewSite viewSite) {
-        super(parent, providerId);
+    public ActionsChartMultiViewer(Composite parent, IDataProviderDescriptor descriptor, IViewSite viewSite) {
+        super(parent, descriptor);
         fViewSite = viewSite;
         getChartViewer().setMouseDragZoomProvider(new MouseDragZoomProvider(this));
 

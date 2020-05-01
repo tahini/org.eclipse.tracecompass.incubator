@@ -77,7 +77,10 @@ public class TreeViewer extends AbstractSelectTreeViewer {
                     && isChecked(element)) {
                 Optional<ITmfTreeDataModel> model = tryGetModel(element);
                 if (model.isPresent()) {
-                    return getLegendImage(model.get().getName());
+                    ITmfTreeDataModel actualModel = model.get();
+                    if (actualModel.hasRowModel()) {
+                        return getLegendImage(actualModel.getId());
+                    }
                 }
             }
             return null;

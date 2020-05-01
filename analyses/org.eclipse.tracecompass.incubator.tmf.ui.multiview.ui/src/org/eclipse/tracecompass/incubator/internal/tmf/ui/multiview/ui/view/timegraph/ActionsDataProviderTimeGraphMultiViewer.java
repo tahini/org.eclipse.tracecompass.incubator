@@ -28,6 +28,7 @@ import org.eclipse.tracecompass.internal.tmf.core.markers.MarkerConfigXmlParser;
 import org.eclipse.tracecompass.internal.tmf.core.markers.MarkerSet;
 import org.eclipse.tracecompass.internal.tmf.ui.Activator;
 import org.eclipse.tracecompass.internal.tmf.ui.markers.MarkerUtils;
+import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderDescriptor;
 import org.eclipse.tracecompass.tmf.core.signal.TmfMarkerEventSourceUpdatedSignal;
 import org.eclipse.tracecompass.tmf.ui.views.timegraph.BaseDataProviderTimeGraphView;
 import org.eclipse.tracecompass.tmf.ui.views.timegraph.Messages;
@@ -69,8 +70,8 @@ public class ActionsDataProviderTimeGraphMultiViewer extends BaseDataProviderTim
      *            data provider's ID
      */
     public ActionsDataProviderTimeGraphMultiViewer(Composite parent, ITimeGraphPresentationProvider pres,
-            IWorkbenchPartSite site, String providerId) {
-        super(parent, pres, site, providerId);
+            IWorkbenchPartSite site, IDataProviderDescriptor descriptor) {
+        super(parent, pres, site, descriptor);
     }
 
     @Override

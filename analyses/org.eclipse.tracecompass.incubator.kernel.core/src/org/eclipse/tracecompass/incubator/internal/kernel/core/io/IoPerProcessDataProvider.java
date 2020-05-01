@@ -313,7 +313,7 @@ public class IoPerProcessDataProvider extends AbstractTreeDataProvider<IoAnalysi
         Set<TmfTreeDataModel> entryList = new LinkedHashSet<>();
         String traceName = Objects.requireNonNull(getTrace().getName());
         long rootId = getId(ITmfStateSystem.ROOT_ATTRIBUTE);
-        entryList.add(new TmfTreeDataModel(rootId, -1, Collections.singletonList(traceName)));
+        entryList.add(new TmfTreeDataModel(rootId, -1, Collections.singletonList(traceName), false, null));
 
         List<Long> times = DataProviderParameterUtils.extractTimeRequested(fetchParameters);
         if (times == null) {

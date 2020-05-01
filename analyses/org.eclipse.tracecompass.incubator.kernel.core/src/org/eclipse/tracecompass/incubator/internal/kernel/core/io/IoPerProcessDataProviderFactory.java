@@ -19,6 +19,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.internal.tmf.core.model.DataProviderDescriptor;
 import org.eclipse.tracecompass.internal.tmf.core.model.xy.TmfTreeXYCompositeDataProvider;
 import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderDescriptor;
+import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderDescriptor.DataType;
 import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderDescriptor.ProviderType;
 import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderFactory;
 import org.eclipse.tracecompass.tmf.core.model.tree.ITmfTreeDataModel;
@@ -43,6 +44,7 @@ public class IoPerProcessDataProviderFactory implements IDataProviderFactory {
             .setName("Io Per Process Data Provider") //$NON-NLS-1$
             .setDescription("Shows the IO (read/write) per process in time") //$NON-NLS-1$
             .setProviderType(ProviderType.TREE_TIME_XY)
+            .setDataType(DataType.BINARY_SPEED)
             .build();
 
     @Override

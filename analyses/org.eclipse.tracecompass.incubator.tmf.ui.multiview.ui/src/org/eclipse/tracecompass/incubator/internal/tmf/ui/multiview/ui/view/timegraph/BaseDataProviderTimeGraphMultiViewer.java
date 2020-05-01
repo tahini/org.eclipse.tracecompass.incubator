@@ -48,6 +48,7 @@ import org.eclipse.tracecompass.statesystem.core.StateSystemUtils;
 import org.eclipse.tracecompass.tmf.core.TmfStrings;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderManager;
 import org.eclipse.tracecompass.tmf.core.dataprovider.DataProviderParameterUtils;
+import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderDescriptor;
 import org.eclipse.tracecompass.tmf.core.event.lookup.TmfCallsite;
 import org.eclipse.tracecompass.tmf.core.model.IOutputElement;
 import org.eclipse.tracecompass.tmf.core.model.timegraph.IFilterProperty;
@@ -150,27 +151,9 @@ public class BaseDataProviderTimeGraphMultiViewer extends AbstractTimeGraphMulti
      * @param providerId
      *            provider's ID
      */
-    public BaseDataProviderTimeGraphMultiViewer(Composite parent, ITimeGraphPresentationProvider pres, IWorkbenchPartSite site, String providerId) {
+    public BaseDataProviderTimeGraphMultiViewer(Composite parent, ITimeGraphPresentationProvider pres, IWorkbenchPartSite site, IDataProviderDescriptor descriptor) {
         super(parent, pres, site);
-        fProviderId = providerId;
-        createTimeEventContextMenu();
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param parent
-     *            parent composite
-     * @param pres
-     *            presentation provider
-     * @param site
-     *            workbench site
-     * @param providerId
-     *            provider's descriptor
-     */
-    public BaseDataProviderTimeGraphMultiViewer(Composite parent, ITimeGraphPresentationProvider pres, IWorkbenchPartSite site, String providerId) {
-        super(parent, pres, site);
-        fProviderId = providerId;
+        fProviderId = descriptor.getId();
         createTimeEventContextMenu();
     }
 

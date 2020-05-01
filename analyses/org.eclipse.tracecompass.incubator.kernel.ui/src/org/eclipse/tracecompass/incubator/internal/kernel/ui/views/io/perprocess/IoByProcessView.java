@@ -24,6 +24,7 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.OsStrings;
 import org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoAccessDataProvider;
+import org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoAccessDataProviderFactory;
 import org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoPerProcessDataProviderFactory;
 import org.eclipse.tracecompass.incubator.internal.tmf.ui.multiview.ui.view.AbstractMultiView;
 import org.eclipse.tracecompass.incubator.internal.tmf.ui.multiview.ui.view.timegraph.BaseDataProviderTimeGraphMultiViewer;
@@ -104,7 +105,7 @@ public class IoByProcessView extends AbstractMultiView {
     public class IoAccessTimeGraphViewer extends BaseDataProviderTimeGraphMultiViewer {
 
         public IoAccessTimeGraphViewer(Composite composite) {
-            super(composite, new BaseDataProviderTimeGraphPresentationProvider(), getViewSite(), IoAccessDataProvider.ID);
+            super(composite, new BaseDataProviderTimeGraphPresentationProvider(), getViewSite(), IoAccessDataProviderFactory.DESCRIPTOR);
             TmfSignalManager.register(this);
         }
 

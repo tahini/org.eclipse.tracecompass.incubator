@@ -23,6 +23,8 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Sash;
 import org.eclipse.tracecompass.incubator.internal.tmf.ui.multiview.ui.view.IMultiViewer;
 import org.eclipse.tracecompass.incubator.internal.tmf.ui.multiview.ui.view.MultiView;
+import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderDescriptor;
+import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderDescriptor.DataType;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSignalManager;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.ui.signal.TmfTimeViewAlignmentInfo;
@@ -66,21 +68,25 @@ public class ChartMultiViewer extends TmfTimeViewer implements IMultiViewer {
      * @param providerId
      *            provider's ID
      */
-    public ChartMultiViewer(Composite parent, String providerId) {
+    public ChartMultiViewer(Composite parent, IDataProviderDescriptor descriptor) {
         super(parent);
         fSashForm = new SashForm(parent, SWT.NONE);
 
-        fLeftViewer = new TreeViewer(fSashForm, providerId);
+        fLeftViewer = new TreeViewer(fSashForm, descriptor.getId());
         fXYViewerContainer = new Composite(fSashForm, SWT.NONE);
         GridLayout layout = new GridLayout();
         layout.marginHeight = 0;
         layout.marginWidth = 0;
         fXYViewerContainer.setLayout(layout);
 
-        fChartViewer = new TmfFilteredXYChartViewer(fXYViewerContainer, new TmfXYChartSettings("", "", "", 1), providerId); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        fChartViewer = new TmfFilteredXYChartViewer(fXYViewerContainer, new TmfXYChartSettings("", "", "", 1), descriptor.getId()); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         fChartViewer.setTimeAxisVisible(false);
         fChartViewer.setSendTimeAlignSignals(true);
         fChartViewer.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        DataType dataType = descriptor.getDataType();
+        if (dataType != null) {
+            fChartViewer.getSwtChart().getAxisSet().getYAxis(0).getTick().setFormat(dataType.getFormatter());
+        }
         fChartViewer.getSwtChart().getAxisSet().getXAxis(0).getTick().setVisible(false);
 
         fChartViewer.getControl().addPaintListener(new PaintListener() {

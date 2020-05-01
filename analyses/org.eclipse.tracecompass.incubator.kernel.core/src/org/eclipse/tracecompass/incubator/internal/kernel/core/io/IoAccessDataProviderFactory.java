@@ -31,7 +31,7 @@ import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
  */
 public class IoAccessDataProviderFactory implements IDataProviderFactory {
 
-    private static final IDataProviderDescriptor DESCRIPTOR = new DataProviderDescriptor.Builder()
+    public static final IDataProviderDescriptor DESCRIPTOR = new DataProviderDescriptor.Builder()
             .setId(IoAccessDataProvider.ID)
             .setName("Io Access Data Provider")
             .setDescription("Shows the file access per thread")

@@ -35,6 +35,7 @@ import org.eclipse.tracecompass.internal.tmf.ui.Activator;
 import org.eclipse.tracecompass.internal.tmf.ui.ITmfImageConstants;
 import org.eclipse.tracecompass.internal.tmf.ui.viewers.xycharts.TmfXYChartTimeAdapter;
 import org.eclipse.tracecompass.internal.tmf.ui.views.TmfAlignmentSynchronizer;
+import org.eclipse.tracecompass.tmf.core.dataprovider.IDataProviderDescriptor;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSignalHandler;
 import org.eclipse.tracecompass.tmf.core.signal.TmfTraceSelectedSignal;
 import org.eclipse.tracecompass.tmf.core.signal.TmfWindowRangeUpdatedSignal;
@@ -540,15 +541,15 @@ public abstract class AbstractMultiView extends TmfView implements ITmfTimeAlign
      *            not
      * @return The newly created chart viewer
      */
-    protected ChartMultiViewer addChartViewer(String providerId, boolean withActions) {
+    protected ChartMultiViewer addChartViewer(IDataProviderDescriptor descriptor, boolean withActions) {
         SashForm sashForm = fSashForm;
         ITmfTrace trace = getTrace();
         Composite composite = new Composite(sashForm, SWT.NONE);
         composite.setLayout(new FillLayout());
         composite.setBackground(fColorScheme.getColor(TimeGraphColorScheme.BACKGROUND));
         ChartMultiViewer viewer = withActions ?
-                new ActionsChartMultiViewer(composite, providerId, getViewSite()) :
-                new ChartMultiViewer(composite, providerId);
+                new ActionsChartMultiViewer(composite, descriptor, getViewSite()) :
+                new ChartMultiViewer(composite, descriptor);
         viewer.setStatusLineManager(getViewSite().getActionBars().getStatusLineManager());
         if (!hasLanes()) {
             viewer.getChartViewer().getSwtChart().addPaintListener(e -> redrawTimeScales());
@@ -579,16 +580,16 @@ public abstract class AbstractMultiView extends TmfView implements ITmfTimeAlign
      *            not
      * @return The new time graph viewer
      */
-    protected BaseDataProviderTimeGraphMultiViewer addTimeGraphViewer(String providerId, boolean withActions) {
+    protected BaseDataProviderTimeGraphMultiViewer addTimeGraphViewer(IDataProviderDescriptor descriptor, boolean withActions) {
         SashForm sashForm = fSashForm;
         Composite composite = new Composite(sashForm, SWT.NONE);
         composite.setLayout(new FillLayout());
         composite.setBackground(fColorScheme.getColor(TimeGraphColorScheme.BACKGROUND));
         BaseDataProviderTimeGraphMultiViewer viewer = withActions ?
                 new ActionsDataProviderTimeGraphMultiViewer(
-                        composite, new BaseDataProviderTimeGraphPresentationProvider(), getViewSite(), providerId) :
+                        composite, new BaseDataProviderTimeGraphPresentationProvider(), getViewSite(), descriptor) :
                 new BaseDataProviderTimeGraphMultiViewer(
-                        composite, new BaseDataProviderTimeGraphPresentationProvider(), getViewSite(), providerId);
+                        composite, new BaseDataProviderTimeGraphPresentationProvider(), getViewSite(), descriptor);
         viewer.init();
         if (!hasLanes()) {
             TimeGraphViewer timeGraphViewer = viewer.getTimeGraphViewer();

@@ -81,10 +81,10 @@ public class MultiView extends AbstractMultiView {
                         return;
                     }
                     if (dialog.getProviderType() == ProviderType.TREE_TIME_XY) {
-                        addChartViewer(descriptor.getId(), true);
+                        addChartViewer(descriptor, true);
                     }
                     if (dialog.getProviderType() == ProviderType.TIME_GRAPH) {
-                        addTimeGraphViewer(descriptor.getId(), true);
+                        addTimeGraphViewer(descriptor, true);
                     }
                     alignViewers(true);
                 }
