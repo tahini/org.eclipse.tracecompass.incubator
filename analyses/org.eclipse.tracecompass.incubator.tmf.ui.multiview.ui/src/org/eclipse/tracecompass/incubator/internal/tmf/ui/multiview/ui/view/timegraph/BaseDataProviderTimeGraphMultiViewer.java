@@ -156,6 +156,24 @@ public class BaseDataProviderTimeGraphMultiViewer extends AbstractTimeGraphMulti
         createTimeEventContextMenu();
     }
 
+    /**
+     * Constructor.
+     *
+     * @param parent
+     *            parent composite
+     * @param pres
+     *            presentation provider
+     * @param site
+     *            workbench site
+     * @param providerId
+     *            provider's descriptor
+     */
+    public BaseDataProviderTimeGraphMultiViewer(Composite parent, ITimeGraphPresentationProvider pres, IWorkbenchPartSite site, String providerId) {
+        super(parent, pres, site);
+        fProviderId = providerId;
+        createTimeEventContextMenu();
+    }
+
     @Override
     public Control getControl() {
         return getTimeGraphViewer().getTimeAlignedComposite();

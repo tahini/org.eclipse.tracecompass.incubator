@@ -24,7 +24,7 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.tracecompass.analysis.os.linux.core.model.OsStrings;
 import org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoAccessDataProvider;
-import org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoPerProcessDataProvider;
+import org.eclipse.tracecompass.incubator.internal.kernel.core.io.IoPerProcessDataProviderFactory;
 import org.eclipse.tracecompass.incubator.internal.tmf.ui.multiview.ui.view.AbstractMultiView;
 import org.eclipse.tracecompass.incubator.internal.tmf.ui.multiview.ui.view.timegraph.BaseDataProviderTimeGraphMultiViewer;
 import org.eclipse.tracecompass.incubator.internal.tmf.ui.multiview.ui.view.xychart.ChartMultiViewer;
@@ -142,7 +142,7 @@ public class IoByProcessView extends AbstractMultiView {
     @Override
     protected void partControlCreated(Composite mainComposite, SashForm sashForm) {
         // Add an XY lane:
-        ChartMultiViewer chartViewer = addChartViewer( IoPerProcessDataProvider.ID);
+        ChartMultiViewer chartViewer = addChartViewer(IoPerProcessDataProviderFactory.DESCRIPTOR, false);
         TmfViewer leftChildViewer = chartViewer.getLeftChildViewer();
         if (leftChildViewer instanceof AbstractSelectTreeViewer) {
             ((AbstractSelectTreeViewer) leftChildViewer).addTreeListener(entries -> {

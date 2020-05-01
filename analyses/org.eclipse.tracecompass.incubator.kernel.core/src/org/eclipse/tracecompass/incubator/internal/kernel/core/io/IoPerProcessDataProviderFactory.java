@@ -35,7 +35,10 @@ import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 @SuppressWarnings("restriction")
 public class IoPerProcessDataProviderFactory implements IDataProviderFactory {
 
-    private static final IDataProviderDescriptor DESCRIPTOR = new DataProviderDescriptor.Builder()
+    /**
+     * Descriptor
+     */
+    public static final IDataProviderDescriptor DESCRIPTOR = new DataProviderDescriptor.Builder()
             .setId(IoPerProcessDataProvider.ID)
             .setName("Io Per Process Data Provider") //$NON-NLS-1$
             .setDescription("Shows the IO (read/write) per process in time") //$NON-NLS-1$
